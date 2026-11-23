@@ -1,0 +1,143 @@
+"""Public APIs the embeddable widget calls from customers' websites.
+
+The workspace is named by its public key in the path. The visitor proves who they are
+with the `X-Visitor-Token` header that POST /session hands out.
+"""
+
+from django.shortcuts import get_object_or_404
+from ninja import Router
+from ninja.errors import HttpError
+
+from apps.agent import actions
+from apps.agent.bot import maybe_reply
+from apps.knowledge.models import Article
+from apps.knowledge.search import search
+from apps.workspaces.models import Workspace
+
+from .models import Conversation, Message, Visitor
+from .schemas import (
+    ArticleOut,
+    ArticleRef,
+    WidgetActionIn,
+    WidgetConfigOut,
+    WidgetMessageIn,
+    WidgetMessagesOut,
+    WidgetSessionIn,
+    WidgetSessionOut,
+)
+from .serializers import message_out
+from .services import add_message, current_conversation, touch_visitor
+
+router = Router(tags=["widget"])
+
+
+def get_workspace(key: str) -> Workspace:
+    return get_object_or_404(Workspace, public_key=key)
+
+
+def get_visitor(request, workspace: Workspace) -> Visitor:
+    token = request.headers.get("X-Visitor-Token", "")
+    visitor = Visitor.objects.filter(workspace=workspace, token=token).first() if token else None
+    if visitor is None:
+        raise HttpError(401, "Unknown visitor. Start a session first.")
+    return visitor
+
+
+def client_ip(request) -> str | None:
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    return forwarded.split(",")[0].strip() or request.META.get("REMOTE_ADDR")
+
+
+@router.get("/{key}/config", response=WidgetConfigOut)
+def config(request, key: str):
+    return get_workspace(key)
+
+
+@router.post("/{key}/session", response=WidgetSessionOut)
+def session(request, key: str, payload: WidgetSessionIn):
+    """Start or resume a visitor. The widget calls it on load and every 20 s as a heartbeat."""
+    workspace = get_workspace(key)
+    token = request.headers.get("X-Visitor-Token", "")
+    visitor = Visitor.objects.filter(workspace=workspace, token=token).first() if token else None
+    if visitor is None:
+        visitor = Visitor(workspace=workspace, ip=client_ip(request))
+    touch_visitor(
+        visitor,
+        current_url=payload.url,
+        page_title=payload.title,
+        referrer=payload.referrer or None,
+        user_agent=request.headers.get("User-Agent", ""),
+        name=payload.name,
+        email=payload.email,
+    )
+    conversation = current_conversation(visitor)
+    last = conversation.messages.filter(is_note=False).order_by("-id").first() if conversation else None
+    return {
+        "token": visitor.token,
+        "visitor_id": visitor.id,
+        "conversation_id": conversation.id if conversation else None,
+        "last_message_id": last.id if last else None,
+    }
+
+
+@router.get("/{key}/messages", response=WidgetMessagesOut)
+def messages(request, key: str, after: int = 0):
+    workspace = get_workspace(key)
+    visitor = get_visitor(request, workspace)
+    conversation = current_conversation(visitor)
+    if conversation is None:
+        return {"conversation_id": None, "messages": []}
+    rows = conversation.messages.filter(is_note=False, id__gt=after).exclude(sender=Message.Sender.SYSTEM)
+    return {
+        "conversation_id": conversation.id,
+        "human_requested": conversation.human_requested,
+        "messages": [message_out(m) for m in rows.select_related("author")],
+    }
+
+
+@router.post("/{key}/messages", response=WidgetMessagesOut)
+def send(request, key: str, payload: WidgetMessageIn):
+    workspace = get_workspace(key)
+    visitor = get_visitor(request, workspace)
+    conversation = current_conversation(visitor)
+    if conversation is None:
+        conversation = Conversation.objects.create(workspace=workspace, visitor=visitor)
+    message = add_message(conversation, Message.Sender.VISITOR, payload.body.strip())
+    maybe_reply(conversation)
+    rows = conversation.messages.filter(is_note=False, id__gte=message.id).exclude(sender=Message.Sender.SYSTEM)
+    return {
+        "conversation_id": conversation.id,
+        "human_requested": conversation.human_requested,
+        "messages": [message_out(m) for m in rows],
+    }
+
+
+@router.post("/{key}/actions", response=dict)
+def action(request, key: str, payload: WidgetActionIn):
+    """An A2UI action event: the visitor pressed a button in a bot message."""
+    workspace = get_workspace(key)
+    visitor = get_visitor(request, workspace)
+    conversation = current_conversation(visitor)
+    if conversation is None:
+        raise HttpError(400, "No conversation yet.")
+    try:
+        return actions.handle(conversation, payload.name, payload.context)
+    except actions.ActionError as error:
+        raise HttpError(400, str(error)) from error
+
+
+@router.get("/{key}/articles", response=list[ArticleRef])
+def articles(request, key: str, q: str = ""):
+    workspace = get_workspace(key)
+    rows = (
+        search(workspace, q, limit=10)
+        if q.strip()
+        else Article.objects.filter(workspace=workspace, published=True)[:20]
+    )
+    return [{"id": a.id, "title": a.title, "excerpt": a.body[:160]} for a in rows]
+
+
+@router.get("/{key}/articles/{article_id}", response=ArticleOut)
+def article(request, key: str, article_id: int):
+    workspace = get_workspace(key)
+    return get_object_or_404(Article, pk=article_id, workspace=workspace, published=True)

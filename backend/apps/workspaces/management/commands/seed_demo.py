@@ -1,0 +1,126 @@
+"""Creates a demo owner and two workspaces to try whileisleep locally. Safe to run again.
+
+    docker compose exec -T web python manage.py seed_demo
+
+Login: DEMO_EMAIL / DEMO_PASSWORD from .env. If OPENROUTER_API_KEY is set there, it goes into
+the demo organization; pick the model on the Organization page. The first workspace's tools call a site's
+public API (EXAMGRILL_API_URL, default the examgrill dev backend on the host); the
+second is a plain knowledge-base-only shop.
+"""
+
+import os
+
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand, CommandError
+
+from apps.agent.models import Tool
+from apps.knowledge.models import Article
+from apps.workspaces.models import Workspace
+from apps.workspaces.services import create_workspace, organization_for
+
+EXAM_API = os.environ.get("EXAMGRILL_API_URL", "http://host.docker.internal:8006")
+
+WORKSPACES = [
+    {
+        "name": "ExamGrill",
+        "website": "http://localhost:3006",
+        "color": "#1e6fd9",
+        "greeting": "Hi! Looking for a practice exam? Ask me about any certification.",
+        "ai_instructions": (
+            "ExamGrill sells practice tests for IT certification exams. When someone asks about an exam, "
+            "search the catalog with search_exams before answering, and link the exam page as "
+            "/exams/{slug}. If it isn't in the catalog, check exams_in_preparation."
+        ),
+        "articles": [
+            (
+                "Refund policy",
+                "If you don't pass, ask for a refund within 30 days of your exam date. Send your score report.",
+            ),
+            (
+                "How practice tests work",
+                "Each test has timed and practice modes. Practice mode shows explanations after each question.",
+            ),
+        ],
+        "tools": [
+            {
+                "name": "search_exams",
+                "description": (
+                    "Searches the catalog of practice exams by exam code or name (e.g. 'AZ-104', 'aws solutions "
+                    "architect'). Returns matching exams with code, name, slug, price_cents and discount. Use it "
+                    "whenever someone asks whether an exam is available or what it costs."
+                ),
+                "url": f"{EXAM_API}/api/v1/exams",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"q": {"type": "string", "description": "Exam code or name."}},
+                    "required": ["q"],
+                },
+            },
+            {
+                "name": "exams_in_preparation",
+                "description": (
+                    "Exams that are being prepared but not yet published, for a search that found nothing. "
+                    "Use it to tell the visitor an exam is coming soon."
+                ),
+                "url": f"{EXAM_API}/api/v1/exams/pending",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"q": {"type": "string", "description": "Exam code or name."}},
+                    "required": ["q"],
+                },
+            },
+        ],
+    },
+    {
+        "name": "Little Fern Coffee",
+        "website": "https://littlefern.example.com",
+        "color": "#2f6b3a",
+        "greeting": "Hi! Questions about beans, brewing or your order?",
+        "ai_instructions": "Friendly, brief. We roast in small batches and ship weekly.",
+        "articles": [
+            (
+                "Shipping",
+                "We ship to the UK, EU, US and Canada. Orders arrive in **5 to 8 business days**. "
+                "Shipping is free on orders over $60.",
+            ),
+            ("Wholesale", "Cafés can order wholesale from 5 kg a month. Email wholesale@littlefern.example.com."),
+            ("Changing your delivery address", "You can change the address until the order ships, usually Thursday."),
+        ],
+        "tools": [],
+    },
+]
+
+
+class Command(BaseCommand):
+    help = "Create a demo owner and two workspaces."
+
+    def handle(self, *args, **options):
+        email = os.environ.get("DEMO_EMAIL", "").lower()
+        password = os.environ.get("DEMO_PASSWORD", "")
+        if not email or not password:
+            raise CommandError("Set DEMO_EMAIL and DEMO_PASSWORD in .env first.")
+        User = get_user_model()
+        user, created = User.objects.get_or_create(username=email, defaults={"email": email, "first_name": "Demo"})
+        if created:
+            user.set_password(password)
+            user.save()
+
+        organization = organization_for(user)
+        key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+        if key and not organization.openrouter_api_key:
+            organization.openrouter_api_key = key
+            organization.save(update_fields=["openrouter_api_key"])
+            self.stdout.write(f"OpenRouter key from .env saved to {organization.name}. Pick a model on its page.")
+
+        for spec in WORKSPACES:
+            spec = dict(spec)
+            articles, tools = spec.pop("articles"), spec.pop("tools")
+            workspace = Workspace.objects.filter(name=spec["name"], memberships__user=user).first()
+            if workspace is None:
+                workspace = create_workspace(user, **spec)
+            for title, body in articles:
+                Article.objects.get_or_create(workspace=workspace, title=title, defaults={"body": body})
+            for tool in tools:
+                Tool.objects.update_or_create(workspace=workspace, name=tool["name"], defaults=tool)
+            self.stdout.write(f"{workspace.name}: {workspace.public_key}")
+        self.stdout.write(self.style.SUCCESS(f"Log in as {email}."))

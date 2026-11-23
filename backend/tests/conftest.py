@@ -1,0 +1,134 @@
+import json
+import sys
+
+import httpx
+import pytest
+from django.test import Client
+
+from apps.agent import openrouter
+
+from .factories import AuthTokenFactory, MembershipFactory, OrganizationFactory, UserFactory, WorkspaceFactory
+
+# No __pycache__ folders from test runs.
+sys.dont_write_bytecode = True
+
+
+@pytest.fixture(autouse=True)
+def no_real_http(monkeypatch):
+    """Fail any test that reaches a real service. Fake the call instead. RuntimeError, not an
+    httpx error, so code that handles network errors can't hide it."""
+
+    def refuse(self, request):
+        raise RuntimeError(f"Test tried a real HTTP request: {request.method} {request.url}. Mock it.")
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", refuse)
+
+
+class Api:
+    """Django test client that speaks JSON and sends a bearer or visitor token."""
+
+    def __init__(self, token: str = "", visitor_token: str = ""):
+        self.client = Client()
+        self.token = token
+        self.visitor_token = visitor_token
+
+    def _headers(self):
+        headers = {}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        if self.visitor_token:
+            headers["X-Visitor-Token"] = self.visitor_token
+        return headers
+
+    def request(self, method: str, path: str, data=None):
+        kwargs = {"headers": self._headers()}
+        if data is not None:
+            kwargs |= {"data": json.dumps(data), "content_type": "application/json"}
+        return getattr(self.client, method)(f"/api/v1{path}", **kwargs)
+
+    def get(self, path, **params):
+        query = "&".join(f"{k}={v}" for k, v in params.items())
+        return self.request("get", f"{path}?{query}" if query else path)
+
+    def post(self, path, data=None):
+        return self.request("post", path, data if data is not None else {})
+
+    def put(self, path, data):
+        return self.request("put", path, data)
+
+    def patch(self, path, data):
+        return self.request("patch", path, data)
+
+    def delete(self, path):
+        return self.request("delete", path)
+
+
+@pytest.fixture
+def membership(db):
+    """The owner of a fresh workspace, who also owns its organization."""
+    user = UserFactory()
+    workspace = WorkspaceFactory(organization=OrganizationFactory(owner=user))
+    return MembershipFactory(user=user, workspace=workspace)
+
+
+@pytest.fixture
+def workspace(membership):
+    return membership.workspace
+
+
+@pytest.fixture
+def api(membership):
+    """Signed in as the workspace owner."""
+    return Api(token=AuthTokenFactory(user=membership.user).key)
+
+
+@pytest.fixture
+def anon():
+    return Api()
+
+
+# --- Fake OpenRouter ---
+
+
+def tool_call(name: str, arguments: dict, id: str = "call_1") -> dict:
+    return {"id": id, "type": "function", "function": {"name": name, "arguments": json.dumps(arguments)}}
+
+
+def assistant(*calls: dict, content: str | None = None) -> dict:
+    """An assistant message as OpenRouter returns it (choices[0].message)."""
+    return {"role": "assistant", "content": content, "tool_calls": list(calls) or None}
+
+
+def final(reply: str, article_ids=(), offer_human=False) -> dict:
+    """The model finishing with reply_to_visitor."""
+    args = {"reply": reply, "article_ids": list(article_ids), "offer_human": offer_human}
+    return assistant(tool_call("reply_to_visitor", args, id="call_final"))
+
+
+class FakeOpenRouter:
+    """Returns scripted messages in order and records each request."""
+
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.requests = []
+
+    def complete(self, api_key, model, messages, tools):
+        # Copy the messages: the bot appends to the same list after the call.
+        self.requests.append({"api_key": api_key, "model": model, "messages": list(messages), "tools": tools})
+        response = self.responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+
+@pytest.fixture
+def llm(monkeypatch):
+    """Install a fake OpenRouter. Call it with the scripted assistant messages. The
+    conversation's organization must be ready (OrganizationFactory(ready=True))."""
+
+    def install(*responses):
+        fake = FakeOpenRouter(responses)
+        monkeypatch.setattr(openrouter, "complete", fake.complete)
+        return fake
+
+    return install

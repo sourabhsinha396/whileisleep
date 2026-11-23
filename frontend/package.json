@@ -1,0 +1,36 @@
+{
+  "name": "whileisleep-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "pnpm build:widget && next build",
+    "build:widget": "esbuild src/widget/index.ts --bundle --minify --format=iife --target=es2019 --outfile=public/widget.js",
+    "watch:widget": "esbuild src/widget/index.ts --bundle --format=iife --target=es2019 --outfile=public/widget.js --watch",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.61.0",
+    "next": "16.4.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "esbuild": "^0.25.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "happy-dom": "^20.0.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "3.2.4"
+  },
+  "packageManager": "pnpm@10.33.1"
+}

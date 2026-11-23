@@ -21,6 +21,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "factory-boy>=3.3.3",
+    "fakeredis==2.34.0",
     "pytest>=9.2.0",
     "pytest-django>=4.14.0",
     "ruff>=0.17.6",
@@ -33,6 +34,8 @@ package = false
 DJANGO_SETTINGS_MODULE = "whileisleep.settings.testing"
 testpaths = ["tests"]
 addopts = "-p no:cacheprovider"
+# fakeredis passes redis-py an argument redis-py has deprecated; not ours to fix.
+filterwarnings = ["ignore:.*lib_version.*:DeprecationWarning"]
 
 [tool.ruff]
 line-length = 120

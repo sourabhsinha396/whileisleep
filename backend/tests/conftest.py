@@ -44,6 +44,44 @@ def no_real_http(monkeypatch):
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", refuse)
 
 
+@pytest.fixture
+def fake_redis(monkeypatch):
+    """Real-time features on an in-memory Redis. The sync client (publishers, presence) and
+    every async client (streams) share one fake server, so pub/sub crosses between them."""
+    import fakeredis
+
+    from apps.realtime import bus
+
+    server = fakeredis.FakeServer()
+    sync = fakeredis.FakeRedis(server=server)
+    monkeypatch.setattr(bus, "client", lambda: sync)
+    monkeypatch.setattr(bus, "async_client", lambda: fakeredis.FakeAsyncRedis(server=server))
+    return sync
+
+
+class Listener:
+    """Subscribes to channels on the fake Redis and collects what is published there."""
+
+    def __init__(self, connection, *channels):
+        self.pubsub = connection.pubsub()
+        self.pubsub.subscribe(*channels)
+
+    def events(self) -> list[dict]:
+        found = []
+        while (message := self.pubsub.get_message(timeout=0.01)) is not None:
+            if message["type"] == "message":
+                found.append(json.loads(message["data"]))
+        return found
+
+    def names(self) -> list[str]:
+        return [e["event"] for e in self.events()]
+
+
+@pytest.fixture
+def listen(fake_redis):
+    return lambda *channels: Listener(fake_redis, *channels)
+
+
 class Api:
     """Django test client that speaks JSON and sends a bearer or visitor token."""
 

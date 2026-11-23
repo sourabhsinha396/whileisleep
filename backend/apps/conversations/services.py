@@ -3,6 +3,8 @@ from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
 
+from apps.realtime import events
+
 from . import attributes
 from .models import Conversation, Message, Visitor
 
@@ -44,6 +46,8 @@ def add_message(
         conversation.human_requested = True
         fields.append("human_requested")
     conversation.save(update_fields=fields)
+    events.message_added(message)
+    events.conversation_changed(conversation)
     return message
 
 

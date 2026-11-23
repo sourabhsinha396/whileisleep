@@ -10,6 +10,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from apps.accounts.security import token_auth
+from apps.realtime import events
 from apps.workspaces.models import Membership
 from apps.workspaces.services import member_workspace
 
@@ -65,6 +66,8 @@ def get(request, workspace_id: int, conversation_id: int):
     if conversation.unread:
         conversation.unread = False
         conversation.save(update_fields=["unread"])
+        # Teammates' inbox lists drop the unread dot too.
+        events.conversation_changed(conversation)
     messages = list(conversation.messages.select_related("author"))
     return {
         **conversation_row(conversation, next((m for m in reversed(messages) if not m.is_note), None)),
@@ -103,6 +106,7 @@ def update(request, workspace_id: int, conversation_id: int, payload: Conversati
     if "human_requested" in data:
         conversation.human_requested = data["human_requested"]
     conversation.save()
+    events.conversation_changed(conversation)
     return conversation_row(conversation, conversation.messages.filter(is_note=False).last())
 
 

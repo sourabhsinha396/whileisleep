@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "apps.conversations",
     "apps.knowledge",
     "apps.agent",
+    "apps.realtime",
 ]
 
 MIDDLEWARE = [

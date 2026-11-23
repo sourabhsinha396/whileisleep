@@ -27,6 +27,8 @@ class Outcome:
     rule: Rule | None = None
     # A fixed reply went out, so the AI shouldn't answer this message.
     replied: bool = False
+    # That fixed reply.
+    message: Message | None = None
     # Extra instruction for the AI's answer to this message.
     instruction: str = ""
 
@@ -88,6 +90,6 @@ def run(rule: Rule, conversation: Conversation, message: Message) -> Outcome:
     if rule.handoff:
         request_human(conversation, f"rule {rule.name}")
     if rule.reply.strip():
-        add_message(conversation, Message.Sender.BOT, fill(rule.reply, message))
-        return Outcome(rule=rule, replied=True)
+        sent = add_message(conversation, Message.Sender.BOT, fill(rule.reply, message))
+        return Outcome(rule=rule, replied=True, message=sent)
     return Outcome(rule=rule, instruction=fill(rule.ai_instruction, message))

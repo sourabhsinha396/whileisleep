@@ -1,0 +1,311 @@
+"""The reply pipeline: which stage answers a visitor message, and the Turn it leaves behind."""
+
+from datetime import timedelta
+from decimal import Decimal
+
+import pytest
+from django.utils import timezone
+
+from apps.agent import bot, openrouter, pipeline
+from apps.agent.models import Turn
+from apps.agent.turns import Recorder
+from apps.conversations.models import Conversation, Message
+
+from .conftest import Api, assistant, final, tool_call
+from .factories import (
+    ArticleFactory,
+    ConversationFactory,
+    MessageFactory,
+    OrganizationFactory,
+    RuleFactory,
+    ToolFactory,
+    VisitorFactory,
+    WorkspaceFactory,
+)
+
+pytestmark = pytest.mark.django_db
+
+
+def workspace_with_llm(**fields):
+    return WorkspaceFactory(organization=OrganizationFactory(ready=True), **fields)
+
+
+def send(visitor, body="Do you ship to Canada?", **extra):
+    widget = Api(visitor_token=visitor.token)
+    return widget.post(f"/widget/{visitor.workspace.public_key}/messages", {"body": body, **extra})
+
+
+def only_turn() -> Turn:
+    return Turn.objects.get()
+
+
+# --- Stage 1: rules ---
+
+
+def test_a_rule_with_a_fixed_reply_answers_without_the_model(llm):
+    workspace = workspace_with_llm()
+    rule = RuleFactory(workspace=workspace, intent="", keywords="opening hours", reply="We're open 9 to 5.")
+    fake = llm()
+
+    send(VisitorFactory(workspace=workspace), "What are your opening hours?")
+
+    turn = only_turn()
+    assert turn.stage == Turn.Stage.RULE and turn.rule == rule
+    assert turn.reply.body == "We're open 9 to 5."
+    assert turn.trigger.body == "What are your opening hours?"
+    assert (turn.llm_calls, turn.input_tokens, turn.cost) == (0, 0, None)
+    assert fake.requests == []
+
+
+def test_a_rule_that_only_instructs_still_goes_to_the_ai_and_is_remembered(llm):
+    workspace = workspace_with_llm()
+    rule = RuleFactory(workspace=workspace, intent="", keywords="refund", reply="", ai_instruction="Be brief.")
+    fake = llm(final("Refunds take 5 days."))
+
+    send(VisitorFactory(workspace=workspace), "refund?")
+
+    turn = only_turn()
+    assert turn.stage == Turn.Stage.AI and turn.rule == rule
+    assert "Be brief." in fake.requests[0]["messages"][0]["content"]
+
+
+# --- Stage 2: nobody replies ---
+
+
+def test_ai_off_is_recorded_as_no_reply(llm):
+    workspace = workspace_with_llm(ai_enabled=False)
+    fake = llm()
+    send(VisitorFactory(workspace=workspace))
+    turn = only_turn()
+    assert turn.stage == Turn.Stage.NONE and turn.reply is None
+    assert fake.requests == []
+
+
+def test_a_conversation_a_person_took_over_is_left_alone(llm):
+    workspace = workspace_with_llm()
+    visitor = VisitorFactory(workspace=workspace)
+    ConversationFactory(workspace=workspace, visitor=visitor, human_requested=True)
+    fake = llm()
+    send(visitor)
+    assert only_turn().stage == Turn.Stage.NONE
+    assert fake.requests == []
+
+
+# --- Stage 3: limits ---
+
+
+def test_past_the_ai_cap_a_person_is_asked_for(llm, settings):
+    settings.RATE_LIMITS = {**settings.RATE_LIMITS, "ai_replies_per_visitor_per_day": 1}
+    workspace = workspace_with_llm()
+    visitor = VisitorFactory(workspace=workspace)
+    fake = llm(final("Yes."))
+    send(visitor, "one")
+    send(visitor, "two")
+    first, second = Turn.objects.order_by("id")
+    assert first.stage == Turn.Stage.AI
+    assert second.stage == Turn.Stage.GUARD and "teammate" in second.reply.body
+    assert len(fake.requests) == 1
+    assert Conversation.objects.get().human_requested
+
+
+# --- Stage 4: the AI ---
+
+
+def test_an_ai_turn_records_tokens_cost_and_time(llm):
+    workspace = workspace_with_llm()
+    usage = {"input_tokens": 900, "cached_tokens": 600, "output_tokens": 40, "cost": Decimal("0.0012")}
+    llm(assistant(tool_call("search_knowledge_base", {"query": "canada"})), final("Yes, in 5 days."), usage=usage)
+
+    send(VisitorFactory(workspace=workspace))
+
+    turn = only_turn()
+    assert turn.stage == Turn.Stage.AI
+    assert turn.model == "test/model" and turn.llm_calls == 2
+    assert (turn.input_tokens, turn.cached_tokens, turn.output_tokens) == (1800, 1200, 80)
+    assert turn.cost == Decimal("0.0024")
+    assert turn.reply.body == "Yes, in 5 days." and turn.reply.sender == Message.Sender.BOT
+    assert turn.error == ""
+
+
+def test_cost_stays_unknown_when_the_provider_does_not_report_it(llm):
+    workspace = workspace_with_llm()
+    llm(final("Hi"))
+    send(VisitorFactory(workspace=workspace), "hello there")
+    assert only_turn().cost is None
+
+
+def test_tool_calls_are_recorded_as_steps(llm, monkeypatch):
+    workspace = workspace_with_llm()
+    ToolFactory(workspace=workspace, name="search_exams")
+    monkeypatch.setattr(bot.http_tools, "run", lambda tool, inputs, visitor: ('[{"code":"AZ-104"}]', False))
+    llm(assistant(tool_call("search_exams", {"q": "AZ-104"})), final("Yes."))
+
+    send(VisitorFactory(workspace=workspace), "Do you have AZ-104?")
+
+    [step] = [s for s in only_turn().steps if s["type"] == "tool"]
+    assert step["name"] == "search_exams" and step["arguments"] == {"q": "AZ-104"}
+    assert step["result"] == '[{"code":"AZ-104"}]' and step["is_error"] is False
+    assert step["ms"] >= 0
+
+
+def test_long_tool_results_are_shortened_in_the_record(llm, monkeypatch):
+    workspace = workspace_with_llm()
+    ToolFactory(workspace=workspace, name="dump")
+    monkeypatch.setattr(bot.http_tools, "run", lambda tool, inputs, visitor: ("x" * 5000, False))
+    llm(assistant(tool_call("dump", {})), final("Done."))
+    send(VisitorFactory(workspace=workspace), "dump it")
+    [step] = [s for s in only_turn().steps if s["type"] == "tool"]
+    assert len(step["result"]) == 500
+
+
+# --- Fallback ---
+
+
+def test_a_failed_model_call_falls_back_and_says_why(llm):
+    workspace = workspace_with_llm()
+    ArticleFactory(workspace=workspace, title="Shipping", body="We ship to Canada.")
+    llm(openrouter.OpenRouterError("OpenRouter credits or key limit ran out.", 402))
+    send(VisitorFactory(workspace=workspace))
+    turn = only_turn()
+    assert turn.stage == Turn.Stage.FALLBACK
+    assert "credits" in turn.error
+    assert "help center" in turn.reply.body
+
+
+def test_without_an_llm_every_answer_is_a_fallback(llm):
+    workspace = WorkspaceFactory()
+    fake = llm()
+    send(VisitorFactory(workspace=workspace))
+    turn = only_turn()
+    assert turn.stage == Turn.Stage.FALLBACK and turn.error == "" and turn.llm_calls == 0
+    assert fake.requests == []
+
+
+def test_a_model_that_never_answers_is_a_fallback_with_a_reason(llm):
+    workspace = workspace_with_llm()
+    llm(*[assistant(tool_call("search_knowledge_base", {"query": "x"})) for _ in range(bot.MAX_STEPS)])
+    send(VisitorFactory(workspace=workspace))
+    turn = only_turn()
+    assert turn.stage == Turn.Stage.FALLBACK and "no usable answer" in turn.error
+    # The calls it did make are still counted.
+    assert turn.llm_calls == bot.MAX_STEPS
+
+
+# --- Forms continue a turn without a second look from rules ---
+
+
+def test_a_submitted_form_skips_rules_and_records_its_own_turn(llm):
+    workspace = workspace_with_llm()
+    RuleFactory(workspace=workspace, intent="", keywords="email", reply="Rule reply.")
+    visitor = VisitorFactory(workspace=workspace)
+    form = {"fields": [{"name": "email", "label": "Email", "type": "email", "required": True}]}
+    ask_for_email = assistant(
+        tool_call(
+            "reply_to_visitor",
+            {"reply": "Where can we reach you?", "article_ids": [], "offer_human": False, "form": form},
+        )
+    )
+    llm(ask_for_email, final("Thanks, we'll write to you."))
+    send(visitor, "notify me please")
+    surface_id = Message.objects.filter(sender=Message.Sender.BOT).last().form["surface_id"]
+
+    Api(visitor_token=visitor.token).post(
+        f"/widget/{workspace.public_key}/actions",
+        {"name": "submit_form", "surfaceId": surface_id, "context": {"fields": {"email": "s@example.com"}}},
+    )
+
+    turns = list(Turn.objects.order_by("id"))
+    assert [turn.stage for turn in turns] == [Turn.Stage.AI, Turn.Stage.AI]
+    assert turns[1].trigger.body == "Email: s@example.com"
+    assert turns[1].reply.body == "Thanks, we'll write to you."
+
+
+# --- The recorder ---
+
+
+def test_recorder_writes_nothing_until_finished():
+    conversation = ConversationFactory()
+    recorder = Recorder(conversation, MessageFactory(conversation=conversation))
+    recorder.step("retrieval", query="x", passages=[])
+    assert Turn.objects.count() == 0
+    turn = recorder.finish(Turn.Stage.NONE)
+    assert turn.workspace_id == conversation.workspace_id and turn.steps == [
+        {"type": "retrieval", "query": "x", "passages": []}
+    ]
+
+
+def test_handle_runs_inline_in_tests(llm):
+    """BOT_SYNC makes the AI stage run inside the call, so tests need no waiting."""
+    workspace = workspace_with_llm()
+    conversation = ConversationFactory(workspace=workspace)
+    message = MessageFactory(conversation=conversation, body="hello there")
+    llm(final("Hi!"))
+    pipeline.handle(conversation, message)
+    assert only_turn().reply.body == "Hi!"
+
+
+# --- Dashboard ---
+
+
+def test_turns_of_a_conversation(api, workspace, llm):
+    workspace.organization.openrouter_api_key = "sk-or-test-key-1234"
+    workspace.organization.llm_model = "test/model"
+    workspace.organization.save()
+    rule = RuleFactory(workspace=workspace, intent="", keywords="hours", reply="9 to 5.")
+    visitor = VisitorFactory(workspace=workspace)
+    llm(final("Yes."))
+    send(visitor, "opening hours?")
+    send(visitor, "Do you ship to Canada?")
+    conversation = Conversation.objects.get()
+
+    rows = api.get(f"/workspaces/{workspace.id}/conversations/{conversation.id}/turns").json()
+
+    assert [row["stage"] for row in rows] == ["rule", "ai"]
+    assert rows[0]["rule_id"] == rule.id and rows[0]["rule_name"] == rule.name
+    assert rows[1]["model"] == "test/model" and rows[1]["input_tokens"] == 100
+    assert rows[1]["reply_message_id"] and rows[1]["trigger_message_id"]
+
+
+def test_turns_of_another_workspace_are_hidden(api):
+    conversation = ConversationFactory()
+    path = f"/workspaces/{conversation.workspace_id}/conversations/{conversation.id}/turns"
+    assert api.get(path).status_code == 404
+
+
+def test_summary_counts_stages_and_cost(api, workspace):
+    conversation = ConversationFactory(workspace=workspace)
+
+    def turn(stage, **fields):
+        Turn.objects.create(workspace=workspace, conversation=conversation, stage=stage, **fields)
+
+    turn("rule")
+    turn("rule")
+    turn("guard")
+    turn("none")
+    turn("ai", llm_calls=2, input_tokens=1000, cached_tokens=400, output_tokens=50, cost=Decimal("0.002"))
+    turn("ai", llm_calls=1, input_tokens=500, output_tokens=20, cost=Decimal("0.001"))
+    turn("fallback")
+    Turn.objects.create(workspace=WorkspaceFactory(), conversation=ConversationFactory(), stage="ai", llm_calls=9)
+
+    summary = api.get(f"/workspaces/{workspace.id}/turns/summary").json()
+
+    assert summary["turns"] == 7
+    assert summary["by_stage"] == {"rule": 2, "guard": 1, "ai": 2, "fallback": 1, "none": 1}
+    assert summary["replied"] == 6 and summary["replied_without_model"] == 4
+    assert (summary["llm_calls"], summary["input_tokens"], summary["cached_tokens"]) == (3, 1500, 400)
+    assert Decimal(summary["cost"]) == Decimal("0.003")
+
+
+def test_summary_of_a_quiet_workspace_is_all_zeros(api, workspace):
+    summary = api.get(f"/workspaces/{workspace.id}/turns/summary", days=7).json()
+    assert summary["days"] == 7 and summary["turns"] == 0 and summary["llm_calls"] == 0
+    assert Decimal(summary["cost"]) == 0
+
+
+def test_summary_only_looks_back_the_days_asked_for(api, workspace):
+    conversation = ConversationFactory(workspace=workspace)
+    old = Turn.objects.create(workspace=workspace, conversation=conversation, stage="ai")
+    Turn.objects.filter(pk=old.pk).update(created_at=timezone.now() - timedelta(days=10))
+    Turn.objects.create(workspace=workspace, conversation=conversation, stage="rule")
+    assert api.get(f"/workspaces/{workspace.id}/turns/summary", days=7).json()["turns"] == 1
+    assert api.get(f"/workspaces/{workspace.id}/turns/summary", days=30).json()["turns"] == 2

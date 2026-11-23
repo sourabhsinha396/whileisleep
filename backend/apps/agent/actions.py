@@ -4,8 +4,8 @@ from apps.conversations.models import Conversation, Message
 from apps.conversations.services import add_message
 from apps.knowledge.models import Article
 
-from . import a2ui, forms
-from .bot import maybe_reply, request_human, will_reply
+from . import a2ui, forms, pipeline
+from .bot import request_human, will_reply
 
 
 class ActionError(Exception):
@@ -65,7 +65,7 @@ def submit_form(conversation: Conversation, surface_id: str, values) -> None:
     message.save(update_fields=["form"])
     visitor = conversation.visitor
     changed = forms.remember(conversation, form, answers)
-    add_message(conversation, Message.Sender.VISITOR, forms.as_text(form, answers))
+    answer = add_message(conversation, Message.Sender.VISITOR, forms.as_text(form, answers))
     if changed:
         add_message(
             conversation,
@@ -75,7 +75,8 @@ def submit_form(conversation: Conversation, surface_id: str, values) -> None:
         )
 
     if will_reply(conversation):
-        maybe_reply(conversation, followup_instruction(form))
+        # The answers continue what the form was for, so rules don't get a second look.
+        pipeline.handle(conversation, answer, followup_instruction(form), run_rules=False)
     else:
         visitor.refresh_from_db(fields=["email"])
         thanks = f"Thanks! We'll also reply to {visitor.email}." if "email" in changed else "Thanks, we got it."

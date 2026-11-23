@@ -9,8 +9,7 @@ from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
 
-from apps.agent import actions, rules
-from apps.agent.bot import maybe_reply
+from apps.agent import actions, pipeline
 from apps.knowledge.models import Article
 from apps.knowledge.search import search
 from apps.workspaces.models import Workspace
@@ -123,9 +122,7 @@ def send(request, key: str, payload: WidgetMessageIn):
     message = add_message(
         conversation, Message.Sender.VISITOR, payload.body.strip(), intent=payload.intent, intent_data=payload.data
     )
-    outcome = rules.apply(conversation, message)
-    if not outcome.replied:
-        maybe_reply(conversation, outcome.instruction)
+    pipeline.handle(conversation, message)
     conversation.refresh_from_db(fields=["human_requested"])
     rows = conversation.messages.filter(is_note=False, id__gte=message.id).exclude(sender=Message.Sender.SYSTEM)
     return {

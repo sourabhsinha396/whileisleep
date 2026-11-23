@@ -1,31 +1,33 @@
-"""The AI agent: answers a visitor from the knowledge base and the workspace's tools.
+"""The AI stage of the reply pipeline: answers a visitor from the knowledge base and the
+workspace's tools. apps.agent.pipeline decides whether a message gets this far.
 
 It runs a tool-calling loop on OpenRouter with the organization's key and model. Built-in
-tools search the knowledge base and hand off to a person; each workspace adds HTTP tools
-(apps.agent.models.Tool) that fetch live data from its own systems. The model finishes by
-calling reply_to_visitor with the reply text, the articles worth linking, and whether to
+tools search the knowledge base again and hand off to a person; each workspace adds HTTP
+tools (apps.agent.models.Tool) that fetch live data from its own systems. The model finishes
+by calling reply_to_visitor with the reply text, the articles worth linking, and whether to
 offer a person; the server turns the last two into an A2UI surface. (A final tool works on
 any tool-capable model, unlike structured-output modes.)
 
-Without a key and model, or when OpenRouter fails, it falls back to a keyword search.
+Without a key and model, or when OpenRouter fails, it falls back to a help center search.
+Either way the pass is recorded as a Turn.
 """
 
 import json
 import logging
-import threading
+import time
 import uuid
 
 from django.conf import settings
-from django.db import close_old_connections
 
-from apps.conversations import attributes, limits
+from apps.conversations import attributes
 from apps.conversations.models import Conversation, Message
 from apps.conversations.services import add_message
 from apps.knowledge.models import Article
 from apps.knowledge.search import passages, search
 
 from . import a2ui, forms, http_tools, openrouter
-from .models import Playbook, Tool
+from .models import Playbook, Rule, Tool, Turn
+from .turns import Recorder
 
 log = logging.getLogger(__name__)
 
@@ -119,45 +121,34 @@ def will_reply(conversation: Conversation) -> bool:
     return conversation.workspace.ai_enabled and not conversation.human_requested
 
 
-def maybe_reply(conversation: Conversation, instruction: str = "") -> None:
-    """Called after a visitor message. Replies unless the bot is off or a person took over.
-    `instruction` comes from a matched rule and applies to this answer only."""
-    if not will_reply(conversation):
-        return
-    if conversation.workspace.organization.llm_ready and not limits.allow_ai_reply(conversation):
-        # Daily AI cap reached for this visitor or workspace: a person takes it from here.
-        request_human(conversation, "daily AI reply limit reached")
-        add_message(conversation, Message.Sender.BOT, "Thanks! A teammate will reply here soon.")
-        return
-    if settings.BOT_SYNC:
-        reply(conversation.pk, instruction)
-    else:
-        threading.Thread(target=_reply_in_thread, args=(conversation.pk, instruction), daemon=True).start()
+def reply(
+    conversation_id: int, instruction: str = "", trigger_id: int | None = None, rule_id: int | None = None
+) -> Message | None:
+    """Answers the conversation's latest visitor message and records the Turn.
 
-
-def _reply_in_thread(conversation_id: int, instruction: str) -> None:
-    try:
-        reply(conversation_id, instruction)
-    except Exception:
-        log.exception("Bot failed on conversation %s", conversation_id)
-    finally:
-        close_old_connections()
-
-
-def reply(conversation_id: int, instruction: str = "") -> Message | None:
+    `instruction` comes from the rule `rule_id` (or a form the AI showed) and applies to this
+    answer only. `trigger_id` is the visitor message being answered.
+    """
     conversation = Conversation.objects.select_related("workspace__organization", "visitor").get(pk=conversation_id)
     history = chat_history(conversation)
     if not history:
         return None
-    result = None
+    visitor_messages = conversation.messages.filter(sender=Message.Sender.VISITOR)
+    trigger = visitor_messages.filter(pk=trigger_id).first() if trigger_id else visitor_messages.last()
+    recorder = Recorder(conversation, trigger)
+    result, stage, error = None, Turn.Stage.AI, ""
     if conversation.workspace.organization.llm_ready:
         try:
-            result = run_agent(conversation, history, instruction)
-        except openrouter.OpenRouterError as error:
+            result = run_agent(conversation, history, instruction, recorder)
+        except openrouter.OpenRouterError as failure:
+            error = str(failure)
             log.warning("OpenRouter failed on conversation %s: %s", conversation_id, error)
             # The team sees why the bot fell back, e.g. an expired key or no credits.
             add_message(conversation, Message.Sender.SYSTEM, f"AI agent error: {error}", is_note=True)
+        if result is None and not error:
+            error = "The model gave no usable answer."
     if result is None:
+        stage = Turn.Stage.FALLBACK
         result = keyword_answer(conversation, history[-1]["content"])
 
     # The visitor may have asked for a person while the model was thinking.
@@ -174,7 +165,10 @@ def reply(conversation_id: int, instruction: str = "") -> Message | None:
         form_meta["instruction"] = instruction
     # Several surfaces can ride on one message; the widget renders each.
     surfaces = [*(surface or []), *form_ui] or None
-    return add_message(conversation, Message.Sender.BOT, result["reply"], a2ui=surfaces, form=form_meta)
+    message = add_message(conversation, Message.Sender.BOT, result["reply"], a2ui=surfaces, form=form_meta)
+    rule = Rule.objects.filter(pk=rule_id).first() if rule_id else None
+    recorder.finish(stage, reply=message, rule=rule, error=error)
+    return message
 
 
 def clip(text: str, limit: int) -> str:
@@ -357,9 +351,12 @@ def final_answer(arguments: dict) -> dict:
     }
 
 
-def run_agent(conversation: Conversation, history: list[dict], instruction: str = "") -> dict | None:
+def run_agent(
+    conversation: Conversation, history: list[dict], instruction: str = "", recorder: Recorder | None = None
+) -> dict | None:
     workspace = conversation.workspace
     organization = workspace.organization
+    recorder = recorder or Recorder(conversation)
     tools = {t.name: t for t in Tool.objects.filter(workspace=workspace, enabled=True)}
     playbooks = list(Playbook.objects.filter(workspace=workspace, enabled=True))
     definitions = tool_definitions(list(tools.values()), with_playbooks=bool(playbooks))
@@ -370,6 +367,7 @@ def run_agent(conversation: Conversation, history: list[dict], instruction: str 
 
     for _ in range(MAX_STEPS):
         completion = openrouter.complete(organization.openrouter_api_key, organization.llm_model, messages, definitions)
+        recorder.completion(completion, organization.llm_model)
         message = completion.message
         calls = message.get("tool_calls") or []
         if not calls:
@@ -386,7 +384,9 @@ def run_agent(conversation: Conversation, history: list[dict], instruction: str 
                 result = final_answer(arguments)
                 content, is_error = "Sent.", False
             else:
+                started = time.monotonic()
                 content, is_error = call_tool(conversation, tools, name, arguments)
+                recorder.tool(name, arguments, content, is_error, started)
                 trace.append(f"{name}({json.dumps(arguments, ensure_ascii=False)}) → {content[:300]}")
             messages.append(
                 {

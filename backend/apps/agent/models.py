@@ -115,3 +115,51 @@ class Playbook(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Turn(models.Model):
+    """What happened after one visitor message: which stage of the pipeline answered it, and
+    what that cost.
+
+    The pipeline (apps.agent.pipeline) tries the cheapest way to answer first: a rule in
+    code, then the AI. `stage` says where it stopped, so a workspace can see how much of its
+    traffic never needed the model, and `steps` says what was looked up on the way.
+    """
+
+    class Stage(models.TextChoices):
+        RULE = "rule"  # a rule's fixed reply answered; no model call
+        GUARD = "guard"  # a limit stopped the AI and a person was asked for
+        AI = "ai"  # the model answered
+        FALLBACK = "fallback"  # the model was unavailable; a help center search answered
+        NONE = "none"  # nothing replied: the AI is off or a person has the conversation
+
+    workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="turns")
+    conversation = models.ForeignKey("conversations.Conversation", on_delete=models.CASCADE, related_name="turns")
+    # The visitor message that started the turn, and what was sent back.
+    trigger = models.ForeignKey("conversations.Message", null=True, on_delete=models.SET_NULL, related_name="+")
+    reply = models.ForeignKey("conversations.Message", null=True, on_delete=models.SET_NULL, related_name="+")
+    stage = models.CharField(max_length=10, choices=Stage.choices)
+    # The rule that matched, whether it answered or only instructed the AI.
+    rule = models.ForeignKey(Rule, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    model = models.CharField(max_length=200, blank=True)
+    llm_calls = models.PositiveSmallIntegerField(default=0)
+    input_tokens = models.PositiveIntegerField(default=0)
+    # The part of input_tokens read from the provider's prompt cache.
+    cached_tokens = models.PositiveIntegerField(default=0)
+    output_tokens = models.PositiveIntegerField(default=0)
+    # US dollars, when the provider reports it.
+    cost = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    duration_ms = models.PositiveIntegerField(default=0)
+    # In order: [{"type": "retrieval", ...}, {"type": "tool", "name": ..., "result": ...}].
+    steps = models.JSONField(default=list, blank=True)
+    # Why the AI couldn't answer, when it couldn't (a rejected key, no credits).
+    error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]
+        indexes = [models.Index(fields=["workspace", "created_at"], name="turn_workspace_time")]
+
+    def __str__(self):
+        return f"{self.stage} turn in conversation {self.conversation_id}"

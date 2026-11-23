@@ -9,4 +9,11 @@ SECRET_KEY = "test-secret-key-not-for-production"
 ALLOWED_HOSTS = ["testserver"]
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 # Tests swap in a fake LLM; conftest.py fails any real HTTP request.
-BOT_SYNC = True
+
+# Whatever a developer's .env says, tests use no Redis: jobs run inside the call that
+# queues them (and raise there), and the cache is this process's memory.
+REDIS_URL = ""
+CELERY_BROKER_URL = ""
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}

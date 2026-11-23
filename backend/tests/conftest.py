@@ -4,6 +4,7 @@ import sys
 import httpx
 import pytest
 from django.core.cache import cache
+from django.db import transaction
 from django.test import Client
 
 from apps.agent import openrouter
@@ -18,6 +19,18 @@ sys.dont_write_bytecode = True
 def clear_cache():
     # Rate-limit counts live in the cache. Without this, one test's requests count against the next.
     cache.clear()
+
+
+@pytest.fixture(autouse=True)
+def on_commit_runs_now(request, monkeypatch):
+    """Each test runs in a transaction that is rolled back, never committed, so work queued
+    with transaction.on_commit (the AI's reply job) would never start. Run it at once
+    instead. Tests marked `django_db(transaction=True)` commit for real and keep the real
+    behaviour; test_jobs.py checks that."""
+    marker = request.node.get_closest_marker("django_db")
+    if marker is None or marker.kwargs.get("transaction"):
+        return
+    monkeypatch.setattr(transaction, "on_commit", lambda function, using=None, robust=False: function())
 
 
 @pytest.fixture(autouse=True)

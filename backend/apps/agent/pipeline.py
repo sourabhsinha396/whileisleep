@@ -11,26 +11,24 @@ a Turn that says which stage that was:
 4. The AI answers (Stage.AI), or a help center search does when the model is unavailable
    (Stage.FALLBACK). See apps.agent.bot.
 
-Stages 1-3 are fast and run inside the request. The AI stage is slow, so it runs apart from
-the request (a thread today; tests run it inline with BOT_SYNC).
+Stages 1-3 are fast and run inside the request. The AI stage is slow, so it is queued as
+a Celery task (apps.agent.tasks.answer) and a worker runs it.
 
-People often send a thought as two or three quick messages. The AI stage waits a moment
-before starting (REPLY_DEBOUNCE_SECONDS), and a pass whose message is no longer the newest
+People often send a thought as two or three quick messages. The task is queued with a
+short delay (REPLY_DEBOUNCE_SECONDS), and a pass whose message is no longer the newest
 steps aside (Stage.SUPERSEDED), so the burst gets one answer that has read all of it.
 """
 
 import logging
-import threading
-import time
 
 from django.conf import settings
-from django.db import close_old_connections
+from django.db import transaction
 
 from apps.conversations import limits
 from apps.conversations.models import Conversation, Message
 from apps.conversations.services import add_message
 
-from . import bot, rules
+from . import bot, rules, tasks
 from .models import Rule, Turn
 from .turns import Recorder
 
@@ -69,19 +67,10 @@ def handle(conversation: Conversation, message: Message, instruction: str = "", 
 
 
 def answer_later(conversation_id: int, instruction: str, trigger_id: int, rule_id: int | None) -> None:
-    """Starts the AI stage without making the visitor's request wait for it."""
+    """Queues the AI stage, so the visitor's request doesn't wait for it.
+
+    Queued only once the surrounding database transaction commits: a worker that picked the
+    job up sooner wouldn't find the visitor's message yet.
+    """
     arguments = (conversation_id, instruction, trigger_id, rule_id)
-    if settings.BOT_SYNC:
-        bot.reply(*arguments)
-    else:
-        threading.Thread(target=_answer_in_thread, args=arguments, daemon=True).start()
-
-
-def _answer_in_thread(conversation_id: int, *arguments) -> None:
-    try:
-        time.sleep(settings.REPLY_DEBOUNCE_SECONDS)
-        bot.reply(conversation_id, *arguments)
-    except Exception:
-        log.exception("The AI stage failed on conversation %s", conversation_id)
-    finally:
-        close_old_connections()
+    transaction.on_commit(lambda: tasks.answer.apply_async(args=arguments, countdown=settings.REPLY_DEBOUNCE_SECONDS))

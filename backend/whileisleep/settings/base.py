@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 from corsheaders.defaults import default_headers
 from dotenv import load_dotenv
@@ -124,11 +125,41 @@ CONVERSATION_IDLE_HOURS = 24
 # A visitor counts as online if the widget pinged within this many seconds.
 ONLINE_WINDOW_SECONDS = 60
 
-# Rate-limit counters live in the cache. One process can keep them in memory; several
-# workers need a shared one, so production sets REDIS_URL.
+# Redis does two jobs: the cache (rate-limit counters and reply locks, which every process
+# must share) and the Celery broker (the queue of AI replies waiting for a worker). They
+# use different database numbers of the same server, so clearing the cache can't empty
+# the queue.
 REDIS_URL = os.environ.get("REDIS_URL", "")
 if REDIS_URL:
     CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": REDIS_URL}}
+
+
+def redis_database(url: str, number: int) -> str:
+    """The same Redis server, another of its numbered databases."""
+    parts = urlsplit(url)
+    return urlunsplit(parts._replace(path=f"/{number}"))
+
+
+# --- Celery (whileisleep/celery.py) ---
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL") or (redis_database(REDIS_URL, 1) if REDIS_URL else "")
+# Without a broker there is nobody to hand jobs to, so they run inside the request that
+# queued them. Fine for trying things on one machine; the visitor's request then waits for
+# the AI.
+CELERY_TASK_ALWAYS_EAGER = not CELERY_BROKER_URL
+# Jobs report by writing to the database (a Turn, a message); nobody waits on a result.
+CELERY_TASK_IGNORE_RESULT = True
+# A job leaves the queue when it finishes, not when a worker picks it up, so a worker that
+# dies mid-reply doesn't take the reply with it.
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+# Take one job at a time per worker thread instead of reserving a batch that then waits
+# behind a slow LLM call.
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+# With Redis, a job a dead worker was holding comes back after this many seconds. Longer
+# than any reply can take (REPLY_DEADLINE_SECONDS), or a slow reply would run twice.
+CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 900}
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_TIMEZONE = "UTC"
 
 # Whether anyone can create an account (and with it an organization). Turn it off on a
 # private installation once your own accounts exist.
@@ -151,7 +182,12 @@ OUTBOUND_ALLOW_PRIVATE_NETWORKS = False
 # How long the AI waits before answering, in case the visitor is sending several short
 # messages in a row; the last one's turn answers them all (apps.agent.pipeline).
 REPLY_DEBOUNCE_SECONDS = 1.5
+# The most time one reply may spend calling the model and tools before giving up and
+# falling back to a help center search. Worker threads can't be interrupted from outside,
+# so the loop checks this itself.
+REPLY_DEADLINE_SECONDS = 120
+# How long a reply job may hold its conversation's lock. Longer than the deadline plus one
+# last model call, so a lock never expires under a reply that is still being written.
+REPLY_LOCK_SECONDS = 300
 
 # The AI agent's OpenRouter key and model are per organization, set in the dashboard.
-# Tests set this so the bot replies inside the request instead of a thread.
-BOT_SYNC = False

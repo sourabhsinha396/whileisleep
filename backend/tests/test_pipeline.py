@@ -299,13 +299,21 @@ def test_a_message_that_arrives_while_the_model_thinks_cancels_the_answer(llm, m
     assert turn.stage == Turn.Stage.SUPERSEDED and turn.llm_calls == 1 and turn.input_tokens == 100
 
 
-def test_the_thread_waits_before_answering(monkeypatch, settings):
-    settings.REPLY_DEBOUNCE_SECONDS = 1.5
-    order = []
-    monkeypatch.setattr(pipeline.time, "sleep", lambda seconds: order.append(("sleep", seconds)))
-    monkeypatch.setattr(pipeline.bot, "reply", lambda *arguments: order.append(("reply", arguments)))
-    pipeline._answer_in_thread(7, "", 3, None)
-    assert order == [("sleep", 1.5), ("reply", (7, "", 3, None))]
+def test_a_reply_that_runs_out_of_time_falls_back(llm, settings, monkeypatch):
+    settings.REPLY_DEADLINE_SECONDS = 30
+    workspace = workspace_with_llm()
+    ToolFactory(workspace=workspace, name="slow_lookup")
+    clock = iter([0, 0, 10, 10, 45, 45, 45, 45, 45, 45])
+    monkeypatch.setattr(bot.time, "monotonic", lambda: next(clock, 45))
+    monkeypatch.setattr(bot.http_tools, "run", lambda tool, inputs, visitor: ("[]", False))
+    fake = llm(assistant(tool_call("slow_lookup", {})), final("Too late."))
+
+    send(VisitorFactory(workspace=workspace), "look it up")
+
+    turn = only_turn()
+    # One model call, then the deadline passed while the tool ran: no second call.
+    assert len(fake.requests) == 1 and turn.stage == Turn.Stage.FALLBACK
+    assert "no usable answer" in turn.error
 
 
 # --- Forms continue a turn without a second look from rules ---
@@ -352,7 +360,7 @@ def test_recorder_writes_nothing_until_finished():
 
 
 def test_handle_runs_inline_in_tests(llm):
-    """BOT_SYNC makes the AI stage run inside the call, so tests need no waiting."""
+    """Without a broker, Celery runs the AI stage inside the call, so tests need no waiting."""
     workspace = workspace_with_llm()
     conversation = ConversationFactory(workspace=workspace)
     message = MessageFactory(conversation=conversation, body="hello there")

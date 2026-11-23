@@ -415,6 +415,9 @@ def run_agent(
     result = None
 
     for _ in range(MAX_STEPS):
+        if time.monotonic() - recorder.started > settings.REPLY_DEADLINE_SECONDS:
+            # Slow tools or a slow model: stop here rather than keep the visitor waiting.
+            break
         completion = openrouter.complete(organization.openrouter_api_key, organization.llm_model, messages, definitions)
         recorder.completion(completion, organization.llm_model)
         message = completion.message

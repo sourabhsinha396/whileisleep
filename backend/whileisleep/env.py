@@ -29,8 +29,11 @@ class EnvFile(BaseModel):
     ALLOWED_HOSTS: str | None = None
     # Comma-separated Fernet keys for stored secrets; see whileisleep/encryption.py.
     ENCRYPTION_KEYS: str | None = None
-    # A shared cache for rate limits (redis://...). Unset: in-memory, fine for one process.
+    # Redis for the cache and the job queue (redis://...). Unset: counters stay in this
+    # process's memory and AI replies run inside the web request, fine for one process.
     REDIS_URL: str | None = None
+    # Only to put the job queue on a different server than the cache.
+    CELERY_BROKER_URL: str | None = None
     # "false" closes account creation.
     SIGNUP_ENABLED: bool | None = None
     # Only `manage.py seed_demo` reads these. The running app takes each organization's

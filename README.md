@@ -60,6 +60,24 @@ Stages 1 to 3 run inside the visitor's request. The AI stage is a **Celery job**
 The prompt is ordered from what never changes (the business's instructions) to what changes every
 message (passages, a rule's instruction), so providers can cache its beginning.
 
+## Live updates (`backend/apps/realtime`)
+
+The widget and the inbox get new messages, what the AI is doing ("Searching the help center", from
+the steps its Turn records), "is typing" and who is online as they happen, over **server-sent
+events**. No WebSockets: sending stays plain REST.
+
+- Whatever changes something (the API, the Celery worker) publishes it on **Redis pub/sub**: one
+  channel per visitor (never notes or system messages) and one per workspace.
+- **Async Django views on an ASGI process** (uvicorn, the `stream` service) hold the open
+  connections: `GET /api/v1/widget/{key}/stream` and `GET /api/v1/workspaces/{id}/stream`.
+- Browsers read them with `fetch`, not `EventSource`, so the visitor and dashboard tokens go in
+  headers, never the URL. A reconnect sends `Last-Event-ID` (the newest message id the page has)
+  and gets what it missed first.
+- Typing is a POST (`/widget/{key}/typing`, `.../conversations/{id}/typing`) sent at most every
+  3 seconds; only who is typing goes out, never the draft.
+- **Presence** is a Redis key per visitor with a 45-second TTL, refreshed by the open stream.
+- While a stream is down the page polls the REST endpoints, as often as it used to.
+
 ## Identifying visitors
 
 ```js
@@ -112,7 +130,7 @@ claims become verified attributes.
   `conversations` (visitors, conversations, messages, attributes, identity, widget API),
   `knowledge` (articles, passages, search),
   `agent` (pipeline, rules and conditions, the OpenRouter tool loop, the Celery tasks, HTTP and MCP
-  tools, turns, A2UI).
+  tools, turns, A2UI), `realtime` (Redis pub/sub, presence, the live streams).
   Tests in `backend/tests/`, with factories in `tests/factories.py`.
 - `frontend/`: Next.js App Router dashboard, plus the widget (`src/widget`, built by esbuild into
   `public/widget.js`). Tests in `frontend/tests/`.
@@ -122,16 +140,18 @@ claims become verified attributes.
 
 ```sh
 cd backend && cp .env.example .env    # set DEMO_EMAIL, DEMO_PASSWORD (OPENROUTER_API_KEY optional, for seed_demo)
-docker compose up -d --build          # API on WEB_PORT (8004), Postgres on 5448, Redis, and the worker
+docker compose up -d --build          # API on WEB_PORT (8004), live streams on STREAM_PORT (8009),
+                                      # Postgres on 5448, Redis, and the worker
 docker compose exec -T web python manage.py seed_demo   # optional demo owner + 2 workspaces
 
-cd ../frontend && cp .env.example .env   # WEB_PORT (3004), API_URL
+cd ../frontend && cp .env.example .env   # WEB_PORT (3004), API_URL, STREAM_URL
 pnpm install && pnpm dev
 ```
 
 The `worker` container writes the AI's replies and restarts itself when the code changes
 (`docker compose logs -f worker` shows each one). Running Django outside Docker with no
-`REDIS_URL` needs no worker: replies are then written inside the request.
+`REDIS_URL` needs no worker: replies are then written inside the request, and the widget and
+inbox poll instead of streaming.
 
 Then set the OpenRouter key and model on **Organization & LLM** in the dashboard. Until both are set, or
 if OpenRouter fails (bad key, no credits), the bot falls back to a help center search and leaves the
@@ -163,13 +183,13 @@ builds the production images.
 
 ## Deploy
 
-One server with Docker Compose: Caddy for HTTPS, the API, the worker and its scheduler, the
-dashboard, Postgres and Redis.
+One server with Docker Compose: Caddy for HTTPS, the API (WSGI), the live streams (ASGI), the
+worker and its scheduler, the dashboard, Postgres and Redis.
 See [docs/deploy-hetzner.md](docs/deploy-hetzner.md).
 
 ## Next
 
-- Real-time updates over SSE instead of polling; email notifications.
+- Email notifications.
 - Exact answers: human-approved snippets sent verbatim when a question matches.
 - The inbox showing each reply's Turn (rule, passages, tools, tokens, cost) and the attributes panel.
 - Dashboard sessions in httpOnly cookies, and login tokens hashed in the database.

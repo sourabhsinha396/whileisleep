@@ -74,7 +74,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (!getToken()) router.replace("/login");
-    else if (data && !workspace) router.replace("/");
+    else if (data && !workspace) router.replace("/app");
   }, [data, workspace, router]);
 
   if (!data || !workspace) return <div className="h-screen"><Spinner /></div>;

@@ -126,3 +126,28 @@
 .a2ui-choices { border: 0; padding: 0; margin: 0; font-size: 13px; }
 .a2ui-choice { display: flex; gap: 6px; align-items: center; }
 .a2ui-input { font-size: 13px; padding: 5px 8px; border-radius: 6px; border: 1px solid rgb(255 255 255 / 0.5); background: transparent; color: inherit; }
+
+/* Landing page demo: steps and messages fade in. */
+.land-in { animation: land-in 0.35s ease-out both; }
+@keyframes land-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.land-typing span { animation: land-blink 1s ease-in-out infinite; }
+.land-typing span:nth-child(2) { animation-delay: 0.15s; }
+.land-typing span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes land-blink {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+.land-shake { animation: land-shake 0.5s ease-in-out 3; }
+@keyframes land-shake {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-6deg); }
+  75% { transform: rotate(6deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .land-in, .land-typing span, .land-shake { animation: none; opacity: 1; }
+}

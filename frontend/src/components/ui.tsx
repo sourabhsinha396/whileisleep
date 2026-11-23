@@ -196,16 +196,21 @@ export function ErrorText({ children }: { children?: React.ReactNode }) {
   );
 }
 
-/** The whileisleep mark: a crescent moon tucked into a chat bubble. Drawn in currentColor. */
+/**
+ * The whileisleep mark: a little bot face in a chat bubble.
+ * Built for a circle: the bubble sits inside a filled primary disc. The eyes are cut out
+ * (even-odd), so they show the disc color through. Keep in sync with app/icon.svg.
+ */
 export function LogoMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 32 32" fill="none" className={className} aria-hidden>
+    <svg viewBox="0 0 32 32" className={className} aria-hidden>
+      <circle cx="16" cy="16" r="16" fill="var(--primary)" />
       <path
-        d="M6 8.5A4.5 4.5 0 0 1 10.5 4h11A4.5 4.5 0 0 1 26 8.5v9a4.5 4.5 0 0 1-4.5 4.5H14l-5.4 4.3c-.66.52-1.6.05-1.6-.78V22A4.5 4.5 0 0 1 6 17.5z"
-        fill="currentColor"
-        opacity="0.18"
+        transform="translate(0 -2)"
+        fill="#fff"
+        fillRule="evenodd"
+        d="M12 11h8a4 4 0 0 1 4 4v4a4 4 0 0 1-4 4h-5.5l-3.7 3c-.5.4-1.3.05-1.3-.6v-2.6A4 4 0 0 1 8 19v-4a4 4 0 0 1 4-4zM12.4 15.4a1.1 1.1 0 0 1 2.2 0v1.2a1.1 1.1 0 0 1-2.2 0zM17.4 15.4a1.1 1.1 0 0 1 2.2 0v1.2a1.1 1.1 0 0 1-2.2 0z"
       />
-      <path d="M19.2 8.6a5.6 5.6 0 1 0 2.6 9.7 4.6 4.6 0 0 1-2.6-9.7z" fill="currentColor" />
     </svg>
   );
 }
@@ -213,7 +218,7 @@ export function LogoMark({ className }: { className?: string }) {
 export function Logo({ className }: { className?: string }) {
   return (
     <span className={clsx("flex items-center gap-2", className)}>
-      <LogoMark className="size-8 text-primary-text" />
+      <LogoMark className="size-8" />
       <span className="text-[17px] leading-none font-bold tracking-tight">whileisleep</span>
     </span>
   );

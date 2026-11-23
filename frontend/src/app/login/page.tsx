@@ -3,7 +3,7 @@
 import { Bot, BookOpen, Inbox, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button, ErrorText, Field, inputClass, Logo, ThemeToggle } from "@/components/ui";
+import { Button, ErrorText, Field, inputClass, Logo, LogoMark, ThemeToggle } from "@/components/ui";
 import { api, setToken, type User } from "@/lib/api";
 
 const POINTS = [
@@ -28,7 +28,7 @@ export default function LoginPage() {
       const body = mode === "login" ? { email: form.email, password: form.password } : form;
       const session = await api<{ token: string; user: User }>(`/auth/${mode}`, { method: "POST", body });
       setToken(session.token);
-      router.replace("/");
+      router.replace("/app");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -42,7 +42,7 @@ export default function LoginPage() {
         <div className="pointer-events-none absolute -top-32 -right-32 size-96 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-40 -left-20 size-96 rounded-full bg-white/10 blur-3xl" />
         <span className="relative flex items-center gap-2 text-lg font-bold tracking-tight">
-          <span className="grid size-9 place-items-center rounded-lg bg-white/15">🌙</span>
+          <LogoMark className="size-9 rounded-full ring-2 ring-white/30" />
           whileisleep
         </span>
         <div className="relative max-w-md">

@@ -171,6 +171,24 @@ export interface Tool {
   input_schema: { type: "object"; properties?: Record<string, unknown>; required?: string[] };
   header_names: string[];
   enabled: boolean;
+  /** Set when the tool comes from an MCP server, which defines it. */
+  mcp_server_id: number | null;
+  /** The server's own claim that the tool changes nothing. */
+  read_only: boolean;
+  /** An MCP tool whose definition changed since it was approved: not offered to the agent. */
+  needs_review: boolean;
+}
+
+export interface McpServer {
+  id: number;
+  name: string;
+  url: string;
+  header_names: string[];
+  enabled: boolean;
+  tool_count: number;
+  active_tool_count: number;
+  last_synced_at: string | null;
+  last_error: string;
 }
 
 export interface Rule {

@@ -4,7 +4,8 @@ import clsx from "clsx";
 import { Plug, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
-import { Button, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
+import { McpServers } from "@/components/mcp-servers";
+import { Badge, Button, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, type Tool, type Workspace } from "@/lib/api";
 import { rowsToSchema, schemaToRows, urlPlaceholders, type InputRow, type InputType } from "@/lib/tool-schema";
@@ -108,6 +109,12 @@ function Tools({ canEdit }: { canEdit: boolean }) {
     });
   }
 
+  /** Turning an MCP tool on approves its definition as the server sends it now. */
+  async function approve(tool: Tool, enabled: boolean) {
+    await api(`${base}/${tool.id}/approve`, { method: "POST", body: { enabled } });
+    reload();
+  }
+
   return (
     <section className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
@@ -130,17 +137,24 @@ function Tools({ canEdit }: { canEdit: boolean }) {
         <BuiltIn name="handoff_to_human" text="Flags the conversation for your team and pauses the agent." />
         {(data ?? []).map((tool) => (
           <li key={tool.id} className="flex items-center gap-3 px-4 py-3">
-            <Plug size={16} className={tool.enabled ? "text-primary-text" : "text-muted-foreground/50"} />
+            <Plug size={16} className={isOn(tool) ? "text-primary-text" : "text-muted-foreground/50"} />
             <div className="min-w-0 flex-1">
               <p className="font-mono text-sm font-semibold">{tool.name}</p>
               <p className="truncate text-xs text-muted-foreground">
-                {tool.method} {tool.url}
+                {tool.mcp_server_id ? tool.description : `${tool.method} ${tool.url}`}
               </p>
             </div>
+            {tool.mcp_server_id !== null && !tool.read_only && <Badge tone="warning">Can change data</Badge>}
+            {tool.enabled && tool.needs_review && <Badge tone="danger">Changed: review</Badge>}
             {!tool.enabled && <span className="text-xs text-muted-foreground">Off</span>}
-            {canEdit && (
+            {canEdit && tool.mcp_server_id === null && (
               <Button variant="secondary" onClick={() => edit(tool)}>
                 Edit
+              </Button>
+            )}
+            {canEdit && tool.mcp_server_id !== null && (
+              <Button variant="secondary" onClick={() => approve(tool, !isOn(tool))}>
+                {isOn(tool) ? "Turn off" : tool.enabled ? "Approve again" : "Turn on"}
               </Button>
             )}
           </li>
@@ -158,8 +172,15 @@ function Tools({ canEdit }: { canEdit: boolean }) {
           }}
         />
       )}
+
+      <McpServers workspaceId={workspace.id} canEdit={canEdit} onChanged={reload} />
     </section>
   );
+}
+
+/** Offered to the agent: switched on and, for an MCP tool, approved as it is now. */
+function isOn(tool: Tool): boolean {
+  return tool.enabled && !tool.needs_review;
 }
 
 function BuiltIn({ name, text }: { name: string; text: string }) {

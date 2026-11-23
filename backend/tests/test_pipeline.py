@@ -246,6 +246,68 @@ def test_a_model_that_never_answers_is_a_fallback_with_a_reason(llm):
     assert turn.llm_calls == bot.MAX_STEPS
 
 
+# --- Several quick messages get one answer ---
+
+
+def test_a_pass_whose_message_is_no_longer_the_newest_steps_aside(llm):
+    workspace = workspace_with_llm()
+    conversation = ConversationFactory(workspace=workspace)
+    first = MessageFactory(conversation=conversation, body="hi, quick question")
+    MessageFactory(conversation=conversation, body="do you ship to Canada?")
+    fake = llm()
+
+    assert bot.reply(conversation.id, trigger_id=first.id) is None
+
+    turn = only_turn()
+    assert turn.stage == Turn.Stage.SUPERSEDED and turn.trigger == first and turn.reply is None
+    # It stepped aside before spending anything.
+    assert fake.requests == [] and turn.llm_calls == 0
+
+
+def test_the_newest_message_answers_with_everything_said(llm):
+    workspace = workspace_with_llm()
+    conversation = ConversationFactory(workspace=workspace)
+    MessageFactory(conversation=conversation, body="hi, quick question")
+    second = MessageFactory(conversation=conversation, body="do you ship to Canada?")
+    fake = llm(final("Yes, we do."))
+
+    message = bot.reply(conversation.id, trigger_id=second.id)
+
+    assert message.body == "Yes, we do."
+    assert fake.requests[0]["messages"][-1]["content"] == "hi, quick question\n\ndo you ship to Canada?"
+
+
+def test_a_message_that_arrives_while_the_model_thinks_cancels_the_answer(llm, monkeypatch):
+    workspace = workspace_with_llm()
+    conversation = ConversationFactory(workspace=workspace)
+    first = MessageFactory(conversation=conversation, body="do you ship")
+    fake = llm(final("Ship where?"))
+    complete = fake.complete
+
+    def slow_model(*args):
+        # The visitor finishes their sentence while the model is busy.
+        MessageFactory(conversation=conversation, body="to Canada?")
+        return complete(*args)
+
+    monkeypatch.setattr(openrouter, "complete", slow_model)
+
+    assert bot.reply(conversation.id, trigger_id=first.id) is None
+
+    assert not conversation.messages.filter(sender=Message.Sender.BOT).exists()
+    turn = only_turn()
+    # Nothing was sent, but the call it made is on the record.
+    assert turn.stage == Turn.Stage.SUPERSEDED and turn.llm_calls == 1 and turn.input_tokens == 100
+
+
+def test_the_thread_waits_before_answering(monkeypatch, settings):
+    settings.REPLY_DEBOUNCE_SECONDS = 1.5
+    order = []
+    monkeypatch.setattr(pipeline.time, "sleep", lambda seconds: order.append(("sleep", seconds)))
+    monkeypatch.setattr(pipeline.bot, "reply", lambda *arguments: order.append(("reply", arguments)))
+    pipeline._answer_in_thread(7, "", 3, None)
+    assert order == [("sleep", 1.5), ("reply", (7, "", 3, None))]
+
+
 # --- Forms continue a turn without a second look from rules ---
 
 
@@ -345,7 +407,7 @@ def test_summary_counts_stages_and_cost(api, workspace):
     summary = api.get(f"/workspaces/{workspace.id}/turns/summary").json()
 
     assert summary["turns"] == 7
-    assert summary["by_stage"] == {"rule": 2, "guard": 1, "ai": 2, "fallback": 1, "none": 1}
+    assert summary["by_stage"] == {"rule": 2, "guard": 1, "ai": 2, "fallback": 1, "superseded": 0, "none": 1}
     assert summary["replied"] == 6 and summary["replied_without_model"] == 4
     assert (summary["llm_calls"], summary["input_tokens"], summary["cached_tokens"]) == (3, 1500, 400)
     assert Decimal(summary["cost"]) == Decimal("0.003")

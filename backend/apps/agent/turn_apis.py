@@ -19,12 +19,14 @@ router = Router(tags=["turns"], auth=token_auth)
 
 # Stages that answered (or deliberately didn't) without calling the model.
 WITHOUT_MODEL = (Turn.Stage.RULE, Turn.Stage.GUARD, Turn.Stage.FALLBACK)
+# Stages that end without sending anything.
+NO_REPLY = (Turn.Stage.NONE, Turn.Stage.SUPERSEDED)
 MAX_SUMMARY_DAYS = 365
 
 
 class TurnOut(Schema):
     id: int
-    # rule, guard, ai, fallback or none: the pipeline stage that ended the turn.
+    # rule, guard, ai, fallback, superseded or none: the pipeline stage that ended the turn.
     stage: str
     trigger_message_id: int | None
     reply_message_id: int | None
@@ -104,7 +106,7 @@ def summary(request, workspace_id: int, days: int = 30):
         "days": days,
         "turns": sum(by_stage.values()),
         "by_stage": {stage: by_stage.get(stage, 0) for stage in Turn.Stage.values},
-        "replied": sum(count for stage, count in by_stage.items() if stage != Turn.Stage.NONE),
+        "replied": sum(count for stage, count in by_stage.items() if stage not in NO_REPLY),
         "replied_without_model": sum(by_stage.get(stage, 0) for stage in WITHOUT_MODEL),
         **{key: value or 0 for key, value in totals.items()},
     }

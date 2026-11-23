@@ -148,6 +148,10 @@ TRUSTED_PROXY_COUNT = 0
 # refuses any that resolve to a private address (this server's own network).
 OUTBOUND_ALLOW_PRIVATE_NETWORKS = False
 
+# How long the AI waits before answering, in case the visitor is sending several short
+# messages in a row; the last one's turn answers them all (apps.agent.pipeline).
+REPLY_DEBOUNCE_SECONDS = 1.5
+
 # The AI agent's OpenRouter key and model are per organization, set in the dashboard.
 # Tests set this so the bot replies inside the request instead of a thread.
 BOT_SYNC = False

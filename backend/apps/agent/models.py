@@ -116,6 +116,7 @@ class Turn(models.Model):
         GUARD = "guard"  # a limit stopped the AI and a person was asked for
         AI = "ai"  # the model answered
         FALLBACK = "fallback"  # the model was unavailable; a help center search answered
+        SUPERSEDED = "superseded"  # the visitor wrote again first; the newer message's turn answers
         NONE = "none"  # nothing replied: the AI is off or a person has the conversation
 
     workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="turns")

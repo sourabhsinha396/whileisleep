@@ -142,6 +142,11 @@ def reply(
     visitor_messages = conversation.messages.filter(sender=Message.Sender.VISITOR)
     trigger = visitor_messages.filter(pk=trigger_id).first() if trigger_id else visitor_messages.last()
     recorder = Recorder(conversation, trigger)
+    rule = Rule.objects.filter(pk=rule_id).first() if rule_id else None
+    if superseded(conversation, trigger):
+        # The visitor has written again; that message's own turn answers both.
+        recorder.finish(Turn.Stage.SUPERSEDED, rule=rule)
+        return None
     result, stage, error = None, Turn.Stage.AI, ""
     if conversation.workspace.organization.llm_ready:
         try:
@@ -157,6 +162,11 @@ def reply(
         stage = Turn.Stage.FALLBACK
         result = keyword_answer(conversation, history[-1]["content"])
 
+    if superseded(conversation, trigger):
+        # They wrote again while the model was thinking: an answer to half the question would
+        # only be followed by a second one. What this pass cost is still recorded.
+        recorder.finish(Turn.Stage.SUPERSEDED, rule=rule, error=error)
+        return None
     # The visitor may have asked for a person while the model was thinking.
     conversation.refresh_from_db(fields=["human_requested"])
     articles = list(
@@ -172,9 +182,15 @@ def reply(
     # Several surfaces can ride on one message; the widget renders each.
     surfaces = [*(surface or []), *form_ui] or None
     message = add_message(conversation, Message.Sender.BOT, result["reply"], a2ui=surfaces, form=form_meta)
-    rule = Rule.objects.filter(pk=rule_id).first() if rule_id else None
     recorder.finish(stage, reply=message, rule=rule, error=error)
     return message
+
+
+def superseded(conversation: Conversation, trigger: Message | None) -> bool:
+    """Whether the visitor has sent something newer than the message being answered."""
+    if trigger is None:
+        return False
+    return conversation.messages.filter(sender=Message.Sender.VISITOR, pk__gt=trigger.pk).exists()
 
 
 def clip(text: str, limit: int) -> str:

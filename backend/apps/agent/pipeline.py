@@ -13,10 +13,15 @@ a Turn that says which stage that was:
 
 Stages 1-3 are fast and run inside the request. The AI stage is slow, so it runs apart from
 the request (a thread today; tests run it inline with BOT_SYNC).
+
+People often send a thought as two or three quick messages. The AI stage waits a moment
+before starting (REPLY_DEBOUNCE_SECONDS), and a pass whose message is no longer the newest
+steps aside (Stage.SUPERSEDED), so the burst gets one answer that has read all of it.
 """
 
 import logging
 import threading
+import time
 
 from django.conf import settings
 from django.db import close_old_connections
@@ -74,6 +79,7 @@ def answer_later(conversation_id: int, instruction: str, trigger_id: int, rule_i
 
 def _answer_in_thread(conversation_id: int, *arguments) -> None:
     try:
+        time.sleep(settings.REPLY_DEBOUNCE_SECONDS)
         bot.reply(conversation_id, *arguments)
     except Exception:
         log.exception("The AI stage failed on conversation %s", conversation_id)

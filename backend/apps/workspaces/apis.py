@@ -7,6 +7,7 @@ from ninja.errors import HttpError
 
 from apps.accounts.security import token_auth
 
+from .colors import WIDGET_COLORS
 from .models import Membership, Workspace, new_identity_secret
 from .schemas import IdentitySecretOut, MemberIn, MemberOut, WorkspaceIn, WorkspaceOut, WorkspacePatch
 from .services import create_workspace, member_workspace, owner_workspace
@@ -57,6 +58,13 @@ def update(request, workspace_id: int, payload: WorkspacePatch):
     data = payload.dict(exclude_unset=True)
     if data.get("timezone") is not None and data["timezone"] not in available_timezones():
         raise HttpError(400, "Unknown timezone. Use a name like Europe/Berlin or Asia/Kolkata.")
+    if data.get("color") is None or data["color"] == workspace.color:
+        # Unchanged. Also how a workspace keeps a color from before there was a list.
+        data.pop("color", None)
+    else:
+        data["color"] = data["color"].lower()
+        if data["color"] not in WIDGET_COLORS:
+            raise HttpError(400, "Pick one of the listed widget colors.")
     if data.get("slug") is None:
         data.pop("slug", None)
     elif Workspace.objects.filter(slug=data["slug"]).exclude(pk=workspace.pk).exists():

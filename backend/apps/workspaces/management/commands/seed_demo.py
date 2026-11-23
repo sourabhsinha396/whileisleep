@@ -24,7 +24,7 @@ WORKSPACES = [
     {
         "name": "ExamGrill",
         "website": "http://localhost:3006",
-        "color": "#1e6fd9",
+        "color": "#2563eb",
         "greeting": "Hi! Looking for a practice exam? Ask me about any certification.",
         "ai_instructions": (
             "ExamGrill sells practice tests for IT certification exams. When someone asks about an exam, "
@@ -102,7 +102,7 @@ WORKSPACES = [
     {
         "name": "Little Fern Coffee",
         "website": "https://littlefern.example.com",
-        "color": "#2f6b3a",
+        "color": "#15803d",
         "greeting": "Hi! Questions about beans, brewing or your order?",
         "ai_instructions": "Friendly, brief. We roast in small batches and ship weekly.",
         "articles": [

@@ -72,6 +72,9 @@ conversation (also a button in the chat header), and `reset()` on sign-out.
 
 ## Test
 
+Backend tests run on Postgres (the `db` service from `docker compose up -d db`); they need no
+`.env` and make no network calls.
+
 ```sh
 cd backend && uv run pytest && uv run ruff check .
 cd frontend && pnpm test && pnpm lint && pnpm typecheck

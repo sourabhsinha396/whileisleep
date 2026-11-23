@@ -13,12 +13,19 @@ TIMEOUT_SECONDS = 60
 HEADERS = {"X-OpenRouter-Title": "whileisleep"}
 
 
+# Statuses that mean "try again shortly": timeouts, rate limits, and the provider being
+# down or overloaded. A rejected key or an empty balance is not among them.
+TRANSIENT_STATUSES = {408, 429, 500, 502, 503, 504, 529}
+
+
 class OpenRouterError(Exception):
     """A failed call. `message` is safe to show the workspace team."""
 
-    def __init__(self, message: str, status: int | None = None):
+    def __init__(self, message: str, status: int | None = None, transient: bool | None = None):
         super().__init__(message)
         self.status = status
+        # Whether the same call might work a few seconds later.
+        self.transient = status in TRANSIENT_STATUSES if transient is None else transient
 
 
 def _error(response: httpx.Response) -> OpenRouterError:
@@ -43,7 +50,8 @@ def _call(method: str, path: str, api_key: str, **kwargs) -> dict:
             **kwargs,
         )
     except httpx.HTTPError as error:
-        raise OpenRouterError(f"Could not reach OpenRouter: {type(error).__name__}") from error
+        # The network, not the request: worth another try.
+        raise OpenRouterError(f"Could not reach OpenRouter: {type(error).__name__}", transient=True) from error
     if response.status_code >= 400:
         raise _error(response)
     try:

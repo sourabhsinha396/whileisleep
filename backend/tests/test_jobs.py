@@ -1,17 +1,18 @@
 """The job queue: how the AI stage is queued, locked per conversation, and run."""
 
+import httpx
 import pytest
 from celery.exceptions import Retry
 from django.core.cache import cache
 from django.db import transaction
 
-from apps.agent import pipeline, tasks
+from apps.agent import openrouter, pipeline, tasks
 from apps.agent.models import Turn
 from apps.conversations.models import Message
 from whileisleep.celery import app as celery_app
 from whileisleep.settings import base
 
-from .conftest import final
+from .conftest import assistant, final, tool_call
 from .factories import ConversationFactory, MessageFactory, OrganizationFactory, RuleFactory, WorkspaceFactory
 
 
@@ -138,6 +139,114 @@ def test_the_lock_expires_by_itself(settings):
     finally:
         cache.add = original
     assert seen["timeout"] == 300
+
+
+# --- Model failures that may pass ---
+
+
+def transient(status=503):
+    return openrouter.OpenRouterError("OpenRouter is overloaded.", status)
+
+
+@pytest.fixture
+def delays(monkeypatch):
+    """Records how long each new try was asked to wait. (Jobs still run at once here.)"""
+    asked = []
+    real = tasks.answer.apply_async
+
+    def recording(args=None, kwargs=None, countdown=None, **options):
+        asked.append(countdown)
+        return real(args=args, kwargs=kwargs, **options)
+
+    monkeypatch.setattr(tasks.answer, "apply_async", recording)
+    return asked
+
+
+@pytest.mark.django_db
+def test_a_provider_hiccup_is_retried_and_the_visitor_gets_a_real_answer(llm, delays):
+    conversation, message = asking()
+    fake = llm(transient(), final("Yes, we do."))
+
+    tasks.answer.apply(args=(conversation.pk, "", message.pk, None)).get()
+
+    assert len(fake.requests) == 2 and delays == [3]
+    turn = Turn.objects.get()
+    assert turn.stage == Turn.Stage.AI and turn.reply.body == "Yes, we do."
+    # The failed try left nothing behind for the team or the visitor to see.
+    assert not conversation.messages.filter(is_note=True).exists()
+    assert conversation.messages.filter(sender=Message.Sender.BOT).count() == 1
+
+
+@pytest.mark.django_db
+def test_after_the_last_try_the_fallback_answers(llm, delays):
+    conversation, message = asking()
+    fake = llm(transient(429), transient(), transient(502))
+
+    tasks.answer.apply(args=(conversation.pk, "", message.pk, None)).get()
+
+    assert len(fake.requests) == 3 and delays == [3, 10]
+    turn = Turn.objects.get()
+    assert turn.stage == Turn.Stage.FALLBACK and "overloaded" in turn.error
+    assert conversation.messages.filter(is_note=True, body__contains="overloaded").count() == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("status", [401, 402, 400, 404])
+def test_failures_that_will_not_pass_are_not_retried(llm, delays, status):
+    conversation, message = asking()
+    fake = llm(openrouter.OpenRouterError("The OpenRouter API key was rejected.", status))
+    tasks.answer.apply(args=(conversation.pk, "", message.pk, None)).get()
+    assert len(fake.requests) == 1 and delays == []
+    assert Turn.objects.get().stage == Turn.Stage.FALLBACK
+
+
+@pytest.mark.django_db
+def test_no_retry_once_a_tool_has_run(llm, delays):
+    """Starting over would call the tool again, and a tool may have changed something."""
+    conversation, message = asking()
+    fake = llm(assistant(tool_call("handoff_to_human", {"reason": "wants a person"})), transient())
+
+    tasks.answer.apply(args=(conversation.pk, "", message.pk, None)).get()
+
+    assert len(fake.requests) == 2 and delays == []
+    assert Turn.objects.get().stage == Turn.Stage.FALLBACK
+    assert conversation.messages.filter(is_note=True, body__startswith="Visitor asked for a person").count() == 1
+
+
+@pytest.mark.django_db
+def test_the_lock_is_free_between_tries(llm, monkeypatch):
+    conversation, message = asking()
+    llm(transient(), final("Yes."))
+    seen = []
+    real = tasks.answer.apply_async
+
+    def check_lock(args=None, kwargs=None, countdown=None, **options):
+        seen.append(cache.get(f"reply-lock:{conversation.pk}"))
+        return real(args=args, kwargs=kwargs, **options)
+
+    monkeypatch.setattr(tasks.answer, "apply_async", check_lock)
+    tasks.answer.apply(args=(conversation.pk, "", message.pk, None)).get()
+    assert seen == [None]
+
+
+def test_which_failures_count_as_passing():
+    assert openrouter.OpenRouterError("x", 503).transient
+    assert openrouter.OpenRouterError("x", 429).transient
+    assert not openrouter.OpenRouterError("x", 401).transient
+    assert not openrouter.OpenRouterError("x", 402).transient
+    # No status: a malformed response, not worth repeating unless said so.
+    assert not openrouter.OpenRouterError("x").transient
+    assert openrouter.OpenRouterError("x", transient=True).transient
+
+
+def test_a_network_failure_counts_as_passing(monkeypatch):
+    def unreachable(*args, **kwargs):
+        raise httpx.ConnectTimeout("slow")
+
+    monkeypatch.setattr(openrouter.httpx, "request", unreachable)
+    with pytest.raises(openrouter.OpenRouterError) as error:
+        openrouter.complete("k", "m", [], [])
+    assert error.value.transient
 
 
 # --- Configuration ---

@@ -128,12 +128,21 @@ def will_reply(conversation: Conversation) -> bool:
 
 
 def reply(
-    conversation_id: int, instruction: str = "", trigger_id: int | None = None, rule_id: int | None = None
+    conversation_id: int,
+    instruction: str = "",
+    trigger_id: int | None = None,
+    rule_id: int | None = None,
+    retry_transient: bool = False,
 ) -> Message | None:
     """Answers the conversation's latest visitor message and records the Turn.
 
     `instruction` comes from the rule `rule_id` (or a form the AI showed) and applies to this
     answer only. `trigger_id` is the visitor message being answered.
+
+    With `retry_transient`, a model failure that may pass (a timeout, a rate limit, the
+    provider being down) is raised instead of answered with the fallback, so the job queue
+    can try again in a few seconds. Only while nothing has happened yet: once a tool has
+    run, starting over could do its work twice.
     """
     conversation = Conversation.objects.select_related("workspace__organization", "visitor").get(pk=conversation_id)
     history = chat_history(conversation)
@@ -152,6 +161,8 @@ def reply(
         try:
             result = run_agent(conversation, history, instruction, recorder)
         except openrouter.OpenRouterError as failure:
+            if retry_transient and failure.transient and not any(step["type"] == "tool" for step in recorder.steps):
+                raise
             error = str(failure)
             log.warning("OpenRouter failed on conversation %s: %s", conversation_id, error)
             # The team sees why the bot fell back, e.g. an expired key or no credits.

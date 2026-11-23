@@ -1,6 +1,7 @@
 "use client";
 
 import { Copy, ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { Button, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
@@ -9,9 +10,11 @@ import { usePoll } from "@/lib/use-poll";
 
 export default function SettingsPage() {
   const { workspace, reload } = useWorkspace();
+  const router = useRouter();
   const owner = workspace.role === "owner";
   const [form, setForm] = useState({
     name: workspace.name,
+    slug: workspace.slug,
     website: workspace.website,
     color: workspace.color,
     greeting: workspace.greeting,
@@ -28,9 +31,11 @@ export default function SettingsPage() {
     e.preventDefault();
     setError("");
     try {
-      await api<Workspace>(`/workspaces/${workspace.id}`, { method: "PATCH", body: form });
+      const saved = await api<Workspace>(`/workspaces/${workspace.id}`, { method: "PATCH", body: form });
       await reload();
       setMessage("Saved.");
+      // A new address: this page now lives there.
+      if (saved.slug !== workspace.slug) router.replace(`/w/${saved.slug}/settings`);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -62,6 +67,18 @@ export default function SettingsPage() {
           <h2 className="text-base font-bold tracking-tight">Workspace</h2>
           <Field label="Name">
             <input className={inputClass} disabled={!owner} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </Field>
+          <Field label="Dashboard address" hint={`This workspace's pages are at /w/${form.slug || "…"}/. Lowercase letters, digits and hyphens. Changing it breaks old bookmarks.`}>
+            <input
+              className={`${inputClass} font-mono`}
+              disabled={!owner}
+              required
+              pattern="[a-z0-9]+(-[a-z0-9]+)*"
+              minLength={2}
+              maxLength={60}
+              value={form.slug}
+              onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })}
+            />
           </Field>
           <Field label="Website">
             <input className={inputClass} disabled={!owner} type="url" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />

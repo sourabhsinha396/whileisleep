@@ -44,7 +44,7 @@ function AgentSettings({ canEdit }: { canEdit: boolean }) {
         <p className="rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning">
           No LLM yet, so the agent only matches help articles by keyword and can&apos;t use tools.{" "}
           {workspace.is_organization_owner ? (
-            <Link className="font-medium underline" href={`/w/${workspace.id}/organization`}>
+            <Link className="font-medium underline" href={`/w/${workspace.slug}/organization`}>
               Add an OpenRouter key and model
             </Link>
           ) : (

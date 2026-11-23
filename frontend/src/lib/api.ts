@@ -68,6 +68,8 @@ export interface User {
 export interface Workspace {
   id: number;
   name: string;
+  /** The workspace's name in dashboard URLs: /w/<slug>/inbox. */
+  slug: string;
   public_key: string;
   website: string;
   color: string;

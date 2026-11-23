@@ -55,7 +55,7 @@ function useDismiss(open: boolean, close: () => void) {
 }
 
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const pathname = usePathname();
   const router = useRouter();
   const [switcher, setSwitcher] = useState(false);
@@ -70,12 +70,15 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     }, []),
     15000,
   );
-  const workspace = data?.workspaces.find((w) => String(w.id) === id);
+  const workspace = data?.workspaces.find((w) => w.slug === slug);
+  // Links from before slugs used the workspace's id (/w/34/inbox).
+  const byOldId = workspace ? undefined : data?.workspaces.find((w) => String(w.id) === slug);
 
   useEffect(() => {
     if (!getToken()) router.replace("/login");
+    else if (byOldId) router.replace(pathname.replace(`/w/${slug}`, `/w/${byOldId.slug}`));
     else if (data && !workspace) router.replace("/app");
-  }, [data, workspace, router]);
+  }, [data, workspace, byOldId, pathname, slug, router]);
 
   if (!data || !workspace) return <div className="h-screen"><Spinner /></div>;
   const { workspaces, me } = data;
@@ -94,7 +97,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
       <div className="flex h-screen bg-muted/50">
         <aside className="flex w-64 shrink-0 flex-col px-3 pt-4 pb-3">
           <div className="flex items-center justify-between px-2">
-            <Link href={`/w/${id}/inbox`} className="rounded">
+            <Link href={`/w/${slug}/inbox`} className="rounded">
               <Logo />
             </Link>
             <ThemeToggle />
@@ -123,7 +126,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                 {workspaces.map((w) => (
                   <Link
                     key={w.id}
-                    href={`/w/${w.id}/inbox`}
+                    href={`/w/${w.slug}/inbox`}
                     onClick={() => setSwitcher(false)}
                     className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
                   >
@@ -147,11 +150,11 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                 <p className="px-3 pb-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">{section}</p>
                 <div className="space-y-0.5">
                   {items.map(({ href, label, icon: Icon }) => {
-                    const active = pathname.startsWith(`/w/${id}/${href}`);
+                    const active = pathname.startsWith(`/w/${slug}/${href}`);
                     return (
                       <Link
                         key={href}
-                        href={`/w/${id}/${href}`}
+                        href={`/w/${slug}/${href}`}
                         aria-current={active ? "page" : undefined}
                         className={clsx(
                           "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
@@ -175,7 +178,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
           <div className="space-y-2 pt-3">
             <Link
-              href={`/w/${id}/ai`}
+              href={`/w/${slug}/ai`}
               className="block rounded-lg border bg-surface p-3 text-xs shadow-sm transition-colors hover:border-primary/40"
             >
               <span className="flex items-center gap-2 font-semibold">

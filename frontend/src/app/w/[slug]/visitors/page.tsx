@@ -30,7 +30,7 @@ export default function VisitorsPage() {
       method: "POST",
       body: { body },
     });
-    router.push(`/w/${workspace.id}/inbox?c=${row.id}`);
+    router.push(`/w/${workspace.slug}/inbox?c=${row.id}`);
   }
 
   const all = data ?? [];
@@ -124,7 +124,7 @@ export default function VisitorsPage() {
                     <td className="px-4 py-3 text-right">
                       {v.conversation_id ? (
                         <Link
-                          href={`/w/${workspace.id}/inbox?c=${v.conversation_id}`}
+                          href={`/w/${workspace.slug}/inbox?c=${v.conversation_id}`}
                           className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-primary-text hover:bg-primary-soft"
                         >
                           Open chat

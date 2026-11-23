@@ -14,7 +14,7 @@ export default function Home() {
       return;
     }
     api<Workspace[]>("/workspaces")
-      .then((rows) => router.replace(rows.length ? `/w/${rows[0].id}/inbox` : "/new"))
+      .then((rows) => router.replace(rows.length ? `/w/${rows[0].slug}/inbox` : "/new"))
       .catch(() => router.replace("/login"));
   }, [router]);
   return <div className="h-screen"><Spinner /></div>;

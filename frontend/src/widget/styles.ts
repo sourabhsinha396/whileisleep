@@ -14,21 +14,21 @@ export const styles = `
 button { font: inherit; }
 
 /* Launcher */
-.launcher { position: fixed; right: 20px; bottom: 20px; width: 60px; height: 60px; border-radius: 50%; border: 0;
+.launcher { position: fixed; right: 20px; bottom: 20px; width: 54px; height: 54px; border-radius: 50%; border: 0;
   background: var(--od-color); color: #fff; cursor: pointer; z-index: 2147483646; display: grid; place-items: center;
-  box-shadow: 0 10px 30px -6px color-mix(in srgb, var(--od-color) 55%, transparent), 0 4px 10px rgba(15,23,42,.12);
+  box-shadow: 0 4px 14px -2px color-mix(in srgb, var(--od-color) 40%, transparent), 0 2px 6px rgba(15,23,42,.10);
   transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s; }
 .launcher:hover { transform: translateY(-2px) scale(1.04); }
 .launcher:active { transform: scale(.96); }
 .launcher:focus-visible, .od button:focus-visible, .od textarea:focus-visible, .od input:focus-visible {
   outline: 2px solid var(--od-color); outline-offset: 2px; }
-.launcher svg { width: 28px; height: 28px; animation: od-pop .25s cubic-bezier(.2,.8,.2,1); }
+.launcher svg { width: 32px; height: 32px; animation: od-pop .25s cubic-bezier(.2,.8,.2,1); }
 .badge { position: absolute; top: -3px; right: -3px; min-width: 22px; height: 22px; border-radius: 11px; background: #ef4444;
   color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; padding: 0 6px; border: 2px solid #fff; }
 
 /* Panel */
-.panel { position: fixed; right: 20px; bottom: 92px; width: 392px; height: min(660px, calc(100vh - 116px));
-  background: var(--od-bg); border-radius: 22px; z-index: 2147483647; display: flex; flex-direction: column; overflow: hidden;
+.panel { position: fixed; right: 20px; bottom: 86px; width: 360px; height: min(610px, calc(100vh - 110px));
+  background: var(--od-bg); border-radius: 16px; z-index: 2147483647; display: flex; flex-direction: column; overflow: hidden;
   box-shadow: 0 24px 64px -12px rgba(15,23,42,.28), 0 0 0 1px rgba(15,23,42,.06);
   transform-origin: bottom right; animation: od-open .24s cubic-bezier(.2,.8,.2,1); }
 .panel[hidden] { display: none; }

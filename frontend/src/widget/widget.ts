@@ -6,7 +6,8 @@ import { counterText } from "./limits";
 import { formatText } from "./text";
 
 const ICONS = {
-  chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  // Solid bubble, tilted a little so the launcher reads as friendly rather than a generic icon.
+  chat: '<svg viewBox="0 0 24 24"><g transform="rotate(-12 12 12)"><path fill="currentColor" d="M5 3.5h14a3.5 3.5 0 0 1 3.5 3.5v8A3.5 3.5 0 0 1 19 18.5h-7.6l-4.9 3.7A.9.9 0 0 1 5 21.5v-3h0A3.5 3.5 0 0 1 1.5 15V7A3.5 3.5 0 0 1 5 3.5z"/><g fill="var(--od-color)"><circle cx="7.5" cy="11" r="1.35"/><circle cx="12" cy="11" r="1.35"/><circle cx="16.5" cy="11" r="1.35"/></g></g></svg>',
   restart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
   close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>',
   chevronDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',

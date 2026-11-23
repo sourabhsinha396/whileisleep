@@ -48,6 +48,15 @@ first, and records which stage answered and what it cost.
    into the prompt, so a question the help center answers takes one model call. If the model is
    unavailable, a help center search answers instead.
 
+Stages 1 to 3 run inside the visitor's request. The AI stage is a **Celery job** on Redis
+(`backend/apps/agent/tasks.py`), so the request returns at once and a worker writes the reply:
+
+- a reply survives a restart (jobs are acknowledged when they finish);
+- one reply at a time per conversation (a lock), and a burst of messages gets one answer;
+- a provider hiccup (timeout, rate limit, 5xx) is retried after 3 and 10 seconds before the
+  help center fallback answers, unless a tool has already run;
+- once a minute a sweep re-runs the pipeline for any message whose job was lost.
+
 The prompt is ordered from what never changes (the business's instructions) to what changes every
 message (passages, a rule's instruction), so providers can cache its beginning.
 
@@ -81,8 +90,8 @@ claims become verified attributes.
 
 - Visitor messages: 500 characters (`VISITOR_MESSAGE_MAX_CHARS`), enforced in the widget and the API.
 - `RATE_LIMITS`: messages per visitor and per IP per minute, new visitors per IP per hour, and daily
-  AI replies per visitor and per workspace. Counters live in Django's cache; set `REDIS_URL` when there
-  is more than one worker (production does).
+  AI replies per visitor and per workspace. Counters live in Django's cache, which is Redis whenever
+  `REDIS_URL` is set (Docker Compose sets it, in development and production).
 - What the AI sees: recent messages up to `HISTORY_BUDGET_CHARS`, an "About this conversation" block
   built from stored data (name, attributes, current page, tags), and up to `KNOWLEDGE_BUDGET_CHARS` of
   help center text per search.
@@ -102,7 +111,8 @@ claims become verified attributes.
   `accounts` (token auth), `workspaces` (organizations, workspaces, members),
   `conversations` (visitors, conversations, messages, attributes, identity, widget API),
   `knowledge` (articles, passages, search),
-  `agent` (pipeline, rules and conditions, the OpenRouter tool loop, HTTP tools, turns, A2UI).
+  `agent` (pipeline, rules and conditions, the OpenRouter tool loop, the Celery tasks, HTTP and MCP
+  tools, turns, A2UI).
   Tests in `backend/tests/`, with factories in `tests/factories.py`.
 - `frontend/`: Next.js App Router dashboard, plus the widget (`src/widget`, built by esbuild into
   `public/widget.js`). Tests in `frontend/tests/`.
@@ -112,12 +122,16 @@ claims become verified attributes.
 
 ```sh
 cd backend && cp .env.example .env    # set DEMO_EMAIL, DEMO_PASSWORD (OPENROUTER_API_KEY optional, for seed_demo)
-docker compose up -d --build          # API on WEB_PORT (8004), Postgres on 5448
+docker compose up -d --build          # API on WEB_PORT (8004), Postgres on 5448, Redis, and the worker
 docker compose exec -T web python manage.py seed_demo   # optional demo owner + 2 workspaces
 
 cd ../frontend && cp .env.example .env   # WEB_PORT (3004), API_URL
 pnpm install && pnpm dev
 ```
+
+The `worker` container writes the AI's replies and restarts itself when the code changes
+(`docker compose logs -f worker` shows each one). Running Django outside Docker with no
+`REDIS_URL` needs no worker: replies are then written inside the request.
 
 Then set the OpenRouter key and model on **Organization & LLM** in the dashboard. Until both are set, or
 if OpenRouter fails (bad key, no credits), the bot falls back to a help center search and leaves the
@@ -149,13 +163,12 @@ builds the production images.
 
 ## Deploy
 
-One server with Docker Compose: Caddy for HTTPS, the API, the dashboard, Postgres and Redis.
+One server with Docker Compose: Caddy for HTTPS, the API, the worker and its scheduler, the
+dashboard, Postgres and Redis.
 See [docs/deploy-hetzner.md](docs/deploy-hetzner.md).
 
 ## Next
 
-- A durable job queue for AI replies instead of a thread (a reply in flight is lost if the server
-  restarts), with one reply at a time per conversation.
 - Real-time updates over SSE instead of polling; email notifications.
 - Exact answers: human-approved snippets sent verbatim when a question matches.
 - The inbox showing each reply's Turn (rule, passages, tools, tokens, cost) and the attributes panel.

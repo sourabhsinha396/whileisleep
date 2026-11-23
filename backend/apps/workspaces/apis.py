@@ -57,6 +57,10 @@ def update(request, workspace_id: int, payload: WorkspacePatch):
     data = payload.dict(exclude_unset=True)
     if data.get("timezone") is not None and data["timezone"] not in available_timezones():
         raise HttpError(400, "Unknown timezone. Use a name like Europe/Berlin or Asia/Kolkata.")
+    if data.get("slug") is None:
+        data.pop("slug", None)
+    elif Workspace.objects.filter(slug=data["slug"]).exclude(pk=workspace.pk).exists():
+        raise HttpError(400, "That address is taken. Try another.")
     for field, value in data.items():
         setattr(workspace, field, value)
     workspace.save()

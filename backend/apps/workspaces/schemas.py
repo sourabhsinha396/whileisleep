@@ -9,6 +9,8 @@ class WorkspaceIn(Schema):
 
 class WorkspacePatch(Schema):
     name: str | None = Field(None, min_length=1, max_length=120)
+    # The name in dashboard URLs (/w/<slug>/inbox). Changing it breaks bookmarks of the old one.
+    slug: str | None = Field(None, min_length=2, max_length=60, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     website: str | None = None
     color: str | None = Field(None, max_length=16)
     greeting: str | None = Field(None, max_length=300)
@@ -20,6 +22,7 @@ class WorkspacePatch(Schema):
 class WorkspaceOut(Schema):
     id: int
     name: str
+    slug: str
     public_key: str
     website: str
     color: str

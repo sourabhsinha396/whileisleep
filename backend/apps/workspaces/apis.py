@@ -5,8 +5,8 @@ from ninja.errors import HttpError
 
 from apps.accounts.security import token_auth
 
-from .models import Membership, Workspace
-from .schemas import MemberIn, MemberOut, WorkspaceIn, WorkspaceOut, WorkspacePatch
+from .models import Membership, Workspace, new_identity_secret
+from .schemas import IdentitySecretOut, MemberIn, MemberOut, WorkspaceIn, WorkspaceOut, WorkspacePatch
 from .services import create_workspace, member_workspace, owner_workspace
 
 router = Router(tags=["workspaces"], auth=token_auth)
@@ -56,6 +56,21 @@ def update(request, workspace_id: int, payload: WorkspacePatch):
         setattr(workspace, field, value)
     workspace.save()
     return workspace_out(workspace, request.auth, Membership.Role.OWNER)
+
+
+@router.get("/workspaces/{workspace_id}/identity-secret", response=IdentitySecretOut)
+def identity_secret(request, workspace_id: int):
+    """The secret the site's server signs identity tokens with. Owners only."""
+    return {"secret": owner_workspace(request.auth, workspace_id).identity_secret}
+
+
+@router.post("/workspaces/{workspace_id}/identity-secret/rotate", response=IdentitySecretOut)
+def rotate_identity_secret(request, workspace_id: int):
+    """Replaces the secret, e.g. after a leak. Tokens signed with the old one stop working."""
+    workspace = owner_workspace(request.auth, workspace_id)
+    workspace.identity_secret = new_identity_secret()
+    workspace.save(update_fields=["identity_secret"])
+    return {"secret": workspace.identity_secret}
 
 
 @router.get("/workspaces/{workspace_id}/members", response=list[MemberOut])

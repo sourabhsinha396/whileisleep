@@ -32,6 +32,10 @@ class WorkspaceOut(Schema):
     is_organization_owner: bool = False
 
 
+class IdentitySecretOut(Schema):
+    secret: str
+
+
 class MemberIn(Schema):
     email: EmailStr
     role: str = "agent"

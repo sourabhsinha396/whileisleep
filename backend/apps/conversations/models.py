@@ -32,9 +32,27 @@ class Visitor(models.Model):
     # "verified"}}. Read and written through apps.conversations.attributes; `name` and
     # `email` above mirror the attributes of the same name.
     attributes = models.JSONField(default=dict, blank=True)
+    # The host site's own id for this user, from a signed identity token
+    # (apps.conversations.identity). Empty for anonymous visitors.
+    external_id = models.CharField(max_length=200, blank=True)
+    # When a signed token last vouched for this visitor.
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["workspace", "external_id"],
+                condition=~models.Q(external_id=""),
+                name="one_visitor_per_external_id",
+            )
+        ]
 
     def __str__(self):
         return self.display_name
+
+    @property
+    def is_verified(self) -> bool:
+        return self.verified_at is not None
 
     @property
     def display_name(self) -> str:

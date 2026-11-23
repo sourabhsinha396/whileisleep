@@ -10,6 +10,10 @@ def new_public_key() -> str:
     return "ws_" + secrets.token_urlsafe(12)
 
 
+def new_identity_secret() -> str:
+    return "is_" + secrets.token_urlsafe(32)
+
+
 class Organization(models.Model):
     """The account that owns workspaces and pays for the LLM. Its owner sets the OpenRouter key
     and model in the dashboard; every workspace in the organization's bot uses them."""
@@ -44,6 +48,9 @@ class Workspace(models.Model):
     # Goes in the widget snippet on the customer's site, so it is public.
     public_key = models.CharField(max_length=64, unique=True, default=new_public_key)
     website = models.URLField(blank=True)
+    # The site's server signs identity tokens with this (apps.conversations.identity). Shown
+    # to owners only, and encrypted in the database.
+    identity_secret = EncryptedTextField(default=new_identity_secret)
     color = models.CharField(max_length=16, default="#2563eb")
     greeting = models.CharField(max_length=300, default="Hi! How can we help?")
     ai_enabled = models.BooleanField(default=True)

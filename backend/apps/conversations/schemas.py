@@ -21,6 +21,8 @@ class VisitorOut(Schema):
     id: int
     name: str
     email: str
+    # The host site signed for this visitor's identity; verified attributes can be relied on.
+    verified: bool = False
     attributes: list[AttributeOut] = []
     online: bool
     current_url: str
@@ -96,6 +98,8 @@ class WidgetSessionIn(Schema):
     name: str | None = Field(None, max_length=120)
     email: str | None = Field(None, max_length=254)
     attributes: dict[str, AttributeValue] = Field(default_factory=dict, max_length=20)
+    # A token the host site's server signed for its user (apps.conversations.identity).
+    identity_token: str | None = Field(None, max_length=4000)
 
     def details(self) -> dict:
         """Everything identify() sent, as attributes."""

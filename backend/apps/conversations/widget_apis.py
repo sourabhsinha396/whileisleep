@@ -16,7 +16,7 @@ from apps.knowledge.search import search
 from apps.workspaces.models import Workspace
 from whileisleep.client_ip import client_ip
 
-from . import limits
+from . import identity, limits
 from .models import Conversation, Message, Visitor
 from .schemas import (
     ArticleOut,
@@ -57,6 +57,13 @@ def session(request, key: str, payload: WidgetSessionIn):
     workspace = get_workspace(key)
     token = request.headers.get("X-Visitor-Token", "")
     visitor = Visitor.objects.filter(workspace=workspace, token=token).first() if token else None
+    if payload.identity_token:
+        try:
+            claims = identity.verify(workspace, payload.identity_token)
+        except identity.IdentityError as error:
+            raise HttpError(401, str(error)) from error
+        # The signed-in user's own visitor, which may not be the one this browser had.
+        visitor = identity.sign_in(workspace, visitor, claims)
     if visitor is None:
         if not limits.allow_new_visitor(client_ip(request)):
             raise HttpError(429, "Too many new chats from your network. Please try again later.")

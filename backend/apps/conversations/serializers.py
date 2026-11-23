@@ -9,6 +9,7 @@ def visitor_out(visitor: Visitor, conversation_id: int | None = None) -> dict:
         "id": visitor.id,
         "name": visitor.display_name,
         "email": visitor.email,
+        "verified": visitor.is_verified,
         "attributes": attributes.listing(visitor),
         "online": visitor.is_online,
         "current_url": visitor.current_url,

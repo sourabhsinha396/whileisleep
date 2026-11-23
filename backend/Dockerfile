@@ -16,7 +16,12 @@ RUN uv sync --frozen --no-dev
 
 COPY . .
 
-RUN useradd --create-home app
+# collectstatic writes here in production; the app user must own it.
+RUN useradd --create-home app && mkdir -p /app/staticfiles && chown app:app /app/staticfiles
 USER app
 
 EXPOSE 8000
+
+# Production default (deploy/docker-compose.yml). Development overrides it with runserver.
+# Threads rather than more processes: requests mostly wait on the database and the LLM.
+CMD ["gunicorn", "whileisleep.wsgi", "--bind", "0.0.0.0:8000", "--workers", "3", "--threads", "8", "--timeout", "90", "--access-logfile", "-"]

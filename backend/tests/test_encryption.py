@@ -70,6 +70,16 @@ def test_generate_encryption_key_command_prints_a_usable_key(settings, capsys):
     assert encryption.decrypt(encryption.encrypt("secret")) == "secret"
 
 
+def test_a_key_made_with_openssl_works(settings):
+    """The deploy guide makes the key with `openssl rand -base64 32 | tr '+/' '-_'`: 32
+    random bytes in URL-safe base64, which is all a Fernet key is."""
+    import base64
+    import os
+
+    settings.ENCRYPTION_KEYS = [base64.urlsafe_b64encode(os.urandom(32)).decode()]
+    assert encryption.decrypt(encryption.encrypt("secret")) == "secret"
+
+
 # --- Model fields ---
 
 

@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const API_URL = process.env.API_URL ?? "http://localhost:8004";
 
 const nextConfig: NextConfig = {
+  // A self-contained server in .next/standalone, for the Docker image.
+  output: "standalone",
   // The dashboard and the widget call Django through this proxy, so one origin serves
   // both the widget script and its API.
   async rewrites() {

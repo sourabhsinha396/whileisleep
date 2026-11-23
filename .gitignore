@@ -1,0 +1,2 @@
+# Production secrets: copy deploy/.env.example to deploy/.env on the server.
+deploy/.env

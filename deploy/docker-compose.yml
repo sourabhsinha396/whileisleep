@@ -1,0 +1,98 @@
+# whileisleep in production on one server (a Hetzner Cloud VM, or any Docker host).
+#
+#   cd deploy && cp .env.example .env    # fill it in
+#   docker compose up -d --build
+#
+# docs/deploy-hetzner.md walks through it. Only Caddy is reachable from outside; it gets and
+# renews the TLS certificate for SITE_DOMAIN by itself.
+
+# Not "whileisleep": that is the development stack in backend/, and sharing the name would
+# share its database volume.
+name: whileisleep-prod
+
+x-backend: &backend
+  build: ../backend
+  env_file: .env
+  environment:
+    DJANGO_SETTINGS_MODULE: whileisleep.settings.production
+    SITE_URL: https://${SITE_DOMAIN}
+    POSTGRES_HOST: db
+    POSTGRES_PORT: "5432"
+    REDIS_URL: redis://redis:6379/0
+  restart: unless-stopped
+
+services:
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates. Losing this volume means asking Let's Encrypt again (rate-limited).
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - frontend
+    restart: unless-stopped
+
+  # Runs once per deploy, before the app starts: database migrations and static files.
+  release:
+    <<: *backend
+    command: sh -c "python manage.py migrate --noinput && python manage.py collectstatic --noinput"
+    volumes:
+      - static:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    <<: *backend
+    volumes:
+      - static:/app/staticfiles:ro
+    depends_on:
+      release:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build: ../frontend
+    restart: unless-stopped
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-whileisleep}
+      POSTGRES_USER: ${POSTGRES_USER:-whileisleep}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 12
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # Only rate-limit counters live here; nothing to keep across restarts.
+    command: redis-server --save "" --appendonly no
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+  static:

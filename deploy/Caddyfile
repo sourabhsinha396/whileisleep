@@ -1,0 +1,23 @@
+# One public address for everything: the dashboard, the widget script, and the API the
+# widget calls from your customers' sites. Caddy gets the certificate for it automatically.
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	# Django: the API, the admin, and the admin's static files.
+	@django path /api/* /admin/* /static/*
+	handle @django {
+		reverse_proxy web:8000
+	}
+
+	# The widget script is loaded by other sites on every page view: cache it briefly so a
+	# new release still reaches them within minutes.
+	@widget path /widget.js
+	# ">" replaces the header the dashboard server set, instead of adding a second one.
+	header @widget >Cache-Control "public, max-age=300"
+
+	# Everything else is the Next.js dashboard.
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

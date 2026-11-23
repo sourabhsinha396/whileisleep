@@ -26,7 +26,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen overflow-x-hidden">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
+      <header className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6">
         <Logo />
         <nav className="flex items-center gap-1 sm:gap-2">
           <a href="#demo" className="hidden rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground sm:block">
@@ -41,18 +41,17 @@ export default function Home() {
 
       <main>
         {/* Hero */}
-        <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 pt-8 pb-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:pt-14">
+        <section className="mx-auto grid max-w-7xl items-center gap-12 px-4 pt-8 pb-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:pt-14">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border bg-surface px-3 py-1 text-xs font-semibold text-muted-foreground">
               <span className="size-1.5 rounded-full bg-success" /> Open source · Bring your own LLM
             </p>
             <h1 className="mt-5 text-4xl leading-[1.08] font-extrabold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-              Your customers ask at 3am.
-              <span className="block text-primary-text">You keep snoring.</span>
+              AI answers.
+              <span className="block text-primary-text">While I sleep.</span>
             </h1>
             <p className="mt-5 max-w-lg text-lg text-muted-foreground">
-              whileisleep is customer chat with an AI agent that answers from your help center, calls your own APIs, and only
-              wakes you for the chats that really need a human.
+              We answer from your APIs, MCP, and other data sources, only waking you for chats that need a human.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href={signedIn ? "/app" : "/login"} className={`${cta} bg-primary text-primary-foreground hover:bg-primary-hover`}>
@@ -71,7 +70,7 @@ export default function Home() {
 
         {/* Interactive demo */}
         <section id="demo" className="scroll-mt-6 border-y bg-muted/40">
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
             <div className="mb-8 max-w-2xl">
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Now you be the customer</h2>
               <p className="mt-3 text-muted-foreground">
@@ -84,7 +83,7 @@ export default function Home() {
         </section>
 
         {/* Features */}
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
           <h2 className="max-w-xl text-3xl font-bold tracking-tight">Everything a support inbox needs, minus the night shift</h2>
           <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map(({ icon: Icon, title, text }) => (
@@ -101,7 +100,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted-foreground sm:px-6">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted-foreground sm:px-6">
           <Logo />
           <span>Open source. Self-host it, bring your own LLM. Get some sleep.</span>
         </div>

@@ -2,7 +2,19 @@
 # widget calls from your customers' sites. Caddy gets the certificate for it automatically.
 
 {$SITE_DOMAIN} {
-	encode zstd gzip
+	# The live streams (server-sent events) that the widget and the inbox keep open.
+	@stream path_regexp ^/api/v1/(widget/[^/]+|workspaces/[0-9]+)/stream$
+
+	# Compressing an event stream makes the encoder hold events back until a block fills.
+	@compressible not path_regexp ^/api/v1/(widget/[^/]+|workspaces/[0-9]+)/stream$
+	encode @compressible zstd gzip
+
+	# Streams go to the ASGI process, and every event is passed on at once.
+	handle @stream {
+		reverse_proxy stream:8000 {
+			flush_interval -1
+		}
+	}
 
 	# Django: the API, the admin, and the admin's static files.
 	@django path /api/* /admin/* /static/*

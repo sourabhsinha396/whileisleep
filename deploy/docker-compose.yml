@@ -6,9 +6,10 @@
 # docs/deploy-hetzner.md walks through it. Only Caddy is reachable from outside; it gets and
 # renews the TLS certificate for SITE_DOMAIN by itself.
 #
-#   caddy ─┬─ web (Django API) ──┬─ db (Postgres: everything that must survive)
-#          └─ frontend (Next.js) └─ redis (the reply queue, counters, locks)
-#                                     └─ worker (writes AI replies) and beat (scheduler)
+#   caddy ─┬─ web (Django API, WSGI) ───┬─ db (Postgres: everything that must survive)
+#          ├─ stream (live updates, ASGI) ┴─ redis (the reply queue, counters, locks,
+#          └─ frontend (Next.js)               presence, and pub/sub for live updates)
+#                                              └─ worker (writes AI replies) and beat (scheduler)
 
 # Not "whileisleep": that is the development stack in backend/, and sharing the name would
 # share its database volume.
@@ -41,6 +42,7 @@ services:
       - caddy_config:/config
     depends_on:
       - web
+      - stream
       - frontend
     restart: unless-stopped
 
@@ -64,7 +66,7 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_started
-    healthcheck:
+    healthcheck: &healthcheck
       # Asks the app itself, under the site's own host name: Django refuses any other.
       test:
         - CMD
@@ -78,6 +80,20 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  # The live streams (backend/apps/realtime/views.py): server-sent events for the widget and
+  # the inbox, fanned out from Redis. Async views on uvicorn, so an open widget costs a
+  # coroutine, not a thread; one process holds thousands. Caddy sends it only the stream
+  # paths. On a restart open streams are cut after 10 seconds and the browsers reconnect.
+  stream:
+    <<: *backend
+    command: uvicorn whileisleep.asgi:application --host 0.0.0.0 --port 8000 --no-access-log --timeout-graceful-shutdown 10
+    depends_on:
+      release:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    healthcheck: *healthcheck
 
   # Writes the AI's replies (backend/apps/agent/tasks.py). Threads, because a reply spends
   # its time waiting on the LLM: 16 replies can be in progress at once. To handle more, raise

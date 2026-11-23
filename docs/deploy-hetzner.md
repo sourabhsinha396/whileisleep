@@ -1,8 +1,9 @@
 # Deploying whileisleep on a Hetzner server
 
-One small server runs everything with Docker Compose: Caddy (HTTPS), the Django API, a
-Celery worker that writes the AI's replies, the Next.js dashboard, Postgres and Redis. The
-same steps work on any Linux host with Docker.
+One small server runs everything with Docker Compose: Caddy (HTTPS), the Django API, the
+stream process that sends live updates to the widget and the inbox, a Celery worker that
+writes the AI's replies, the Next.js dashboard, Postgres and Redis. The same steps work on
+any Linux host with Docker.
 
 ## What you need
 
@@ -57,8 +58,8 @@ docker compose up -d --build
 docker compose ps
 ```
 
-The `release` service runs the database migrations and exits; `web`, `worker` and `beat`
-start after it. The first HTTPS request takes a few seconds while Caddy obtains the
+The `release` service runs the database migrations and exits; `web`, `stream`, `worker` and
+`beat` start after it. The first HTTPS request takes a few seconds while Caddy obtains the
 certificate.
 
 Open `https://YOUR_DOMAIN`, sign up (the first account owns its organization), then:
@@ -109,6 +110,26 @@ curl https://YOUR_DOMAIN/api/v1/ready
 ```
 
 `/api/v1/ready` answers `{"ok": true}` when the API can reach the database and Redis.
+
+### If chats only update every few seconds
+
+The widget and the inbox get new messages, typing and the AI's status over a live stream
+(server-sent events) from the `stream` service. When it is down they fall back to polling,
+which still works, only more slowly. To check the stream itself (the visitor token comes
+from your browser's local storage, key `whileisleep:ws_...`):
+
+```sh
+docker compose ps stream
+curl -N https://YOUR_DOMAIN/api/v1/widget/ws_YOUR_KEY/stream -H "X-Visitor-Token: vt_..."
+```
+
+`curl` should print `: connected` at once and `: ping` every 15 seconds. If the lines only
+show up in bursts, something between the browser and Caddy buffers responses: turn off
+buffering for paths ending in `/stream` there. Caddy itself passes them on unbuffered and
+uncompressed (see `Caddyfile`).
+
+Restarting `stream` drops open connections; browsers reconnect within seconds and catch up
+on anything they missed.
 
 ### If the AI stops answering
 

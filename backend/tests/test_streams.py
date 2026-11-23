@@ -322,6 +322,18 @@ def test_replayed_and_live_messages_have_the_same_shape(conversation, fake_redis
     assert "T" in framed["message"]["created_at"]
 
 
+def test_stream_paths_are_async_views_ahead_of_the_rest_api():
+    """The paths Caddy sends to the ASGI process (deploy/Caddyfile) reach the async views."""
+    from inspect import iscoroutinefunction
+
+    from django.urls import resolve
+
+    widget = resolve("/api/v1/widget/ws_abc-D_1/stream").func
+    inbox = resolve("/api/v1/workspaces/12/stream").func
+    assert widget is views.widget_stream and iscoroutinefunction(widget)
+    assert inbox is views.inbox_stream and iscoroutinefunction(inbox)
+
+
 def test_publishing_and_listening_use_the_same_channel_names():
     assert bus.visitor_channel(7) == "whileisleep:visitor:7"
     assert bus.workspace_channel(7) == "whileisleep:workspace:7"

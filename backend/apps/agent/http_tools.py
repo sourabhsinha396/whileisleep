@@ -6,6 +6,8 @@ from urllib.parse import quote
 
 import httpx
 
+from whileisleep import outbound
+
 from .models import Tool
 
 PLACEHOLDER = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_.]*)\}")
@@ -48,7 +50,11 @@ def run(tool: Tool, inputs: dict, visitor) -> tuple[str, bool]:
     url, params, body = build_request(tool, inputs or {}, visitor)
     headers = {str(k): str(v) for k, v in (tool.headers or {}).items()}
     try:
-        response = httpx.request(tool.method, url, params=params, json=body, headers=headers, timeout=TIMEOUT_SECONDS)
+        response = outbound.request(
+            tool.method, url, params=params, json=body, headers=headers, timeout=TIMEOUT_SECONDS
+        )
+    except outbound.BlockedAddress as error:
+        return str(error), True
     except httpx.HTTPError as error:
         return f"Could not reach the service: {type(error).__name__}", True
     text = response.text

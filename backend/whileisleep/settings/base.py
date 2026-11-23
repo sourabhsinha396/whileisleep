@@ -115,6 +115,10 @@ CONVERSATION_IDLE_HOURS = 24
 # A visitor counts as online if the widget pinged within this many seconds.
 ONLINE_WINDOW_SECONDS = 60
 
+# Tools call URLs that workspace owners typed in. Unless this is on, whileisleep.outbound
+# refuses any that resolve to a private address (this server's own network).
+OUTBOUND_ALLOW_PRIVATE_NETWORKS = False
+
 # The AI agent's OpenRouter key and model are per organization, set in the dashboard.
 # Tests set this so the bot replies inside the request instead of a thread.
 BOT_SYNC = False

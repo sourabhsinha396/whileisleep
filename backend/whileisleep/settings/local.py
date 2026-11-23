@@ -20,3 +20,5 @@ from .base import *  # noqa: E402, F403
 DEBUG = True
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY") or "dev-secret-key-not-for-production"
 ALLOWED_HOSTS = ["*"]
+# In development the tools you try are usually on this machine (host.docker.internal).
+OUTBOUND_ALLOW_PRIVATE_NETWORKS = True

@@ -10,7 +10,7 @@ pytestmark = pytest.mark.django_db
 
 
 class Recorder:
-    """Stands in for httpx.request."""
+    """Stands in for outbound.request (the guarded httpx.request; see test_outbound.py)."""
 
     def __init__(self, status=200, json=None, text=None, error=None):
         self.calls = []
@@ -30,7 +30,7 @@ class Recorder:
 def http(monkeypatch):
     def install(**kwargs):
         recorder = Recorder(**kwargs)
-        monkeypatch.setattr(http_tools.httpx, "request", recorder)
+        monkeypatch.setattr(http_tools.outbound, "request", recorder)
         return recorder
 
     return install
@@ -72,6 +72,12 @@ def test_network_error_is_reported(http):
     http(error=httpx.ConnectError("refused"))
     result, is_error = http_tools.run(ToolFactory(), {}, VisitorFactory())
     assert is_error and "ConnectError" in result
+
+
+def test_private_address_is_refused_and_reported(monkeypatch):
+    monkeypatch.setattr(http_tools.outbound, "resolve", lambda host, port: ["10.0.0.5"])
+    result, is_error = http_tools.run(ToolFactory(url="http://db.internal:5432/"), {}, VisitorFactory())
+    assert is_error and "private network" in result
 
 
 def test_long_results_are_truncated(http):

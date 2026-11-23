@@ -67,7 +67,8 @@ Add the widget to any site (Settings & widget shows the snippet):
 
 The script sets `window.whileisleep` and fires `whileisleep:ready` on `window`:
 `open(message?)` (opens with the message typed in), `close()`, `hide()` / `show()` (for pages where the
-bubble is in the way), `identify({ name, email })` for signed-in users, and `reset()` on sign-out.
+bubble is in the way), `identify({ name, email })` for signed-in users, `restart()` to clear the chat and start a new
+conversation (also a button in the chat header), and `reset()` on sign-out.
 
 ## Test
 

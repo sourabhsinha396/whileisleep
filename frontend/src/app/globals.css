@@ -1,23 +1,128 @@
 @import "tailwindcss";
 
-@theme {
-  --color-brand: #2f45c5;
-  --color-brand-soft: #eef0fd;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+/* Class-based dark mode, driven by next-themes. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  Design tokens, shared with the ExamGrill frontend.
+  - primary is for filled backgrounds (white text on it); primary-text is for blue text,
+    lighter in dark mode so it reads on navy.
+  - success / warning / danger each have a soft background for badges and notices.
+*/
+:root {
+  --background: oklch(0.99 0.003 250);
+  --foreground: oklch(0.21 0.03 260);
+  --surface: oklch(1 0 0);
+  --muted: oklch(0.965 0.006 250);
+  --muted-foreground: oklch(0.5 0.02 255);
+  --border: oklch(0.92 0.008 250);
+
+  --primary: oklch(0.55 0.17 252);
+  --primary-hover: oklch(0.5 0.17 254);
+  --primary-foreground: oklch(0.99 0 0);
+  --primary-soft: oklch(0.95 0.03 250);
+  --primary-text: oklch(0.55 0.17 252);
+
+  --accent: oklch(0.8 0.15 75);
+  --accent-foreground: oklch(0.25 0.05 60);
+
+  --success: oklch(0.56 0.1 162);
+  --success-soft: oklch(0.96 0.03 162);
+  --warning: oklch(0.55 0.12 65);
+  --warning-soft: oklch(0.96 0.04 85);
+  --danger: oklch(0.58 0.14 22);
+  --danger-soft: oklch(0.96 0.025 22);
+
+  --ring: oklch(0.55 0.17 252);
+  --radius: 0.75rem;
 }
 
-body {
-  background: #f6f6f4;
-  color: #1c1c1e;
+.dark {
+  --background: oklch(0.17 0.025 258);
+  --foreground: oklch(0.96 0.008 250);
+  --surface: oklch(0.21 0.028 258);
+  --muted: oklch(0.25 0.028 258);
+  --muted-foreground: oklch(0.72 0.02 255);
+  --border: oklch(0.29 0.028 258);
+
+  --primary: oklch(0.55 0.17 252);
+  --primary-hover: oklch(0.6 0.16 252);
+  --primary-foreground: oklch(0.99 0 0);
+  --primary-soft: oklch(0.28 0.06 255);
+  --primary-text: oklch(0.75 0.13 250);
+
+  --accent: oklch(0.82 0.14 78);
+  --accent-foreground: oklch(0.22 0.04 60);
+
+  --success: oklch(0.74 0.1 162);
+  --success-soft: oklch(0.28 0.04 162);
+  --warning: oklch(0.8 0.12 78);
+  --warning-soft: oklch(0.28 0.045 70);
+  --danger: oklch(0.72 0.12 22);
+  --danger-soft: oklch(0.27 0.045 22);
+
+  --ring: oklch(0.75 0.13 250);
 }
 
-/* A2UI previews of bot messages in the inbox (read-only). */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-text: var(--primary-text);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+
+  --font-sans: var(--font-sans-family), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--primary);
+  }
+  select option {
+    background: var(--surface);
+    color: var(--foreground);
+  }
+}
+
+/* A2UI previews of bot messages in the inbox (read-only, inside a primary bubble). */
 .a2ui-surface { margin-top: 8px; }
 .a2ui-column { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .a2ui-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .a2ui-text { margin: 0; }
-.a2ui-button { font-size: 13px; border-radius: 8px; padding: 5px 10px; border: 1px solid rgb(255 255 255 / 0.5); background: rgb(255 255 255 / 0.12); color: inherit; }
+.a2ui-button { font-size: 13px; border-radius: 9999px; padding: 5px 12px; border: 1px solid rgb(255 255 255 / 0.5); background: rgb(255 255 255 / 0.12); color: inherit; }
 .a2ui-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
 .a2ui-choices { border: 0; padding: 0; margin: 0; font-size: 13px; }
 .a2ui-choice { display: flex; gap: 6px; align-items: center; }
-.a2ui-input { font-size: 13px; padding: 5px 8px; border-radius: 6px; border: 1px solid rgb(255 255 255 / 0.5); background: transparent; }
+.a2ui-input { font-size: 13px; padding: 5px 8px; border-radius: 6px; border: 1px solid rgb(255 255 255 / 0.5); background: transparent; color: inherit; }

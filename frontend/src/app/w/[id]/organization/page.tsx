@@ -14,7 +14,7 @@ export default function OrganizationPage() {
   if (!org) return null;
   return (
     <>
-      <PageHeader title="Organization & LLM" />
+      <PageHeader title="Organization & LLM" description="The model and API key every workspace in this organization shares." />
       <div className="mx-auto max-w-3xl space-y-8 p-8">
         <LlmSettings key={org.id} org={org} onSaved={setData} />
         <NameForm org={org} onSaved={setData} />
@@ -54,12 +54,12 @@ function LlmSettings({ org, onSaved }: { org: Organization; onSaved: (org: Organ
   const known = models.data?.some((m) => m.id === model.trim());
 
   return (
-    <section className="space-y-5 rounded-xl border border-gray-200 bg-white p-6">
+    <section className="space-y-5 rounded-lg border bg-surface p-6 shadow-sm">
       <div>
-        <h2 className="text-lg font-semibold">AI model (OpenRouter)</h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <h2 className="text-base font-bold tracking-tight">AI model (OpenRouter)</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Every workspace in <strong>{org.name}</strong> ({org.workspace_count}) answers visitors with this key and model. Create a key at{" "}
-          <a className="text-brand hover:underline" href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">
+          <a className="text-primary-text hover:underline" href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">
             openrouter.ai/keys
           </a>
           ; usage is billed to that OpenRouter account.
@@ -69,7 +69,7 @@ function LlmSettings({ org, onSaved }: { org: Organization; onSaved: (org: Organ
       <div
         className={clsx(
           "flex items-center gap-2 rounded-lg px-3 py-2 text-sm",
-          org.llm_ready ? "bg-green-50 text-green-800" : "bg-amber-50 text-amber-800",
+          org.llm_ready ? "bg-success-soft text-success" : "bg-warning-soft text-warning",
         )}
       >
         {org.llm_ready ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
@@ -118,7 +118,7 @@ function LlmSettings({ org, onSaved }: { org: Organization; onSaved: (org: Organ
               Remove key
             </Button>
             {check && (
-              <span className={clsx("text-sm", check.ok ? "text-green-700" : "text-red-700")}>
+              <span className={clsx("text-sm", check.ok ? "text-success" : "text-danger")}>
                 {check.message}
                 {check.ok && check.limit_remaining !== null && ` ${check.limit_remaining} credits left on this key.`}
               </span>
@@ -153,11 +153,11 @@ function LlmSettings({ org, onSaved }: { org: Organization; onSaved: (org: Organ
             </option>
           ))}
         </datalist>
-        {models.error && <p className="text-xs text-gray-500">Couldn&apos;t load the model list ({models.error}). You can still type an id.</p>}
-        {model.trim() && models.data && !known && <p className="text-xs text-amber-700">Not in OpenRouter&apos;s list of tool-capable models.</p>}
+        {models.error && <p className="text-xs text-muted-foreground">Couldn&apos;t load the model list ({models.error}). You can still type an id.</p>}
+        {model.trim() && models.data && !known && <p className="text-xs text-warning">Not in OpenRouter&apos;s list of tool-capable models.</p>}
       </form>
 
-      <p className="text-sm text-green-700">{message}</p>
+      <p className="text-sm text-success">{message}</p>
       <ErrorText>{error}</ErrorText>
     </section>
   );
@@ -168,20 +168,20 @@ function NameForm({ org, onSaved }: { org: Organization; onSaved: (org: Organiza
   const [saved, setSaved] = useState(false);
   return (
     <form
-      className="space-y-3 rounded-xl border border-gray-200 bg-white p-6"
+      className="space-y-3 rounded-lg border bg-surface p-6 shadow-sm"
       onSubmit={async (e) => {
         e.preventDefault();
         onSaved(await api<Organization>("/organization", { method: "PATCH", body: { name } }));
         setSaved(true);
       }}
     >
-      <h2 className="text-lg font-semibold">Organization</h2>
+      <h2 className="text-base font-bold tracking-tight">Organization</h2>
       <Field label="Name">
         <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
       <div className="flex items-center gap-3">
         <Button>Save</Button>
-        {saved && <span className="text-sm text-green-700">Saved.</span>}
+        {saved && <span className="text-sm text-success">Saved.</span>}
       </div>
     </form>
   );

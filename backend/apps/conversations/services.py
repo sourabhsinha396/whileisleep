@@ -52,8 +52,15 @@ def is_stale(conversation: Conversation) -> bool:
 
 
 def current_conversation(visitor: Visitor) -> Conversation | None:
-    """The visitor's most recent conversation, which the widget shows."""
-    return visitor.conversations.order_by("-last_message_at").first()
+    """The visitor's most recent conversation, which the widget shows.
+
+    After the visitor starts a new chat, older conversations stay hidden unless someone
+    writes in them again (a teammate's late reply still reaches the visitor).
+    """
+    conversations = visitor.conversations.order_by("-last_message_at")
+    if visitor.chat_cleared_at:
+        conversations = conversations.filter(last_message_at__gt=visitor.chat_cleared_at)
+    return conversations.first()
 
 
 def touch_visitor(visitor: Visitor, **page) -> None:

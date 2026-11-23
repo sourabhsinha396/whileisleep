@@ -26,6 +26,8 @@ class Visitor(models.Model):
     ip = models.GenericIPAddressField(null=True, blank=True)
     first_seen = models.DateTimeField(auto_now_add=True)
     last_seen = models.DateTimeField(default=timezone.now)
+    # Set when the visitor starts a new chat; the widget hides conversations quiet since then.
+    chat_cleared_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.display_name

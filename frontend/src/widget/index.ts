@@ -11,6 +11,7 @@
  *   close()
  *   hide() / show()     remove the bubble from pages where it would be in the way
  *   identify({ name, email })   attach a signed-in user to the conversation
+ *   restart()           clear the chat and start a new conversation (same visitor)
  *   reset()             forget this visitor, e.g. on sign-out
  */
 
@@ -23,6 +24,7 @@ export interface WhileisleepApi {
   hide(): void;
   show(): void;
   identify(details: { name?: string; email?: string }): Promise<void>;
+  restart(): Promise<void>;
   reset(): Promise<void>;
 }
 
@@ -49,6 +51,7 @@ function boot(current: HTMLScriptElement | null) {
     hide: () => widget.setHidden(true),
     show: () => widget.setHidden(false),
     identify: (details) => widget.identify(details),
+    restart: () => widget.restart(),
     reset: () => widget.reset(),
   };
   window.dispatchEvent(new Event("whileisleep:ready"));

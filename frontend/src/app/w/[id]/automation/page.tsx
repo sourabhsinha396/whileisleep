@@ -14,7 +14,7 @@ export default function AutomationPage() {
   const canEdit = workspace.role === "owner";
   return (
     <>
-      <PageHeader title="Rules & playbooks" />
+      <PageHeader title="Rules & playbooks" description="Route, tag and answer conversations automatically, and teach the agent how to handle tricky ones." />
       <div className="mx-auto max-w-4xl space-y-8 p-8">
         <Rules canEdit={canEdit} />
         <Playbooks canEdit={canEdit} />
@@ -66,13 +66,13 @@ function Rules({ canEdit }: { canEdit: boolean }) {
   const rules = data ?? [];
 
   return (
-    <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+    <section className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <h2 className="flex items-center gap-2 text-base font-bold tracking-tight">
             <Zap size={18} /> Rules
           </h2>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-muted-foreground">
             Checked on every visitor message, in order, before the AI. The first match acts in code: an exact reply, a tag, a hand-off, or
             one extra instruction for the AI. They cost no tokens when they don&apos;t match.
           </p>
@@ -83,18 +83,18 @@ function Rules({ canEdit }: { canEdit: boolean }) {
           </Button>
         )}
       </div>
-      <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
-        {rules.length === 0 && <li className="px-4 py-3 text-sm text-gray-500">No rules yet.</li>}
+      <ul className="divide-y overflow-hidden rounded-lg border">
+        {rules.length === 0 && <li className="px-4 py-3 text-sm text-muted-foreground">No rules yet.</li>}
         {rules.map((rule) => (
           <li key={rule.id} className="flex items-center gap-3 px-4 py-3">
-            <span className="w-6 text-xs text-gray-400">{rule.position}</span>
+            <span className="w-6 text-xs text-muted-foreground">{rule.position}</span>
             <div className="min-w-0 flex-1">
-              <p className={clsx("font-medium", !rule.enabled && "text-gray-400")}>
+              <p className={clsx("font-medium", !rule.enabled && "text-muted-foreground")}>
                 {rule.name} {!rule.enabled && <span className="text-xs font-normal">(off)</span>}
               </p>
-              <p className="truncate text-xs text-gray-500">{describe(rule)}</p>
+              <p className="truncate text-xs text-muted-foreground">{describe(rule)}</p>
             </div>
-            <span className="text-xs text-gray-500" title="Times matched">
+            <span className="text-xs text-muted-foreground" title="Times matched">
               {rule.match_count}× {rule.last_matched_at && `· ${ago(rule.last_matched_at)} ago`}
             </span>
             {canEdit && (
@@ -135,7 +135,7 @@ function RuleEditor({ initial, base, onDone }: { initial: RuleDraft; base: strin
   }
 
   return (
-    <div className="space-y-5 rounded-xl border border-brand/30 bg-brand-soft/30 p-5">
+    <div className="space-y-5 rounded-lg border border-primary/30 bg-primary-soft/40 shadow-sm p-5">
       <div className="grid grid-cols-[1fr_100px_auto] items-end gap-3">
         <Field label="Name">
           <input className={inputClass} placeholder="Exam requests" value={d.name} onChange={(e) => set({ name: e.target.value })} />
@@ -179,7 +179,7 @@ function RuleEditor({ initial, base, onDone }: { initial: RuleDraft; base: strin
               key={value}
               type="button"
               onClick={() => setMode(value)}
-              className={clsx("rounded-md px-3 py-1.5", mode === value ? "bg-white font-semibold shadow-sm ring-1 ring-gray-200" : "text-gray-600")}
+              className={clsx("rounded-md px-3 py-1.5", mode === value ? "bg-surface font-semibold shadow-sm ring-1 ring-border" : "text-muted-foreground")}
             >
               {label}
             </button>
@@ -270,13 +270,13 @@ function Playbooks({ canEdit }: { canEdit: boolean }) {
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+    <section className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <h2 className="flex items-center gap-2 text-base font-bold tracking-tight">
             <BookText size={18} /> Playbooks
           </h2>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-muted-foreground">
             How to handle a kind of conversation, in plain words. The AI always sees each title and &quot;when to use&quot; line, and reads the
             full instructions only when a conversation matches, so you can have many.
           </p>
@@ -287,15 +287,15 @@ function Playbooks({ canEdit }: { canEdit: boolean }) {
           </Button>
         )}
       </div>
-      <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
-        {(data ?? []).length === 0 && <li className="px-4 py-3 text-sm text-gray-500">No playbooks yet.</li>}
+      <ul className="divide-y overflow-hidden rounded-lg border">
+        {(data ?? []).length === 0 && <li className="px-4 py-3 text-sm text-muted-foreground">No playbooks yet.</li>}
         {(data ?? []).map((p) => (
           <li key={p.id} className="flex items-center gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
-              <p className={clsx("font-medium", !p.enabled && "text-gray-400")}>
+              <p className={clsx("font-medium", !p.enabled && "text-muted-foreground")}>
                 {p.title} {!p.enabled && <span className="text-xs font-normal">(off)</span>}
               </p>
-              <p className="truncate text-xs text-gray-500">{p.when_to_use}</p>
+              <p className="truncate text-xs text-muted-foreground">{p.when_to_use}</p>
             </div>
             {canEdit && (
               <Button variant="secondary" onClick={() => setDraft(p)}>
@@ -306,7 +306,7 @@ function Playbooks({ canEdit }: { canEdit: boolean }) {
         ))}
       </ul>
       {draft && (
-        <div className="space-y-4 rounded-xl border border-brand/30 bg-brand-soft/30 p-5">
+        <div className="space-y-4 rounded-lg border border-primary/30 bg-primary-soft/40 shadow-sm p-5">
           <Field label="Title">
             <input className={inputClass} placeholder="Refund requests" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
           </Field>

@@ -7,8 +7,22 @@ import { formatText } from "./text";
 
 const ICONS = {
   chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  restart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
   close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  chevronDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+  sparkle: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9z"/><path d="M19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z"/></svg>',
+  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  chevronRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="m15 6-6 6 6 6"/></svg>',
 };
+
+/** "Acme Store" -> "AS". */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
+}
 
 const POLL_OPEN_MS = 2500;
 const POLL_CLOSED_MS = 15000;
@@ -92,21 +106,44 @@ export class Widget {
   async reset() {
     await this.ready;
     this.api.forget();
+    this.clearLocal();
+    await this.api.session();
+    this.renderBody();
+    this.renderBadge();
+  }
+
+  /** Clears the chat and starts a new conversation as the same visitor.
+   * The old conversation stays in the team's inbox. */
+  async restart() {
+    await this.ready;
+    this.el.error.textContent = "";
+    try {
+      await this.api.restart();
+    } catch (error) {
+      this.el.error.textContent = `Couldn't start a new chat: ${(error as Error).message}`;
+      return;
+    }
+    this.clearLocal();
+    (this.el.input as HTMLTextAreaElement).value = "";
+    this.el.counter.textContent = "";
+    this.pendingIntent = undefined;
+    this.switchTab("chat");
+    this.renderBadge();
+  }
+
+  private clearLocal() {
     writeSeen(this.api.key, "");
     this.messages = [];
     this.lastId = this.seenId = 0;
     this.humanRequested = false;
     this.waitingForReply = 0;
     this.usedSurfaces.clear();
-    await this.api.session();
-    this.renderBody();
-    this.renderBadge();
   }
 
   toggle(force?: boolean) {
     this.open = force ?? !this.open;
     this.el.panel.hidden = !this.open;
-    this.el.launcher.innerHTML = this.open ? ICONS.close : ICONS.chat;
+    this.el.launcher.innerHTML = this.open ? ICONS.chevronDown : ICONS.chat;
     this.el.launcher.setAttribute("aria-label", this.open ? "Close chat" : "Open chat");
     if (this.open) {
       this.markSeen();
@@ -137,25 +174,41 @@ export class Widget {
     panel.setAttribute("aria-label", `Chat with ${this.config.name}`);
 
     const head = div("head");
+    const headRow = div("head-row");
+    const team = div("team");
+    team.textContent = initialsOf(this.config.name);
+    team.setAttribute("aria-hidden", "true");
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    team.appendChild(dot);
     const title = document.createElement("h2");
     title.textContent = this.config.name;
     const sub = document.createElement("span");
     sub.className = "sub";
     sub.textContent = this.config.ai_enabled ? "AI assistant · a person can step in anytime" : "We usually reply in a few minutes";
     title.appendChild(sub);
+    const restart = button("icon-btn", "", () => {
+      if (confirm("Start a new chat? This conversation will be cleared from this window.")) this.restart();
+    });
+    restart.innerHTML = ICONS.restart;
+    restart.setAttribute("aria-label", "Start a new chat");
+    restart.title = "Start a new chat";
     const close = button("icon-btn", "", () => this.toggle(false));
     close.innerHTML = ICONS.close;
     close.setAttribute("aria-label", "Close chat");
-    head.append(title, close);
+    headRow.append(team, title, restart, close);
 
     const tabs = div("tabs");
     tabs.setAttribute("role", "tablist");
-    for (const [id, label] of [["chat", "Chat"], ["help", "Help articles"]] as const) {
-      const tab = button("", label, () => this.switchTab(id));
+    for (const [id, label, icon] of [["chat", "Chat", ICONS.chat], ["help", "Help", ICONS.book]] as const) {
+      const tab = button("", "", () => this.switchTab(id));
+      tab.innerHTML = icon;
+      tab.append(label);
       tab.setAttribute("role", "tab");
       tab.dataset.tab = id;
       tabs.appendChild(tab);
     }
+    head.append(headRow, tabs);
 
     const body = div("body");
     body.setAttribute("aria-live", "polite");
@@ -170,7 +223,9 @@ export class Widget {
     input.maxLength = max;
     const counter = div("counter");
     counter.setAttribute("aria-live", "polite");
-    const send = button("send", "Send", () => this.send());
+    const send = button("send", "", () => this.send());
+    send.innerHTML = ICONS.send;
+    send.setAttribute("aria-label", "Send");
     input.addEventListener("input", () => {
       if (!input.value.trim()) this.pendingIntent = undefined;
       counter.textContent = counterText(input.value.length, max);
@@ -186,10 +241,10 @@ export class Widget {
     const powered = div("powered");
     powered.textContent = "Powered by whileisleep";
 
-    panel.append(head, tabs, body, error, counter, compose, powered);
+    panel.append(head, body, error, counter, compose, powered);
     wrap.append(launcher, panel);
     this.root.append(style, wrap);
-    this.el = { launcher, panel, tabs, body, error, counter, compose, input, send };
+    this.el = { launcher, panel, tabs, body, error, counter, compose, input, send, restart };
     this.switchTab("chat");
   }
 
@@ -294,6 +349,7 @@ export class Widget {
   }
 
   private renderBody() {
+    this.el.restart.hidden = this.messages.length === 0;
     if (this.tab === "help") return this.renderHelp();
     const body = this.el.body;
     body.replaceChildren();
@@ -301,10 +357,12 @@ export class Widget {
     for (const message of this.messages) body.appendChild(this.renderMessage(message));
     if (this.waitingForReply && Date.now() - this.waitingForReply < TYPING_TIMEOUT_MS) {
       const typing = div("msg");
+      const main = div("msg-main");
       const dots = div("bubble typing");
       dots.innerHTML = "<span></span><span></span><span></span>";
       dots.setAttribute("aria-label", "Assistant is typing");
-      typing.appendChild(dots);
+      main.appendChild(dots);
+      typing.append(this.avatar("bot"), main);
       body.appendChild(typing);
     }
     body.scrollTop = body.scrollHeight;
@@ -313,8 +371,18 @@ export class Widget {
   private renderMessage(
     message: Pick<ChatMessage, "sender" | "body" | "author_name" | "a2ui" | "form_submitted">,
   ): HTMLElement {
+    if (message.sender === "system") {
+      const node = div("system");
+      const pill = document.createElement("span");
+      pill.textContent = message.body;
+      node.appendChild(pill);
+      return node;
+    }
     const mine = message.sender === "visitor";
-    const node = div(`msg${mine ? " me" : ""}`);
+    const row = div(`msg${mine ? " me" : ""}`);
+    const node = div("msg-main");
+    if (!mine) row.appendChild(this.avatar(message.sender, message.author_name));
+    row.appendChild(node);
     if (!mine) {
       const who = div("who");
       if (message.sender === "bot") {
@@ -342,7 +410,16 @@ export class Widget {
         );
       }
     }
-    return node;
+    return row;
+  }
+
+  /** A sparkle for the AI agent, initials for a teammate. */
+  private avatar(sender: ChatMessage["sender"], author = ""): HTMLElement {
+    const av = div("av");
+    av.setAttribute("aria-hidden", "true");
+    if (sender === "bot") av.innerHTML = ICONS.sparkle;
+    else av.textContent = initialsOf(author || this.config.name);
+    return av;
   }
 
   // --- help center ---
@@ -355,24 +432,27 @@ export class Widget {
     search.placeholder = "Search help articles";
     search.setAttribute("aria-label", "Search help articles");
     search.value = query;
-    const list = div("");
-    body.append(search, list);
+    const searchWrap = div("search-wrap");
+    searchWrap.innerHTML = ICONS.search;
+    searchWrap.appendChild(search);
+    const list = div("articles");
+    const empty = div("empty");
+    body.append(searchWrap, list, empty);
     let timer: ReturnType<typeof setTimeout>;
     const load = async (q: string) => {
       const rows = await this.api.articles(q).catch(() => []);
       list.replaceChildren();
-      if (!rows.length) {
-        const empty = div("empty");
-        empty.textContent = q ? "No articles match." : "No articles yet.";
-        list.appendChild(empty);
-      }
+      empty.textContent = rows.length ? "" : q ? "No articles match." : "No articles yet.";
       for (const row of rows) {
         const item = button("article-row", "", () => this.api.article(row.id).then((a) => this.showArticle(a)));
+        const txt = div("txt");
         const strong = document.createElement("strong");
         strong.textContent = row.title;
         const excerpt = document.createElement("span");
         excerpt.textContent = row.excerpt;
-        item.append(strong, excerpt);
+        txt.append(strong, excerpt);
+        item.appendChild(txt);
+        item.insertAdjacentHTML("beforeend", ICONS.chevronRight);
         list.appendChild(item);
       }
     };
@@ -386,7 +466,9 @@ export class Widget {
   private showArticle(article: { title: string; body: string }) {
     const body = this.el.body;
     body.replaceChildren();
-    const back = button("back", "← All articles", () => this.renderHelp());
+    const back = button("back", "", () => this.renderHelp());
+    back.innerHTML = ICONS.back;
+    back.append("All articles");
     const wrap = div("article");
     const h = document.createElement("h3");
     h.textContent = article.title;

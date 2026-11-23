@@ -32,27 +32,27 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings & widget" />
+      <PageHeader title="Settings & widget" description="Install the widget, brand it, and manage your team." />
       <div className="mx-auto max-w-3xl space-y-8 p-8">
-        <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold">Install the chat widget</h2>
-          <p className="text-sm text-gray-600">Paste this before <code>&lt;/body&gt;</code> on every page of your site.</p>
+        <section className="space-y-3 rounded-lg border bg-surface p-6 shadow-sm">
+          <h2 className="text-base font-bold tracking-tight">Install the chat widget</h2>
+          <p className="text-sm text-muted-foreground">Paste this before <code>&lt;/body&gt;</code> on every page of your site.</p>
           <div className="flex gap-2">
             <code className="block flex-1 overflow-x-auto rounded-lg bg-gray-900 p-3 text-xs whitespace-nowrap text-gray-100">{snippet}</code>
             <Button variant="secondary" onClick={() => navigator.clipboard.writeText(snippet).then(() => setMessage("Snippet copied."))}>
               <Copy size={15} /> Copy
             </Button>
           </div>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Signed-in users? Call <code>window.whileisleep.identify({"{ name, email }"})</code> so conversations show who they are.
           </p>
-          <a className="inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline" href={`/demo?key=${workspace.public_key}`} target="_blank">
+          <a className="inline-flex items-center gap-1 text-sm font-medium text-primary-text hover:underline" href={`/demo?key=${workspace.public_key}`} target="_blank">
             Open a test page with the widget <ExternalLink size={14} />
           </a>
         </section>
 
-        <form onSubmit={save} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold">Workspace</h2>
+        <form onSubmit={save} className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
+          <h2 className="text-base font-bold tracking-tight">Workspace</h2>
           <Field label="Name">
             <input className={inputClass} disabled={!owner} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </Field>
@@ -63,13 +63,13 @@ export default function SettingsPage() {
             <input className={inputClass} disabled={!owner} value={form.greeting} onChange={(e) => setForm({ ...form, greeting: e.target.value })} />
           </Field>
           <Field label="Widget color">
-            <input type="color" disabled={!owner} className="h-10 w-20 rounded border border-gray-300" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
+            <input type="color" disabled={!owner} className="h-10 w-20 rounded border border-border" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
           </Field>
           <ErrorText>{error}</ErrorText>
           {owner && (
             <div className="flex items-center gap-3">
               <Button>Save</Button>
-              <span className="text-sm text-green-700">{message}</span>
+              <span className="text-sm text-success">{message}</span>
             </div>
           )}
         </form>
@@ -100,15 +100,15 @@ function Members({ canEdit }: { canEdit: boolean }) {
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
-      <h2 className="text-lg font-semibold">Team</h2>
-      <ul className="divide-y divide-gray-100 text-sm">
+    <section className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
+      <h2 className="text-base font-bold tracking-tight">Team</h2>
+      <ul className="divide-y divide-border text-sm">
         {(data ?? []).map((m) => (
           <li key={m.user_id} className="flex justify-between py-2">
             <span>
-              {m.name} <span className="text-gray-500">{m.email}</span>
+              {m.name} <span className="text-muted-foreground">{m.email}</span>
             </span>
-            <span className="text-gray-500 capitalize">{m.role}</span>
+            <span className="text-muted-foreground capitalize">{m.role}</span>
           </li>
         ))}
       </ul>

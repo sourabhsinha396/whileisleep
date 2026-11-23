@@ -15,7 +15,7 @@ export default function AiPage() {
   const owner = workspace.role === "owner";
   return (
     <>
-      <PageHeader title="AI agent & tools" />
+      <PageHeader title="AI agent & tools" description="How the agent behaves, and the APIs it can call to look things up." />
       <div className="mx-auto max-w-4xl space-y-8 p-8">
         <AgentSettings key={workspace.id} canEdit={owner} />
         <Tools canEdit={owner} />
@@ -37,10 +37,10 @@ function AgentSettings({ canEdit }: { canEdit: boolean }) {
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
-      <h2 className="text-lg font-semibold">Agent</h2>
+    <section className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
+      <h2 className="text-base font-bold tracking-tight">Agent</h2>
       {!workspace.llm_ready && (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning">
           No LLM yet, so the agent only matches help articles by keyword and can&apos;t use tools.{" "}
           {workspace.is_organization_owner ? (
             <Link className="font-medium underline" href={`/w/${workspace.id}/organization`}>
@@ -67,7 +67,7 @@ function AgentSettings({ canEdit }: { canEdit: boolean }) {
       {canEdit && (
         <div className="flex items-center gap-3">
           <Button onClick={save}>Save</Button>
-          <span className="text-sm text-green-700">{saved}</span>
+          <span className="text-sm text-success">{saved}</span>
         </div>
       )}
     </section>
@@ -109,11 +109,11 @@ function Tools({ canEdit }: { canEdit: boolean }) {
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+    <section className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Tools (data connectors)</h2>
-          <p className="mt-1 text-sm text-gray-600">
+          <h2 className="text-base font-bold tracking-tight">Tools (data connectors)</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Endpoints on your own systems the agent calls for live data, like product search, stock or order status. It decides when to call
             them from the description, so say what each one returns and when to use it.
           </p>
@@ -125,19 +125,19 @@ function Tools({ canEdit }: { canEdit: boolean }) {
         )}
       </div>
 
-      <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+      <ul className="divide-y overflow-hidden rounded-lg border">
         <BuiltIn name="search_knowledge_base" text="Searches your published articles." />
         <BuiltIn name="handoff_to_human" text="Flags the conversation for your team and pauses the agent." />
         {(data ?? []).map((tool) => (
           <li key={tool.id} className="flex items-center gap-3 px-4 py-3">
-            <Plug size={16} className={tool.enabled ? "text-brand" : "text-gray-300"} />
+            <Plug size={16} className={tool.enabled ? "text-primary-text" : "text-muted-foreground/50"} />
             <div className="min-w-0 flex-1">
               <p className="font-mono text-sm font-semibold">{tool.name}</p>
-              <p className="truncate text-xs text-gray-500">
+              <p className="truncate text-xs text-muted-foreground">
                 {tool.method} {tool.url}
               </p>
             </div>
-            {!tool.enabled && <span className="text-xs text-gray-500">Off</span>}
+            {!tool.enabled && <span className="text-xs text-muted-foreground">Off</span>}
             {canEdit && (
               <Button variant="secondary" onClick={() => edit(tool)}>
                 Edit
@@ -164,13 +164,13 @@ function Tools({ canEdit }: { canEdit: boolean }) {
 
 function BuiltIn({ name, text }: { name: string; text: string }) {
   return (
-    <li className="flex items-center gap-3 bg-gray-50/60 px-4 py-3">
-      <Plug size={16} className="text-green-600" />
+    <li className="flex items-center gap-3 bg-muted/60 px-4 py-3">
+      <Plug size={16} className="text-success" />
       <div className="flex-1">
         <p className="font-mono text-sm font-semibold">{name}</p>
-        <p className="text-xs text-gray-500">{text}</p>
+        <p className="text-xs text-muted-foreground">{text}</p>
       </div>
-      <span className="text-xs text-gray-500">Built in</span>
+      <span className="text-xs text-muted-foreground">Built in</span>
     </li>
   );
 }
@@ -233,7 +233,7 @@ function ToolEditor({ initial, base, onClose, onSaved }: { initial: ToolDraft; b
   const setInput = (i: number, patch: Partial<InputRow>) => setD({ ...d, inputs: d.inputs.map((row, j) => (i === j ? { ...row, ...patch } : row)) });
 
   return (
-    <div className="space-y-4 rounded-xl border border-brand/30 bg-brand-soft/30 p-5">
+    <div className="space-y-4 rounded-lg border border-primary/30 bg-primary-soft/40 shadow-sm p-5">
       <h3 className="font-semibold">{d.id ? `Edit ${initial.name}` : "New tool"}</h3>
       <div className="grid grid-cols-2 gap-4">
         <Field label="Name" hint="Lowercase with underscores, e.g. search_products.">
@@ -262,11 +262,11 @@ function ToolEditor({ initial, base, onClose, onSaved }: { initial: ToolDraft; b
           <input className={clsx(inputClass, "font-mono")} placeholder="https://api.example.com/products" value={d.url} onChange={(e) => setD({ ...d, url: e.target.value })} />
         </Field>
       </div>
-      {missing.length > 0 && <p className="text-sm text-amber-700">Add an input named {missing.join(", ")} for the URL placeholder.</p>}
+      {missing.length > 0 && <p className="text-sm text-warning">Add an input named {missing.join(", ")} for the URL placeholder.</p>}
 
       <div>
         <p className="mb-1 text-sm font-medium">Inputs the agent fills</p>
-        <p className="mb-2 text-xs text-gray-500">{d.method === "GET" ? "Sent as query parameters" : "Sent as a JSON body"}, except those used in the URL.</p>
+        <p className="mb-2 text-xs text-muted-foreground">{d.method === "GET" ? "Sent as query parameters" : "Sent as a JSON body"}, except those used in the URL.</p>
         {d.inputs.map((row, i) => (
           <div key={i} className="mb-2 grid grid-cols-[140px_110px_1fr_auto_auto] items-center gap-2">
             <input aria-label="Input name" className={clsx(inputClass, "font-mono")} placeholder="q" value={row.name} onChange={(e) => setInput(i, { name: e.target.value })} />
@@ -280,7 +280,7 @@ function ToolEditor({ initial, base, onClose, onSaved }: { initial: ToolDraft; b
             <label className="flex items-center gap-1 text-xs">
               <input type="checkbox" checked={row.required} onChange={(e) => setInput(i, { required: e.target.checked })} /> required
             </label>
-            <button aria-label="Remove input" className="text-gray-400 hover:text-red-600" onClick={() => setD({ ...d, inputs: d.inputs.filter((_, j) => j !== i) })}>
+            <button aria-label="Remove input" className="text-muted-foreground hover:text-danger" onClick={() => setD({ ...d, inputs: d.inputs.filter((_, j) => j !== i) })}>
               <Trash2 size={16} />
             </button>
           </div>
@@ -292,7 +292,7 @@ function ToolEditor({ initial, base, onClose, onSaved }: { initial: ToolDraft; b
 
       <div>
         <p className="mb-1 text-sm font-medium">Headers (secret)</p>
-        <p className="mb-2 text-xs text-gray-500">
+        <p className="mb-2 text-xs text-muted-foreground">
           For API keys. Never shown to visitors or the AI.
           {d.savedHeaderNames?.length ? ` Saved: ${d.savedHeaderNames.join(", ")}. Leave empty to keep them; adding any replaces them all.` : ""}
         </p>
@@ -300,7 +300,7 @@ function ToolEditor({ initial, base, onClose, onSaved }: { initial: ToolDraft; b
           <div key={i} className="mb-2 grid grid-cols-[200px_1fr_auto] gap-2">
             <input aria-label="Header name" className={clsx(inputClass, "font-mono")} placeholder="Authorization" value={h.key} onChange={(e) => setD({ ...d, headers: d.headers.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)) })} />
             <input aria-label="Header value" type="password" className={inputClass} placeholder="Bearer …" value={h.value} onChange={(e) => setD({ ...d, headers: d.headers.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)) })} />
-            <button aria-label="Remove header" className="text-gray-400 hover:text-red-600" onClick={() => setD({ ...d, headers: d.headers.filter((_, j) => j !== i) })}>
+            <button aria-label="Remove header" className="text-muted-foreground hover:text-danger" onClick={() => setD({ ...d, headers: d.headers.filter((_, j) => j !== i) })}>
               <Trash2 size={16} />
             </button>
           </div>
@@ -323,7 +323,7 @@ function ToolEditor({ initial, base, onClose, onSaved }: { initial: ToolDraft; b
         )}
       </div>
 
-      <div className="space-y-2 border-t border-brand/20 pt-4">
+      <div className="space-y-2 border-t border-primary/20 pt-4">
         <p className="text-sm font-medium">Try it</p>
         <div className="flex gap-2">
           <input aria-label="Test inputs as JSON" className={clsx(inputClass, "font-mono")} value={testInputs} onChange={(e) => setTestInputs(e.target.value)} />
@@ -332,7 +332,7 @@ function ToolEditor({ initial, base, onClose, onSaved }: { initial: ToolDraft; b
           </Button>
         </div>
         {testResult && (
-          <pre className={clsx("max-h-64 overflow-auto rounded-lg p-3 text-xs whitespace-pre-wrap", testResult.is_error ? "bg-red-50 text-red-800" : "bg-white text-gray-800")}>
+          <pre className={clsx("max-h-64 overflow-auto rounded-lg p-3 text-xs whitespace-pre-wrap", testResult.is_error ? "bg-danger-soft text-danger" : "bg-surface text-foreground")}>
             {testResult.result}
           </pre>
         )}

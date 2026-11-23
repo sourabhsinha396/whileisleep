@@ -91,6 +91,11 @@ export class WidgetApi {
     return data;
   }
 
+  /** Starts a new chat for this visitor; the old one stays in the team's inbox. */
+  restart() {
+    return this.call<{ ok: boolean }>("/restart", { method: "POST" });
+  }
+
   messages(after: number) {
     return this.call<MessagesResponse>(`/messages?after=${after}`);
   }

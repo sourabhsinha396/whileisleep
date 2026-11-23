@@ -42,35 +42,32 @@ export default function KnowledgePage() {
 
   return (
     <>
-      <PageHeader title="Knowledge base">
+      <PageHeader title="Knowledge base" description="Articles show in the widget's Help tab, and the AI agent searches them to answer questions.">
         <Button onClick={() => setDraft({ title: "", body: "", published: true })}>
           <Plus size={16} /> New article
         </Button>
       </PageHeader>
       <div className="grid grid-cols-[320px_1fr] gap-6 p-8">
         <div className="space-y-2">
-          <p className="text-sm text-gray-600">
-            Articles show in the widget&apos;s Help tab, and the AI agent searches them to answer questions.
-          </p>
           {(data ?? []).map((a) => (
             <button
               key={a.id}
               onClick={() => setDraft(a)}
               className={clsx(
-                "block w-full rounded-xl border bg-white p-3 text-left",
-                draft?.id === a.id ? "border-brand ring-2 ring-brand/15" : "border-gray-200 hover:border-gray-300",
+                "block w-full rounded-lg border bg-surface p-3 text-left shadow-sm transition-colors",
+                draft?.id === a.id ? "border-primary ring-2 ring-ring/30" : "hover:border-primary/40",
               )}
             >
               <span className="block font-medium">{a.title}</span>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 {a.published ? "Published" : "Draft"} · updated {ago(a.updated_at)} ago
               </span>
             </button>
           ))}
-          {data?.length === 0 && <p className="text-sm text-gray-500">No articles yet.</p>}
+          {data?.length === 0 && <p className="text-sm text-muted-foreground">No articles yet.</p>}
         </div>
         {draft ? (
-          <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+          <div className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
             <Field label="Title">
               <input className={inputClass} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
             </Field>
@@ -92,7 +89,7 @@ export default function KnowledgePage() {
             </div>
           </div>
         ) : (
-          <div className="grid place-items-center rounded-xl border border-dashed border-gray-300 p-10 text-sm text-gray-500">
+          <div className="grid place-items-center rounded-lg border border-dashed p-10 text-sm text-muted-foreground">
             Pick an article or create a new one.
           </div>
         )}

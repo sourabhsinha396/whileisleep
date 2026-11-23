@@ -110,3 +110,26 @@ def test_visitor_messages_are_capped_at_500_characters():
     too_long = widget.post(f"/widget/{workspace.public_key}/messages", {"body": "x" * 501})
     assert too_long.status_code == 422
     assert too_long.json()["detail"][0]["type"] == "string_too_long"
+
+
+def test_restart_starts_a_new_chat_and_keeps_the_old_one():
+    workspace = WorkspaceFactory(ai_enabled=False)
+    widget = start(workspace)
+    base = f"/widget/{workspace.public_key}"
+    widget.post(f"{base}/messages", {"body": "First question"})
+    old = Conversation.objects.get()
+
+    assert widget.post(f"{base}/restart", {}).status_code == 200
+    empty = widget.get(f"{base}/messages").json()
+    assert empty["conversation_id"] is None and empty["messages"] == []
+    assert widget.post(f"{base}/session", {}).json()["conversation_id"] is None
+
+    sent = widget.post(f"{base}/messages", {"body": "Second question"}).json()
+    assert sent["conversation_id"] != old.id
+    assert [m["body"] for m in widget.get(f"{base}/messages").json()["messages"]] == ["Second question"]
+    assert Conversation.objects.count() == 2
+
+
+def test_restart_needs_a_visitor():
+    workspace = WorkspaceFactory()
+    assert Api().post(f"/widget/{workspace.public_key}/restart", {}).status_code == 401

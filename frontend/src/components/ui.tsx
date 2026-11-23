@@ -1,19 +1,28 @@
+"use client";
+
 import clsx from "clsx";
+import { Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import { initials } from "@/lib/format";
+
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "success";
 
 export function Button({
   variant = "primary",
+  size = "md",
   className,
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "ghost" | "danger" }) {
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: "sm" | "md" }) {
   return (
     <button
       className={clsx(
-        "inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition disabled:opacity-50",
-        variant === "primary" && "bg-brand text-white hover:bg-brand/90",
-        variant === "secondary" && "border border-gray-300 bg-white hover:bg-gray-50",
-        variant === "ghost" && "hover:bg-gray-100",
-        variant === "danger" && "border border-red-200 bg-white text-red-700 hover:bg-red-50",
+        "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-50",
+        size === "md" ? "px-4 py-2 text-sm" : "px-3 py-1.5 text-xs",
+        variant === "primary" && "bg-primary text-primary-foreground hover:bg-primary-hover",
+        variant === "success" && "bg-success text-white hover:bg-success/90",
+        variant === "secondary" && "border bg-surface hover:bg-muted",
+        variant === "ghost" && "text-muted-foreground hover:bg-muted hover:text-foreground",
+        variant === "danger" && "border border-danger/30 bg-surface text-danger hover:bg-danger-soft",
         className,
       )}
       {...props}
@@ -22,25 +31,108 @@ export function Button({
 }
 
 export const inputClass =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15";
+  "block w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60";
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+export function Field({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-gray-800">{label}</span>
+      <span className="mb-1.5 block text-sm font-medium">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-gray-500">{hint}</span>}
+      {hint && <span className="mt-1.5 block text-xs text-muted-foreground">{hint}</span>}
     </label>
   );
 }
 
-export function Avatar({ name, online, size = 40 }: { name: string; online?: boolean; size?: number }) {
+/** A bordered panel: the building block of every settings page. */
+export function Card({
+  title,
+  description,
+  actions,
+  className,
+  children,
+}: {
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  actions?: React.ReactNode;
+  className?: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <span className="relative inline-grid shrink-0 place-items-center rounded-full bg-indigo-100 font-semibold text-indigo-700" style={{ width: size, height: size, fontSize: size * 0.36 }}>
+    <section className={clsx("rounded-lg border bg-surface p-6 shadow-sm", className)}>
+      {(title || actions) && (
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            {title && <h2 className="flex items-center gap-2 text-base font-bold tracking-tight">{title}</h2>}
+            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+          </div>
+          {actions}
+        </div>
+      )}
+      <div className="space-y-4">{children}</div>
+    </section>
+  );
+}
+
+type Tone = "neutral" | "primary" | "success" | "warning" | "danger";
+
+export function Badge({ tone = "neutral", className, ...props }: React.HTMLAttributes<HTMLSpanElement> & { tone?: Tone }) {
+  return (
+    <span
+      className={clsx(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap",
+        tone === "neutral" && "bg-muted text-muted-foreground",
+        tone === "primary" && "bg-primary-soft text-primary-text",
+        tone === "success" && "bg-success-soft text-success",
+        tone === "warning" && "bg-warning-soft text-warning",
+        tone === "danger" && "bg-danger-soft text-danger",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function Notice({ tone = "warning", children }: { tone?: "warning" | "danger" | "success" | "primary"; children: React.ReactNode }) {
+  return (
+    <p
+      role={tone === "danger" ? "alert" : "status"}
+      className={clsx(
+        "rounded-md px-3 py-2.5 text-sm",
+        tone === "warning" && "bg-warning-soft text-warning",
+        tone === "danger" && "bg-danger-soft text-danger",
+        tone === "success" && "bg-success-soft text-success",
+        tone === "primary" && "bg-primary-soft text-primary-text",
+      )}
+    >
+      {children}
+    </p>
+  );
+}
+
+/** A soft-coloured disc whose hue is stable for a given name. */
+export function Avatar({ name, online, size = 40 }: { name: string; online?: boolean; size?: number }) {
+  let hash = 0;
+  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+  const hue = Math.abs(hash) % 360;
+  return (
+    <span
+      className="relative inline-grid shrink-0 place-items-center rounded-full font-bold"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.36,
+        background: `oklch(0.9 0.06 ${hue})`,
+        color: `oklch(0.38 0.1 ${hue})`,
+      }}
+    >
       {initials(name)}
       {online !== undefined && (
         <span
-          className={clsx("absolute right-0 bottom-0 h-3 w-3 rounded-full border-2 border-white", online ? "bg-green-500" : "bg-gray-300")}
+          className={clsx(
+            "absolute -right-0.5 -bottom-0.5 rounded-full border-2 border-surface",
+            online ? "bg-success" : "bg-muted-foreground/40",
+          )}
+          style={{ width: Math.max(10, size * 0.3), height: Math.max(10, size * 0.3) }}
           aria-label={online ? "Online" : "Offline"}
         />
       )}
@@ -48,16 +140,112 @@ export function Avatar({ name, online, size = 40 }: { name: string; online?: boo
   );
 }
 
-export function PageHeader({ title, children }: { title: string; children?: React.ReactNode }) {
+export function PageHeader({ title, description, children }: { title: string; description?: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between border-b border-gray-200 bg-white px-8 py-5">
-      <h1 className="text-xl font-semibold">{title}</h1>
-      <div className="flex gap-2">{children}</div>
+    <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b bg-background/90 px-8 py-5 backdrop-blur">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight">{title}</h1>
+        {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
+      </div>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
+
+/** Pill tabs, e.g. Online now / Last 7 days. */
+export function Segmented<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: React.ReactNode }[]; onChange: (v: T) => void }) {
+  return (
+    <div className="inline-flex rounded-full border bg-muted p-0.5 text-sm">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          className={clsx(
+            "rounded-full px-3.5 py-1.5 font-medium transition-colors",
+            value === o.value ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function EmptyState({ icon: Icon, title, children }: { icon?: React.ComponentType<{ className?: string }>; title: string; children?: React.ReactNode }) {
+  return (
+    <div className="grid place-items-center rounded-lg border border-dashed p-10 text-center">
+      {Icon && (
+        <span className="mb-3 grid size-11 place-items-center rounded-full bg-primary-soft text-primary-text">
+          <Icon className="size-5" />
+        </span>
+      )}
+      <p className="font-semibold">{title}</p>
+      {children && <div className="mt-1 max-w-sm text-sm text-muted-foreground">{children}</div>}
     </div>
   );
 }
 
 export function ErrorText({ children }: { children?: React.ReactNode }) {
   if (!children) return null;
-  return <p className="text-sm text-red-700">{children}</p>;
+  return (
+    <p role="alert" className="text-sm text-danger">
+      {children}
+    </p>
+  );
+}
+
+/** The whileisleep mark: a crescent moon tucked into a chat bubble. Drawn in currentColor. */
+export function LogoMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" className={className} aria-hidden>
+      <path
+        d="M6 8.5A4.5 4.5 0 0 1 10.5 4h11A4.5 4.5 0 0 1 26 8.5v9a4.5 4.5 0 0 1-4.5 4.5H14l-5.4 4.3c-.66.52-1.6.05-1.6-.78V22A4.5 4.5 0 0 1 6 17.5z"
+        fill="currentColor"
+        opacity="0.18"
+      />
+      <path d="M19.2 8.6a5.6 5.6 0 1 0 2.6 9.7 4.6 4.6 0 0 1-2.6-9.7z" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function Logo({ className }: { className?: string }) {
+  return (
+    <span className={clsx("flex items-center gap-2", className)}>
+      <LogoMark className="size-8 text-primary-text" />
+      <span className="text-[17px] leading-none font-bold tracking-tight">whileisleep</span>
+    </span>
+  );
+}
+
+/** Light or dark. Both icons render and CSS picks one, so there is no hydration flash. */
+export function ThemeToggle({ className }: { className?: string }) {
+  const { resolvedTheme, setTheme } = useTheme();
+  return (
+    <button
+      type="button"
+      aria-label="Toggle dark mode"
+      title="Toggle dark mode"
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      className={clsx(
+        "grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+        className,
+      )}
+    >
+      <Moon className="size-[18px] dark:hidden" />
+      <Sun className="hidden size-[18px] dark:block" />
+    </button>
+  );
+}
+
+export function Spinner({ label = "Loading…" }: { label?: string }) {
+  return (
+    <div className="grid h-full min-h-40 place-items-center">
+      <span className="flex items-center gap-3 text-sm text-muted-foreground">
+        <span className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        {label}
+      </span>
+    </div>
+  );
 }

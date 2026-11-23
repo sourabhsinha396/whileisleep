@@ -1,9 +1,17 @@
 "use client";
 
+import { Bot, BookOpen, Inbox, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button, ErrorText, Field, inputClass } from "@/components/ui";
+import { Button, ErrorText, Field, inputClass, Logo, ThemeToggle } from "@/components/ui";
 import { api, setToken, type User } from "@/lib/api";
+
+const POINTS = [
+  { icon: Bot, title: "An AI agent that answers from your data", text: "Help articles, your own APIs and playbooks, with a person one click away." },
+  { icon: Inbox, title: "One shared inbox", text: "Live visitors, conversations and internal notes for the whole team." },
+  { icon: BookOpen, title: "A help center in the widget", text: "Visitors find answers themselves before they ever ask." },
+  { icon: Zap, title: "Rules that route the rest", text: "Tag, hand off and reply automatically by intent, keywords or page." },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,44 +37,78 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center p-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-        <div>
-          <p className="text-lg font-bold">
-            <span className="text-brand">while</span>isleep
-          </p>
-          <h1 className="mt-4 text-xl font-semibold">{mode === "login" ? "Log in" : "Create your account"}</h1>
+    <main className="grid min-h-screen lg:grid-cols-[1fr_1.1fr]">
+      <section className="relative hidden flex-col justify-between overflow-hidden bg-primary p-12 text-primary-foreground lg:flex">
+        <div className="pointer-events-none absolute -top-32 -right-32 size-96 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-40 -left-20 size-96 rounded-full bg-white/10 blur-3xl" />
+        <span className="relative flex items-center gap-2 text-lg font-bold tracking-tight">
+          <span className="grid size-9 place-items-center rounded-lg bg-white/15">🌙</span>
+          whileisleep
+        </span>
+        <div className="relative max-w-md">
+          <h2 className="text-3xl leading-tight font-bold tracking-tight">Customer chat that keeps answering while you sleep.</h2>
+          <ul className="mt-10 space-y-6">
+            {POINTS.map(({ icon: Icon, title, text }) => (
+              <li key={title} className="flex gap-4">
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-white/15">
+                  <Icon size={19} />
+                </span>
+                <span>
+                  <span className="block font-semibold">{title}</span>
+                  <span className="mt-0.5 block text-sm text-white/75">{text}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
-        {mode === "signup" && (
-          <Field label="Name">
-            <input className={inputClass} required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          </Field>
-        )}
-        <Field label="Email">
-          <input className={inputClass} type="email" required autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        </Field>
-        <Field label="Password" hint={mode === "signup" ? "At least 8 characters." : undefined}>
-          <input
-            className={inputClass}
-            type="password"
-            required
-            minLength={mode === "signup" ? 8 : undefined}
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
-        </Field>
-        <ErrorText>{error}</ErrorText>
-        <Button className="w-full" disabled={busy}>
-          {busy ? "…" : mode === "login" ? "Log in" : "Sign up"}
-        </Button>
-        <p className="text-center text-sm text-gray-600">
-          {mode === "login" ? "New here? " : "Have an account? "}
-          <button type="button" className="font-medium text-brand" onClick={() => setMode(mode === "login" ? "signup" : "login")}>
-            {mode === "login" ? "Create an account" : "Log in"}
-          </button>
-        </p>
-      </form>
+        <p className="relative text-xs text-white/60">Open source. Self-host it, bring your own LLM.</p>
+      </section>
+
+      <section className="flex flex-col bg-background px-6 py-8">
+        <div className="flex items-center justify-between">
+          <Logo className="lg:invisible" />
+          <ThemeToggle />
+        </div>
+        <div className="flex flex-1 items-center justify-center py-10">
+          <form onSubmit={submit} className="w-full max-w-sm space-y-5">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">{mode === "login" ? "Welcome back" : "Create your account"}</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {mode === "login" ? "Log in to your inbox." : "Set up your first workspace in a minute."}
+              </p>
+            </div>
+            {mode === "signup" && (
+              <Field label="Name">
+                <input className={inputClass} required autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              </Field>
+            )}
+            <Field label="Email">
+              <input className={inputClass} type="email" required autoComplete="email" placeholder="you@company.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            </Field>
+            <Field label="Password" hint={mode === "signup" ? "At least 8 characters." : undefined}>
+              <input
+                className={inputClass}
+                type="password"
+                required
+                minLength={mode === "signup" ? 8 : undefined}
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+              />
+            </Field>
+            <ErrorText>{error}</ErrorText>
+            <Button className="w-full py-3" disabled={busy}>
+              {busy ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}
+            </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              {mode === "login" ? "New here? " : "Have an account? "}
+              <button type="button" className="font-semibold text-primary-text hover:underline" onClick={() => setMode(mode === "login" ? "signup" : "login")}>
+                {mode === "login" ? "Create an account" : "Log in"}
+              </button>
+            </p>
+          </form>
+        </div>
+      </section>
     </main>
   );
 }

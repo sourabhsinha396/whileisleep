@@ -5,6 +5,7 @@ with the `X-Visitor-Token` header that POST /session hands out.
 """
 
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
 
@@ -81,6 +82,16 @@ def session(request, key: str, payload: WidgetSessionIn):
         "conversation_id": conversation.id if conversation else None,
         "last_message_id": last.id if last else None,
     }
+
+
+@router.post("/{key}/restart", response=dict)
+def restart(request, key: str):
+    """Start a new chat. The old conversation stays in the inbox; the widget just stops showing it."""
+    workspace = get_workspace(key)
+    visitor = get_visitor(request, workspace)
+    visitor.chat_cleared_at = timezone.now()
+    visitor.save(update_fields=["chat_cleared_at"])
+    return {"ok": True}
 
 
 @router.get("/{key}/messages", response=WidgetMessagesOut)

@@ -1,0 +1,81 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { PricingPlans } from "@/components/landing/pricing-plans";
+import { Logo, ThemeToggle } from "@/components/ui";
+
+export const metadata: Metadata = {
+  title: "Pricing",
+  description: "Self-host whileisleep for free, or let us host it from $1 a month. Your AI runs on your own key, with no markup.",
+};
+
+const QUESTIONS = [
+  {
+    q: "What does the AI cost?",
+    a: "You add your own OpenRouter key and pick a model, so you pay your provider directly, at their price. We add nothing on top. Rules and help center answers don't call the model at all.",
+  },
+  {
+    q: "Is the cloud version the same software?",
+    a: "Yes. It's the same open-source code you can run yourself, hosted, updated and backed up by us.",
+  },
+  {
+    q: "Why is it so cheap?",
+    a: "It's our launch price for the first customers.",
+  },
+];
+
+export default function PricingPage() {
+  return (
+    <div className="min-h-screen overflow-x-hidden">
+      <header className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6">
+        <Link href="/" className="rounded" aria-label="whileisleep home">
+          <Logo />
+        </Link>
+        <nav className="flex items-center gap-1 sm:gap-2">
+          <ThemeToggle />
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
+          >
+            Log in
+          </Link>
+        </nav>
+      </header>
+
+      <main className="px-4 pt-8 pb-20 sm:px-6 lg:pt-14">
+        <div className="mx-auto max-w-2xl text-center">
+          <h1 className="text-4xl leading-[1.08] font-extrabold tracking-tight text-balance sm:text-5xl">
+            Pay for the inbox, <span className="text-primary-text">not for every answer</span>
+          </h1>
+          <p className="mt-5 text-lg text-muted-foreground">
+            Your AI runs on your own key, at your provider&apos;s price. Host it yourself for free, or let us run it.
+          </p>
+        </div>
+
+        <div className="mt-12">
+          <PricingPlans />
+        </div>
+
+        <section aria-labelledby="questions" className="mx-auto mt-20 max-w-2xl">
+          <h2 id="questions" className="text-2xl font-bold tracking-tight">
+            Questions
+          </h2>
+          <dl className="mt-6 divide-y border-y">
+            {QUESTIONS.map(({ q, a }) => (
+              <div key={q} className="py-5">
+                <dt className="font-semibold">{q}</dt>
+                <dd className="mt-1.5 text-muted-foreground">{a}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      </main>
+
+      <footer className="border-t">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted-foreground sm:px-6">
+          <Logo />
+          <span>Open source. Self-host it, bring your own LLM. Get some sleep.</span>
+        </div>
+      </footer>
+    </div>
+  );
+}

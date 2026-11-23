@@ -1,6 +1,7 @@
 import { renderSurface } from "@/lib/a2ui/render";
 import { applyMessages, type ActionEvent } from "@/lib/a2ui/surface";
-import { WidgetApi, type ChatMessage, type Identity, type Intent, type WidgetConfig } from "./api";
+import { openLiveStream, throttle, type LiveStream } from "@/lib/live-stream";
+import { WidgetApi, type ChatMessage, type Identity, type Intent, type StreamEvent, type WidgetConfig } from "./api";
 import { styles } from "./styles";
 import { counterText } from "./limits";
 import { formatText } from "./text";
@@ -26,10 +27,13 @@ function initialsOf(name: string): string {
   return ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
+// Polling is the fallback for when the live stream is down.
 const POLL_OPEN_MS = 2500;
 const POLL_CLOSED_MS = 15000;
-const HEARTBEAT_MS = 20000;
 const TYPING_TIMEOUT_MS = 45000;
+// The visitor's typing goes to the team at most this often; a teammate's shows this long.
+const TYPING_SEND_MS = 3000;
+const AGENT_TYPING_MS = 6000;
 
 type Tab = "chat" | "help";
 
@@ -47,6 +51,14 @@ export class Widget {
   // Surfaces whose buttons were used; they render disabled so they can't fire twice.
   private usedSurfaces = new Set<string>();
   private pollTimer?: ReturnType<typeof setTimeout>;
+  // The live stream; while it is connected the widget doesn't poll.
+  private stream?: LiveStream;
+  private live = false;
+  // What the AI is doing ("Searching the help center"), and a teammate typing.
+  private botStatus = "";
+  private agentTyping: { name: string; until: number } | null = null;
+  private agentTypingTimer?: ReturnType<typeof setTimeout>;
+  private sendTyping = throttle(() => this.api.typing().catch(() => {}), TYPING_SEND_MS);
   // Label from open(message, intent), sent with the next message unless the visitor clears the box.
   private pendingIntent?: Intent;
   private el: { [name: string]: HTMLElement } = {};
@@ -73,8 +85,52 @@ export class Widget {
     // Replies already in the chat when the page loads aren't news; only later ones ring.
     this.recordChimed(this.lastId);
     for (const type of ["pointerdown", "keydown"]) document.addEventListener(type, unlockAudio, { capture: true, passive: true });
+    // Polls until the stream connects; the open stream also keeps the visitor online.
     this.schedulePoll();
-    setInterval(() => this.api.session().catch(() => {}), HEARTBEAT_MS);
+    this.connect();
+  }
+
+  /** (Re)opens the live stream, e.g. after identify() switched to another visitor. */
+  private connect() {
+    this.stream?.close();
+    this.live = false;
+    this.stream = openLiveStream({
+      url: this.api.streamUrl,
+      headers: () => this.api.streamHeaders(),
+      // Anything newer than what we show is sent first, so nothing is lost across a reconnect.
+      lastEventId: () => this.lastId,
+      onEvent: (event) => this.onStreamEvent(event as StreamEvent),
+      onLive: (live) => {
+        this.live = live;
+        if (live) clearTimeout(this.pollTimer);
+        else this.schedulePoll();
+      },
+    });
+  }
+
+  private onStreamEvent({ event, data }: StreamEvent) {
+    if (event === "message") {
+      const before = this.lastId;
+      this.merge([data.message]);
+      if (this.lastId === before) return;
+      this.chime([data.message]);
+      if (this.open) this.markSeen();
+      this.renderBadge();
+    } else if (event === "conversation") {
+      this.humanRequested = data.human_requested;
+      return;
+    } else if (event === "status") {
+      this.botStatus = data.text;
+      // A reply is on its way, even if this page didn't send the question.
+      if (data.text && !this.waitingForReply) this.waitingForReply = Date.now();
+    } else if (event === "typing" && data.sender === "agent") {
+      this.agentTyping = { name: data.name, until: Date.now() + AGENT_TYPING_MS };
+      clearTimeout(this.agentTypingTimer);
+      this.agentTypingTimer = setTimeout(() => this.tab === "chat" && this.renderBody(), AGENT_TYPING_MS + 50);
+    } else {
+      return;
+    }
+    if (this.tab === "chat") this.renderBody();
   }
 
   // --- public API (window.whileisleep) ---
@@ -113,6 +169,7 @@ export class Widget {
       this.recordChimed(this.lastId);
       this.renderBody();
       this.renderBadge();
+      this.connect();
     }
   }
 
@@ -124,6 +181,7 @@ export class Widget {
     await this.api.session();
     this.renderBody();
     this.renderBadge();
+    this.connect();
   }
 
   /** Clears the chat and starts a new conversation as the same visitor.
@@ -151,6 +209,8 @@ export class Widget {
     this.lastId = this.seenId = 0;
     this.humanRequested = false;
     this.waitingForReply = 0;
+    this.botStatus = "";
+    this.agentTyping = null;
     this.usedSurfaces.clear();
   }
 
@@ -162,7 +222,7 @@ export class Widget {
     if (this.open) {
       this.markSeen();
       this.renderBody();
-      this.poll(true);
+      if (!this.live) this.poll(true);
       (this.el.input as HTMLTextAreaElement).focus();
     }
     this.renderBadge();
@@ -242,6 +302,7 @@ export class Widget {
     send.setAttribute("aria-label", "Send");
     input.addEventListener("input", () => {
       if (!input.value.trim()) this.pendingIntent = undefined;
+      else this.sendTyping();
       counter.textContent = counterText(input.value.length, max);
       counter.classList.toggle("full", input.value.length >= max);
     });
@@ -290,7 +351,7 @@ export class Widget {
         this.waitingForReply = Date.now();
       }
       this.renderBody();
-      this.poll(true);
+      if (!this.live) this.poll(true);
     } catch (error) {
       input.value = body;
       this.el.error.textContent = `Couldn't send: ${(error as Error).message}`;
@@ -304,7 +365,12 @@ export class Widget {
       if (message.id <= this.lastId) continue;
       this.messages.push(message);
       this.lastId = message.id;
-      if (message.sender !== "visitor") this.waitingForReply = 0;
+      if (message.sender !== "visitor") {
+        // The reply is here: no more dots, status or "is typing".
+        this.waitingForReply = 0;
+        this.botStatus = "";
+        this.agentTyping = null;
+      }
     }
   }
 
@@ -326,6 +392,7 @@ export class Widget {
 
   private schedulePoll() {
     clearTimeout(this.pollTimer);
+    if (this.live) return;
     this.pollTimer = setTimeout(() => this.poll(true), this.open ? POLL_OPEN_MS : POLL_CLOSED_MS);
   }
 
@@ -382,17 +449,30 @@ export class Widget {
     body.replaceChildren();
     body.appendChild(this.renderMessage({ sender: "bot", body: this.config.greeting, author_name: "", a2ui: null }));
     for (const message of this.messages) body.appendChild(this.renderMessage(message));
-    if (this.waitingForReply && Date.now() - this.waitingForReply < TYPING_TIMEOUT_MS) {
-      const typing = div("msg");
-      const main = div("msg-main");
-      const dots = div("bubble typing");
-      dots.innerHTML = "<span></span><span></span><span></span>";
-      dots.setAttribute("aria-label", "Assistant is typing");
-      main.appendChild(dots);
-      typing.append(this.avatar("bot"), main);
-      body.appendChild(typing);
-    }
+    const activity = this.activity();
+    if (activity) body.appendChild(activity);
     body.scrollTop = body.scrollHeight;
+  }
+
+  /** Dots while a reply is coming: the AI's current step, or a teammate typing. */
+  private activity(): HTMLElement | null {
+    const teammate = this.agentTyping && this.agentTyping.until > Date.now() ? this.agentTyping : null;
+    const waiting = this.waitingForReply && Date.now() - this.waitingForReply < TYPING_TIMEOUT_MS;
+    if (!teammate && !this.botStatus && !waiting) return null;
+    const label = teammate && !this.botStatus ? `${teammate.name || this.config.name} is typing` : this.botStatus;
+    const row = div("msg");
+    const main = div("msg-main");
+    const dots = div("bubble typing");
+    dots.innerHTML = "<span></span><span></span><span></span>";
+    dots.setAttribute("aria-label", label || "Assistant is typing");
+    main.appendChild(dots);
+    if (label) {
+      const line = div("activity");
+      line.textContent = label;
+      main.appendChild(line);
+    }
+    row.append(teammate && !this.botStatus ? this.avatar("agent", teammate.name) : this.avatar("bot"), main);
+    return row;
   }
 
   private renderMessage(

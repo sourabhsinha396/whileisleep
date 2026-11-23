@@ -87,6 +87,7 @@ button { font: inherit; }
 .typing { display: inline-flex; gap: 4px; padding: 14px 16px; }
 .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--od-muted); animation: od-blink 1.2s infinite; }
 .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
+.activity { font-size: 11.5px; color: var(--od-muted); margin: 4px 4px 0; }
 @keyframes od-blink { 0%, 80%, 100% { opacity: .25; transform: none; } 40% { opacity: 1; transform: translateY(-2px); } }
 
 /* Composer */

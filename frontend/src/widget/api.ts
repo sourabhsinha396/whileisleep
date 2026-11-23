@@ -21,6 +21,13 @@ export interface ChatMessage {
   created_at: string;
 }
 
+/** What the live stream sends (apps/realtime on the server). */
+export type StreamEvent =
+  | { event: "message"; data: { conversation_id: number; message: ChatMessage } }
+  | { event: "conversation"; data: { id: number; human_requested: boolean } }
+  | { event: "status"; data: { conversation_id: number; text: string } }
+  | { event: "typing"; data: { conversation_id: number; sender: "agent" | "visitor"; name: string } };
+
 export interface MessagesResponse {
   conversation_id: number | null;
   human_requested: boolean;
@@ -117,6 +124,20 @@ export class WidgetApi {
 
   messages(after: number) {
     return this.call<MessagesResponse>(`/messages?after=${after}`);
+  }
+
+  /** The live stream (server-sent events); read with lib/live-stream, token in the header. */
+  get streamUrl() {
+    return `${this.base}/stream`;
+  }
+
+  streamHeaders(): Record<string, string> {
+    return this.token ? { "X-Visitor-Token": this.token } : {};
+  }
+
+  /** The visitor is typing; the team's inbox shows it. Callers throttle it. */
+  typing() {
+    return this.call<{ ok: boolean }>("/typing", { method: "POST" });
   }
 
   send(body: string, intent?: Intent) {

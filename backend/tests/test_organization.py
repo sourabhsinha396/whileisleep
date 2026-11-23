@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import httpx
 import pytest
 
@@ -90,12 +92,40 @@ class FakeHttp:
 def test_complete_sends_tools_and_returns_the_message(monkeypatch):
     http = FakeHttp(json={"choices": [{"message": {"role": "assistant", "content": "hi"}}]})
     monkeypatch.setattr(openrouter.httpx, "request", http)
-    message = openrouter.complete("sk-or-x", "m/1", [{"role": "user", "content": "hi"}], [{"type": "function"}])
+    completion = openrouter.complete("sk-or-x", "m/1", [{"role": "user", "content": "hi"}], [{"type": "function"}])
     call = http.calls[0]
     assert call["url"] == "https://openrouter.ai/api/v1/chat/completions"
     assert call["headers"]["Authorization"] == "Bearer sk-or-x"
     assert call["json"]["model"] == "m/1" and call["json"]["tools"] == [{"type": "function"}]
-    assert message == {"role": "assistant", "content": "hi"}
+    assert completion.message == {"role": "assistant", "content": "hi"}
+    # No usage in the response: counted as nothing rather than failing.
+    assert (completion.input_tokens, completion.cached_tokens, completion.output_tokens) == (0, 0, 0)
+    assert completion.cost is None
+
+
+def test_complete_reports_tokens_and_cost(monkeypatch):
+    usage = {
+        "prompt_tokens": 1200,
+        "completion_tokens": 80,
+        "prompt_tokens_details": {"cached_tokens": 1000},
+        "cost": 0.00042,
+    }
+    http = FakeHttp(json={"choices": [{"message": {"role": "assistant", "content": "hi"}}], "usage": usage})
+    monkeypatch.setattr(openrouter.httpx, "request", http)
+    completion = openrouter.complete("k", "m", [], [])
+    assert (completion.input_tokens, completion.cached_tokens, completion.output_tokens) == (1200, 1000, 80)
+    assert completion.cost == Decimal("0.00042")
+
+
+@pytest.mark.parametrize(
+    "usage",
+    [None, "lots", {"prompt_tokens": "many"}, {"prompt_tokens": -5}, {"prompt_tokens_details": 7}, {"cost": "free"}],
+)
+def test_odd_usage_shapes_do_not_break_a_reply(monkeypatch, usage):
+    http = FakeHttp(json={"choices": [{"message": {"role": "assistant", "content": "hi"}}], "usage": usage})
+    monkeypatch.setattr(openrouter.httpx, "request", http)
+    completion = openrouter.complete("k", "m", [], [])
+    assert completion.input_tokens == 0 and completion.cost is None
 
 
 @pytest.mark.parametrize(

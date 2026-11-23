@@ -3,6 +3,9 @@
 Docs: https://openrouter.ai/docs/api-reference/chat-completion
 """
 
+from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
+
 import httpx
 
 BASE_URL = "https://openrouter.ai/api/v1"
@@ -49,20 +52,63 @@ def _call(method: str, path: str, api_key: str, **kwargs) -> dict:
         raise OpenRouterError("OpenRouter sent a response that isn't JSON.") from error
 
 
-def complete(api_key: str, model: str, messages: list[dict], tools: list[dict]) -> dict:
-    """One chat completion. Returns choices[0].message (may hold `tool_calls`)."""
+@dataclass
+class Completion:
+    """One model response and what it cost."""
+
+    # choices[0].message; may hold `tool_calls`.
+    message: dict
+    input_tokens: int = 0
+    # The part of input_tokens the provider read from its prompt cache (billed at a fraction).
+    cached_tokens: int = 0
+    output_tokens: int = 0
+    # In US dollars, when OpenRouter reports it.
+    cost: Decimal | None = None
+
+
+def _count(value) -> int:
+    return value if isinstance(value, int) and value > 0 else 0
+
+
+def _usage(data: dict) -> dict:
+    """Token counts from a response. Providers omit parts of this; missing means 0."""
+    usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
+    details = usage.get("prompt_tokens_details") if isinstance(usage.get("prompt_tokens_details"), dict) else {}
+    try:
+        cost = Decimal(str(usage["cost"])) if usage.get("cost") is not None else None
+    except (InvalidOperation, ValueError):
+        cost = None
+    return {
+        "input_tokens": _count(usage.get("prompt_tokens")),
+        "cached_tokens": _count(details.get("cached_tokens")),
+        "output_tokens": _count(usage.get("completion_tokens")),
+        "cost": cost,
+    }
+
+
+def complete(api_key: str, model: str, messages: list[dict], tools: list[dict]) -> Completion:
+    """One chat completion."""
     data = _call(
         "POST",
         "/chat/completions",
         api_key,
-        json={"model": model, "messages": messages, "tools": tools, "tool_choice": "auto", "max_tokens": 4000},
+        json={
+            "model": model,
+            "messages": messages,
+            "tools": tools,
+            "tool_choice": "auto",
+            "max_tokens": 4000,
+            # Ask for token counts and cost in the response.
+            "usage": {"include": True},
+        },
     )
     if "error" in data:
         raise OpenRouterError(str(data["error"].get("message", "Unknown error")))
     try:
-        return data["choices"][0]["message"]
+        message = data["choices"][0]["message"]
     except (KeyError, IndexError, TypeError) as error:
         raise OpenRouterError("OpenRouter sent no message.") from error
+    return Completion(message=message, **_usage(data))
 
 
 def key_info(api_key: str) -> dict:

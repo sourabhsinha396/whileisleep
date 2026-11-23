@@ -113,11 +113,13 @@ def final(reply: str, article_ids=(), offer_human=False) -> dict:
 
 
 class FakeOpenRouter:
-    """Returns scripted messages in order and records each request."""
+    """Returns scripted messages in order and records each request. Each response counts as
+    `usage` tokens, so tests can check what a reply cost."""
 
-    def __init__(self, responses):
+    def __init__(self, responses, usage=None):
         self.responses = list(responses)
         self.requests = []
+        self.usage = usage or {"input_tokens": 100, "cached_tokens": 0, "output_tokens": 20}
 
     def complete(self, api_key, model, messages, tools):
         # Copy the messages: the bot appends to the same list after the call.
@@ -125,7 +127,7 @@ class FakeOpenRouter:
         response = self.responses.pop(0)
         if isinstance(response, Exception):
             raise response
-        return response
+        return openrouter.Completion(message=response, **self.usage)
 
 
 @pytest.fixture
@@ -133,8 +135,8 @@ def llm(monkeypatch):
     """Install a fake OpenRouter. Call it with the scripted assistant messages. The
     conversation's organization must be ready (OrganizationFactory(ready=True))."""
 
-    def install(*responses):
-        fake = FakeOpenRouter(responses)
+    def install(*responses, usage=None):
+        fake = FakeOpenRouter(responses, usage)
         monkeypatch.setattr(openrouter, "complete", fake.complete)
         return fake
 

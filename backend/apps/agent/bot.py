@@ -368,7 +368,8 @@ def run_agent(conversation: Conversation, history: list[dict], instruction: str 
     result = None
 
     for _ in range(MAX_STEPS):
-        message = openrouter.complete(organization.openrouter_api_key, organization.llm_model, messages, definitions)
+        completion = openrouter.complete(organization.openrouter_api_key, organization.llm_model, messages, definitions)
+        message = completion.message
         calls = message.get("tool_calls") or []
         if not calls:
             # Plain text instead of reply_to_visitor: still a usable answer.

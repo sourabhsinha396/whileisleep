@@ -244,6 +244,38 @@ export function ThemeToggle({ className }: { className?: string }) {
   );
 }
 
+/** An on/off switch. Put it inside a <label> so the text toggles it too. */
+export function Switch({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={clsx(
+        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        checked ? "bg-primary" : "bg-border",
+      )}
+    >
+      <span
+        className={clsx(
+          "inline-block size-4 rounded-full bg-white shadow-sm transition-transform",
+          checked ? "translate-x-[18px]" : "translate-x-0.5",
+        )}
+      />
+    </button>
+  );
+}
+
 export function Spinner({ label = "Loading…" }: { label?: string }) {
   return (
     <div className="grid h-full min-h-40 place-items-center">

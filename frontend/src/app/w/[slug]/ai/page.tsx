@@ -5,7 +5,7 @@ import { Plug, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { McpServers } from "@/components/mcp-servers";
-import { Badge, Button, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
+import { Badge, Button, ErrorText, Field, inputClass, PageHeader, Switch } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, type Tool, type Workspace } from "@/lib/api";
 import { rowsToSchema, schemaToRows, urlPlaceholders, type InputRow, type InputType } from "@/lib/tool-schema";
@@ -52,8 +52,8 @@ function AgentSettings({ canEdit }: { canEdit: boolean }) {
           )}
         </p>
       )}
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" disabled={!canEdit} checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+      <label className="flex items-center gap-3 text-sm">
+        <Switch disabled={!canEdit} checked={enabled} onChange={setEnabled} />
         Answer visitors automatically. It hands over to your team when asked, or when it can&apos;t answer.
       </label>
       <Field label="Instructions" hint="Tone, scope, and facts that don't fit an article. The agent always answers from your tools and articles, not its own knowledge.">

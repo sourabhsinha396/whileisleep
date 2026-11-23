@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { BookOpen, Bot, Building2, Check, ChevronsUpDown, Eye, Inbox, LogOut, Plus, Settings, Sparkles, Zap } from "lucide-react";
+import { BookOpen, Bot, Building2, Check, ChevronsUpDown, Eye, Inbox, LogOut, Plus, Settings, Zap } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -176,28 +176,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
             ))}
           </nav>
 
-          <div className="space-y-2 pt-3">
-            <Link
-              href={`/w/${slug}/ai`}
-              className="block rounded-lg border bg-surface p-3 text-xs shadow-sm transition-colors hover:border-primary/40"
-            >
-              <span className="flex items-center gap-2 font-semibold">
-                <Sparkles size={14} className="text-primary-text" />
-                AI agent
-                <span
-                  className={clsx(
-                    "ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
-                    workspace.ai_enabled ? "bg-success-soft text-success" : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {workspace.ai_enabled ? "On" : "Off"}
-                </span>
-              </span>
-              {workspace.ai_enabled && !workspace.llm_ready && (
-                <span className="mt-1.5 block text-warning">No LLM set up yet, so it answers by keyword search.</span>
-              )}
-            </Link>
-
+          <div className="pt-3">
             <div className="relative" ref={accountRef}>
               <button
                 onClick={() => setAccount(!account)}

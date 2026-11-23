@@ -243,6 +243,12 @@ def test_without_redis_the_stream_says_to_poll(conversation):
     assert response.status_code == 503
 
 
+def test_the_wsgi_process_refuses_streams(conversation, fake_redis, anon):
+    """Served under WSGI, an endless stream would hold a worker forever."""
+    anon.visitor_token = conversation.visitor.token
+    assert anon.get(f"/widget/{conversation.workspace.public_key}/stream").status_code == 503
+
+
 def test_another_visitors_token_hears_nothing_of_this_conversation(conversation, workspace, fake_redis):
     other = ConversationFactory(workspace=workspace, visitor=VisitorFactory(workspace=workspace))
 

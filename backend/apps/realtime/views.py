@@ -29,6 +29,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
+from django.core.handlers.asgi import ASGIRequest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import JsonResponse, StreamingHttpResponse
 from django.utils import timezone
@@ -52,6 +53,17 @@ Hook = Callable[[], Awaitable[None]] | None
 
 def error(status: int, detail: str) -> JsonResponse:
     return JsonResponse({"detail": detail}, status=status)
+
+
+def refuse(request) -> JsonResponse | None:
+    """Why this request can't get a stream here, if it can't."""
+    if not isinstance(request, ASGIRequest):
+        # Under WSGI Django would read the endless stream into a list and hold the worker
+        # forever. The proxy should send streams to the ASGI process; clients poll instead.
+        return error(503, "Live updates are served by the ASGI process; poll instead.")
+    if request.method != "GET":
+        return error(405, "Use GET.")
+    return None
 
 
 def last_event_id(request) -> int | None:
@@ -144,8 +156,8 @@ def widget_backlog(visitor: Visitor, after: int | None) -> list[Event]:
 
 
 async def widget_stream(request, key: str):
-    if request.method != "GET":
-        return error(405, "Use GET.")
+    if refused := refuse(request):
+        return refused
     workspace = await Workspace.objects.filter(public_key=key).afirst()
     if workspace is None:
         return error(404, "Not found.")
@@ -195,8 +207,8 @@ def inbox_backlog(workspace_id: int, after: int | None) -> list[Event]:
 
 
 async def inbox_stream(request, workspace_id: int):
-    if request.method != "GET":
-        return error(405, "Use GET.")
+    if refused := refuse(request):
+        return refused
     scheme, _, key = request.headers.get("Authorization", "").partition(" ")
     token = (
         await AuthToken.objects.select_related("user").filter(key=key, user__is_active=True).afirst()

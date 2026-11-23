@@ -18,6 +18,9 @@ first, and records which stage answered and what it cost.
 - **AI agent and tools**: the LLM answers visitors. Each workspace adds **tools** (HTTP endpoints on its
   own systems: product search, stock, order status…) so the agent looks facts up instead of guessing.
   Built in: `search_knowledge_base`, `handoff_to_human`, and `reply_to_visitor` (how the model finishes).
+- **MCP servers**: connect a Model Context Protocol server and its tools are imported next to your own.
+  They arrive switched off; you turn on the ones the agent may use, and a tool whose description the
+  server later changes is paused until you approve it again.
 - **Rules** run in code on each visitor message, before the AI; the first match wins.
   - *Conditions* are a tree of tests joined by all / any / not, over the message, the page, attributes,
     tags and the workspace's local time: `contact.plan is pro`, `time.hour is at least 18`.
@@ -41,7 +44,7 @@ first, and records which stage answered and what it cost.
 1. **Rules.** A rule with a fixed reply answers on its own: no model call.
 2. **Nobody replies** if the AI is off or a person has the conversation.
 3. **Limits.** Past the daily AI cap the conversation goes to a person.
-4. **The AI.** The help center is searched with the visitor's message first, and the best passages go
+4. **The AI.** A burst of quick messages is answered once, by the newest. The help center is searched with the visitor's message first, and the best passages go
    into the prompt, so a question the help center answers takes one model call. If the model is
    unavailable, a help center search answers instead.
 
@@ -151,8 +154,11 @@ See [docs/deploy-hetzner.md](docs/deploy-hetzner.md).
 
 ## Next
 
-- MCP servers as a second tool source (a workspace adds an MCP URL; the agent lists its tools).
-- A durable job queue for AI replies instead of a thread, with one reply at a time per conversation.
+- A durable job queue for AI replies instead of a thread (a reply in flight is lost if the server
+  restarts), with one reply at a time per conversation.
 - Real-time updates over SSE instead of polling; email notifications.
 - Exact answers: human-approved snippets sent verbatim when a question matches.
-- The inbox showing each reply's Turn (rule, passages, tools, tokens, cost).
+- The inbox showing each reply's Turn (rule, passages, tools, tokens, cost) and the attributes panel.
+- Dashboard sessions in httpOnly cookies, and login tokens hashed in the database.
+- Tool result shaping (keep only named fields) and per-tool approval before actions that change data.
+- Optional vector search next to full-text search.

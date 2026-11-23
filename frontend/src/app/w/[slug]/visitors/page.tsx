@@ -3,7 +3,8 @@
 import { Eye, MessageSquare, Search, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { LiveProvider, useLive, useLiveEvents } from "@/components/live-context";
 import { Avatar, Button, EmptyState, PageHeader, Segmented } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, type ConversationRow, type Visitor } from "@/lib/api";
@@ -14,14 +15,34 @@ type Range = "online" | "week";
 
 export default function VisitorsPage() {
   const { workspace } = useWorkspace();
+  return (
+    <LiveProvider workspaceId={workspace.id}>
+      <Visitors />
+    </LiveProvider>
+  );
+}
+
+function Visitors() {
+  const { workspace } = useWorkspace();
   const router = useRouter();
   const [range, setRange] = useState<Range>("online");
   const [query, setQuery] = useState("");
   const onlineOnly = range === "online";
-  const { data } = usePoll(
+  const live = useLive();
+  const { data, reload } = usePoll(
     useCallback(() => api<Visitor[]>(`/workspaces/${workspace.id}/visitors?online=${onlineOnly}`), [workspace.id, onlineOnly]),
-    5000,
+    // Live, someone arriving or leaving reloads the list; polling is the fallback.
+    live ? 60000 : 5000,
   );
+  const reloadSoon = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useLiveEvents((e) => {
+    if (e.event === "open" || e.event === "presence") {
+      // Several visitors arriving at once cost one reload.
+      clearTimeout(reloadSoon.current);
+      reloadSoon.current = setTimeout(reload, 500);
+    }
+  });
+  useEffect(() => () => clearTimeout(reloadSoon.current), []);
 
   async function message(visitor: Visitor) {
     const body = window.prompt(`Message ${visitor.name}:`, "Hi! Can I help you find anything?");
@@ -49,7 +70,7 @@ export default function VisitorsPage() {
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-60" />
               <span className="relative inline-flex size-2 rounded-full bg-success" />
             </span>
-            Live, refreshes every few seconds
+            {live ? "Live" : "Refreshes every few seconds"}
           </span>
         }
       >

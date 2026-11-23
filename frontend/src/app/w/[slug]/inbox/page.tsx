@@ -22,20 +22,32 @@ import {
   UserRound,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { Fragment, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { A2uiPreview } from "@/components/a2ui-preview";
+import { LiveProvider, useLive, useLiveEvents } from "@/components/live-context";
 import { Avatar, Badge, Button, Segmented } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, type ConversationDetail, type ConversationRow, type Message } from "@/lib/api";
 import { ago, browserName, clock } from "@/lib/format";
+import { addMessage, applyConversation, setOnline, type Filter } from "@/lib/inbox";
+import { throttle } from "@/lib/live-stream";
 import { usePoll } from "@/lib/use-poll";
 
-type Filter = "open" | "resolved" | "all";
+// Polling is the fallback; with the live stream connected it only double-checks now and then.
+const LIST_POLL_MS = 4000;
+const CONVERSATION_POLL_MS = 2500;
+const LIVE_POLL_MS = 30000;
+// The visitor's "is typing" shows this long after their last keystroke event.
+const TYPING_SHOWN_MS = 6000;
+const TYPING_SEND_MS = 3000;
 
 export default function InboxPage() {
+  const { workspace } = useWorkspace();
   return (
     <Suspense>
-      <Inbox />
+      <LiveProvider workspaceId={workspace.id}>
+        <Inbox />
+      </LiveProvider>
     </Suspense>
   );
 }
@@ -47,7 +59,17 @@ function Inbox() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<number | null>(params.get("c") ? Number(params.get("c")) : null);
   const base = `/workspaces/${workspace.id}/conversations`;
-  const list = usePoll(useCallback(() => api<ConversationRow[]>(`${base}?status=${filter}`), [base, filter]), 4000);
+  const live = useLive();
+  const list = usePoll(
+    useCallback(() => api<ConversationRow[]>(`${base}?status=${filter}`), [base, filter]),
+    live ? LIVE_POLL_MS : LIST_POLL_MS,
+  );
+  const { setData, reload } = list;
+  useLiveEvents((e) => {
+    if (e.event === "open") reload();
+    else if (e.event === "conversation") setData((rows) => applyConversation(rows, e.data, filter));
+    else if (e.event === "presence") setData((rows) => setOnline(rows, e.data.visitor_id, e.data.online));
+  });
 
   const all = list.data ?? [];
   const q = query.trim().toLowerCase();
@@ -171,16 +193,62 @@ function dayLabel(iso: string) {
 function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
   const { workspace } = useWorkspace();
   const path = `/workspaces/${workspace.id}/conversations/${id}`;
-  const { data, setData, reload } = usePoll(useCallback(() => api<ConversationDetail>(path), [path]), 2500);
+  const live = useLive();
+  const { data, setData, reload } = usePoll(
+    useCallback(() => api<ConversationDetail>(path), [path]),
+    live ? LIVE_POLL_MS : CONVERSATION_POLL_MS,
+  );
   const [mode, setMode] = useState<"reply" | "note">("reply");
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  // Live: what the AI is doing, and until when the visitor counts as typing.
+  const [botStatus, setBotStatus] = useState("");
+  const [visitorTypingUntil, setVisitorTypingUntil] = useState(0);
   const end = useRef<HTMLDivElement>(null);
   const count = data?.messages.length ?? 0;
+  const sendTyping = useMemo(() => throttle(() => api(`${path}/typing`, { method: "POST" }).catch(() => {}), TYPING_SEND_MS), [path]);
+
+  useLiveEvents((e) => {
+    switch (e.event) {
+      case "open":
+        reload();
+        return;
+      case "presence":
+        setData((d) => (d && d.visitor.id === e.data.visitor_id ? { ...d, visitor: { ...d.visitor, online: e.data.online } } : d));
+        return;
+      case "conversation":
+        if (e.data.id === id) setData((d) => (d ? { ...d, ...e.data, messages: d.messages } : d));
+        return;
+      case "message":
+        if (e.data.conversation_id !== id) return;
+        setData((d) => addMessage(d, e.data.message));
+        if (e.data.message.sender === "visitor") {
+          setVisitorTypingUntil(0);
+          // Opening the conversation marks it read; so does a message arriving while it's open.
+          reload();
+        } else if (!e.data.message.is_note) {
+          setBotStatus("");
+        }
+        return;
+      case "status":
+        if (e.data.conversation_id === id) setBotStatus(e.data.text);
+        return;
+      case "typing":
+        if (e.data.conversation_id === id && e.data.sender === "visitor") setVisitorTypingUntil(Date.now() + TYPING_SHOWN_MS);
+        return;
+    }
+  });
+
+  // Clear "is typing" once it lapses.
+  useEffect(() => {
+    if (!visitorTypingUntil) return;
+    const timer = setTimeout(() => setVisitorTypingUntil(0), Math.max(0, visitorTypingUntil - Date.now()));
+    return () => clearTimeout(timer);
+  }, [visitorTypingUntil]);
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
-  }, [count]);
+  }, [count, botStatus, visitorTypingUntil]);
 
   if (!data) return <div className="flex-1 bg-muted/30" />;
 
@@ -249,6 +317,12 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
               </Fragment>
             );
           })}
+          {(botStatus || visitorTypingUntil > 0) && (
+            <p className="flex items-center gap-2 px-1 text-xs text-muted-foreground" aria-live="polite">
+              {botStatus ? <Sparkles size={12} className="text-primary-text" /> : <UserRound size={12} />}
+              {botStatus ? `AI agent: ${botStatus}…` : `${v.name} is typing…`}
+            </p>
+          )}
           <div ref={end} />
         </div>
 
@@ -283,7 +357,11 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
             rows={3}
             placeholder={mode === "reply" ? `Reply to ${v.name}. The AI agent pauses once you answer.` : "Only your team sees notes"}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              // Only replies: the visitor never hears about notes.
+              if (mode === "reply" && e.target.value.trim()) sendTyping();
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();

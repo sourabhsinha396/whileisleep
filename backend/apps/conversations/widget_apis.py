@@ -12,7 +12,7 @@ from ninja.errors import HttpError
 from apps.agent import actions, pipeline
 from apps.knowledge.models import Article
 from apps.knowledge.search import search
-from apps.realtime import presence
+from apps.realtime import events, presence
 from apps.workspaces.models import Workspace
 from whileisleep.client_ip import client_ip
 
@@ -136,6 +136,18 @@ def send(request, key: str, payload: WidgetMessageIn):
         "human_requested": conversation.human_requested,
         "messages": [message_out(m) for m in rows],
     }
+
+
+@router.post("/{key}/typing", response=dict)
+def typing(request, key: str):
+    """The visitor is typing. The widget sends it at most every few seconds while they type;
+    the team's inbox shows it. Nothing is sent before there is a conversation."""
+    workspace = get_workspace(key)
+    visitor = get_visitor(request, workspace)
+    conversation = current_conversation(visitor)
+    if conversation is not None and not is_stale(conversation):
+        events.typing(conversation, Message.Sender.VISITOR)
+    return {"ok": True}
 
 
 @router.post("/{key}/actions", response=dict)

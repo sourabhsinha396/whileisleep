@@ -15,6 +15,7 @@ Events are published once the database transaction commits, so a browser that re
 reading the API finds what the event announced.
 """
 
+from django.core.cache import cache
 from django.db import transaction
 
 from apps.conversations.models import Conversation, Message
@@ -67,8 +68,16 @@ def bot_status(conversation: Conversation, text: str) -> None:
     after_commit(lambda: bus.publish(channels, "status", data))
 
 
-def typing(conversation: Conversation, sender: str, name: str = "") -> None:
-    """`sender` is "visitor" or "agent"; each side hears only the other."""
+# Browsers send typing at most every few seconds; this many seconds between events is enough
+# to keep the other side's indicator on, and stops a misbehaving client from flooding.
+TYPING_EVERY_SECONDS = 2
+
+
+def typing(conversation: Conversation, sender: str, name: str = "", who: str = "") -> bool:
+    """`sender` is "visitor" or "agent"; each side hears only the other. `who` tells apart
+    teammates typing in the same conversation. Returns False when throttled."""
+    if not cache.add(f"typing:{conversation.id}:{sender}:{who}", 1, timeout=TYPING_EVERY_SECONDS):
+        return False
     data = {"conversation_id": conversation.id, "sender": sender, "name": name}
     channel = (
         bus.workspace_channel(conversation.workspace_id)
@@ -76,3 +85,4 @@ def typing(conversation: Conversation, sender: str, name: str = "") -> None:
         else bus.visitor_channel(conversation.visitor_id)
     )
     after_commit(lambda: bus.publish([channel], "typing", data))
+    return True

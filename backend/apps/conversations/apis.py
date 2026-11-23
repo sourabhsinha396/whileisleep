@@ -89,6 +89,15 @@ def reply(request, workspace_id: int, conversation_id: int, payload: ReplyIn):
     return message_out(message)
 
 
+@router.post("/workspaces/{workspace_id}/conversations/{conversation_id}/typing", response=dict)
+def typing(request, workspace_id: int, conversation_id: int):
+    """A teammate is typing a reply (not a note). The visitor's widget shows it."""
+    conversation = get_conversation(request, workspace_id, conversation_id)
+    user = request.auth
+    events.typing(conversation, Message.Sender.AGENT, user.first_name or "", who=str(user.pk))
+    return {"ok": True}
+
+
 @router.patch("/workspaces/{workspace_id}/conversations/{conversation_id}", response=ConversationRow)
 def update(request, workspace_id: int, conversation_id: int, payload: ConversationPatch):
     conversation = get_conversation(request, workspace_id, conversation_id)

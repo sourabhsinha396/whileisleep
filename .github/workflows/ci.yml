@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# A newer push to the same branch makes the older run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      # Tests run on Postgres, like production (see whileisleep/settings/testing.py).
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: whileisleep
+          POSTGRES_USER: whileisleep
+          POSTGRES_PASSWORD: whileisleep
+        ports:
+          - 5448:5432
+        options: >-
+          --health-cmd "pg_isready -U whileisleep"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check .
+      - name: Formatting
+        run: uv run ruff format --check .
+      - name: Every model change has a migration
+        run: uv run python manage.py makemigrations --check --dry-run --settings=whileisleep.settings.testing
+      - name: Tests
+        run: uv run pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Types
+        run: pnpm typecheck
+      - name: Tests
+        run: pnpm test
+      - name: Build (widget and dashboard)
+        run: pnpm build
+
+  images:
+    # The production images must keep building, even when no one deploys for a while.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Production compose file is valid
+        working-directory: deploy
+        run: cp .env.example .env && POSTGRES_PASSWORD=ci docker compose config --quiet
+      - name: Build backend image
+        run: docker build -t whileisleep-backend backend
+      - name: Build frontend image
+        run: docker build -t whileisleep-frontend frontend

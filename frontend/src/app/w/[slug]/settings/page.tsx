@@ -3,6 +3,7 @@
 import { Copy, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { ColorPicker } from "@/components/color-picker";
 import { Button, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, type Member, type Workspace } from "@/lib/api";
@@ -89,9 +90,7 @@ export default function SettingsPage() {
           <Field label="Timezone" hint="Rules read the hour and weekday in this timezone, e.g. Europe/Berlin or Asia/Kolkata.">
             <input className={inputClass} disabled={!owner} value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value.trim() })} />
           </Field>
-          <Field label="Widget color">
-            <input type="color" disabled={!owner} className="h-10 w-20 rounded border border-border" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
-          </Field>
+          <ColorPicker value={form.color} saved={workspace.color} disabled={!owner} onChange={(color) => setForm({ ...form, color })} />
           <ErrorText>{error}</ErrorText>
           {owner && (
             <div className="flex items-center gap-3">

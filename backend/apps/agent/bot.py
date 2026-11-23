@@ -29,7 +29,7 @@ from apps.conversations.services import add_message
 from apps.knowledge.models import Article
 from apps.knowledge.search import passages, search
 
-from . import a2ui, forms, http_tools, openrouter
+from . import a2ui, forms, http_tools, mcp_tools, openrouter
 from .models import Playbook, Rule, Tool, Turn
 from .turns import Recorder
 
@@ -405,7 +405,7 @@ def run_agent(
     workspace = conversation.workspace
     organization = workspace.organization
     recorder = recorder or Recorder(conversation)
-    tools = {t.name: t for t in Tool.objects.filter(workspace=workspace, enabled=True)}
+    tools = {t.name: t for t in mcp_tools.usable(workspace)}
     playbooks = list(Playbook.objects.filter(workspace=workspace, enabled=True))
     definitions = tool_definitions(list(tools.values()), with_playbooks=bool(playbooks))
     found = prefetch(conversation, history[-1]["content"], recorder)
@@ -476,6 +476,8 @@ def call_tool(conversation: Conversation, tools: dict[str, Tool], name: str, inp
     tool = tools.get(name)
     if tool is None:
         return f"Unknown tool {name}.", True
+    if tool.mcp_server_id:
+        return mcp_tools.run(tool, inputs)
     return http_tools.run(tool, inputs, conversation.visitor)
 
 

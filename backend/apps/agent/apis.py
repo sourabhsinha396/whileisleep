@@ -14,7 +14,7 @@ from apps.conversations import attributes
 from apps.conversations.models import Visitor
 from apps.workspaces.services import member_workspace, owner_workspace
 
-from . import http_tools
+from . import http_tools, mcp_tools
 from .bot import BUILTIN_TOOLS, PLAYBOOK_TOOL
 from .models import Tool, tool_name
 
@@ -55,6 +55,16 @@ class ToolOut(Schema):
     allow_unverified_identity: bool
     enabled: bool
     created_at: datetime
+    # Set for tools that come from an MCP server; those are switched on with /approve.
+    mcp_server_id: int | None = None
+    read_only: bool = False
+    # The server changed this tool since it was approved (or it never was): not offered to
+    # the AI until an owner approves it again.
+    needs_review: bool = False
+
+
+class ToolApproveIn(Schema):
+    enabled: bool
 
 
 class ToolTestIn(Schema):
@@ -71,6 +81,9 @@ def tool_out(tool: Tool) -> dict:
         **{field: getattr(tool, field) for field in TOOL_FIELDS},
         "header_names": sorted(tool.headers or {}),
         "created_at": tool.created_at,
+        "mcp_server_id": tool.mcp_server_id,
+        "read_only": tool.read_only,
+        "needs_review": tool.needs_review,
     }
 
 
@@ -85,6 +98,9 @@ def check(payload: ToolIn) -> None:
         raise HttpError(400, "Method must be GET or POST.")
     if not payload.url.startswith(("http://", "https://")):
         raise HttpError(400, "URL must start with http:// or https://.")
+    if "__" in payload.name:
+        # Reserved for tools imported from MCP servers ("stripe__refund").
+        raise HttpError(400, "Tool names can't contain a double underscore.")
     if payload.input_schema.get("type", "object") != "object":
         raise HttpError(400, 'Input schema must be a JSON Schema with "type": "object".')
 
@@ -107,6 +123,8 @@ def create(request, workspace_id: int, payload: ToolIn):
 def update(request, workspace_id: int, tool_id: int, payload: ToolIn):
     """Replaces the tool. An empty `headers` keeps the saved ones, since the dashboard never sees them."""
     tool = get_object_or_404(Tool, pk=tool_id, workspace=owner_workspace(request.auth, workspace_id))
+    if tool.mcp_server_id:
+        raise HttpError(400, "This tool comes from an MCP server, which defines it. Switch it on or off instead.")
     check(payload)
     if Tool.objects.filter(workspace=tool.workspace, name=payload.name).exclude(pk=tool.pk).exists():
         raise HttpError(400, "A tool with this name already exists.")
@@ -125,10 +143,22 @@ def delete(request, workspace_id: int, tool_id: int):
     return {"ok": True}
 
 
+@router.post("/workspaces/{workspace_id}/tools/{tool_id}/approve", response=ToolOut)
+def approve(request, workspace_id: int, tool_id: int, payload: ToolApproveIn):
+    """Switches an MCP tool on or off. Switching it on approves its definition as it is now."""
+    tool = get_object_or_404(Tool, pk=tool_id, workspace=owner_workspace(request.auth, workspace_id))
+    if not tool.mcp_server_id:
+        raise HttpError(400, "Only tools from an MCP server are approved this way.")
+    return tool_out(mcp_tools.approve(tool, payload.enabled))
+
+
 @router.post("/workspaces/{workspace_id}/tools/{tool_id}/test", response=ToolTestOut)
 def test(request, workspace_id: int, tool_id: int, payload: ToolTestIn):
     """Calls the tool as the bot would, with a stand-in visitor, so owners can check it."""
     tool = get_object_or_404(Tool, pk=tool_id, workspace=owner_workspace(request.auth, workspace_id))
+    if tool.mcp_server_id:
+        result, is_error = mcp_tools.run(tool, payload.inputs)
+        return {"result": result, "is_error": is_error}
     stand_in = Visitor(
         pk=0,
         workspace=tool.workspace,

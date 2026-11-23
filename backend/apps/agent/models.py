@@ -9,9 +9,44 @@ tool_name = RegexValidator(
 )
 
 
+server_name = RegexValidator(r"^[a-z][a-z0-9]{1,23}$", "2 to 24 lowercase letters and digits, starting with a letter.")
+
+
+class McpServer(models.Model):
+    """A Model Context Protocol server the workspace connected. Its tools become Tool rows
+    (apps.agent.mcp_tools), each switched on by the owner before the AI may call it."""
+
+    workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="mcp_servers")
+    # Short and plain: it starts the name of every tool from this server ("stripe__refund").
+    name = models.CharField(max_length=24, validators=[server_name])
+    url = models.CharField(max_length=1000)
+    # Sent with every request, e.g. {"Authorization": "Bearer ..."}. Encrypted in the database.
+    headers = EncryptedJSONField(blank=True)
+    enabled = models.BooleanField(default=True)
+    # Which generation of the protocol the server speaks ("modern" or "legacy"), learned on
+    # first contact so later calls skip the probe. See apps.agent.mcp.
+    era = models.CharField(max_length=10, blank=True)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    # Why the last sync failed, for the dashboard. Empty when it worked.
+    last_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [models.UniqueConstraint(fields=["workspace", "name"], name="unique_mcp_server_name")]
+
+    def __str__(self):
+        return self.name
+
+
 class Tool(models.Model):
-    """An HTTP endpoint on the workspace's own site that the AI agent may call to look up
-    live data ("search_products", "get_order_status"...), so it answers from facts.
+    """Something the AI agent may call to look up live data or act ("search_products",
+    "get_order_status"...), so it answers from facts. Two kinds:
+
+    - an HTTP endpoint on the workspace's own site, described by the fields below, or
+    - a tool on a connected MCP server (`mcp_server` is set; `url` and `method` are unused).
+
+    For HTTP tools:
 
     The agent fills the inputs described by `input_schema`. `{name}` placeholders in the
     URL take the input of that name. Other inputs go in the query string (GET) or a JSON
@@ -29,7 +64,7 @@ class Tool(models.Model):
     # What the model reads to decide when to call it: what it returns and when to use it.
     description = models.TextField()
     method = models.CharField(max_length=4, choices=Method.choices, default=Method.GET)
-    url = models.CharField(max_length=1000)
+    url = models.CharField(max_length=1000, blank=True)
     # JSON Schema of the inputs, e.g. {"type": "object", "properties": {"q": {"type": "string"}}}.
     input_schema = models.JSONField(default=dict, blank=True)
     # Sent with every call, e.g. {"Authorization": "Bearer ..."}. Encrypted in the database and
@@ -41,12 +76,28 @@ class Tool(models.Model):
     enabled = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # --- For tools that come from an MCP server (see apps.agent.mcp_tools) ---
+    mcp_server = models.ForeignKey(McpServer, null=True, blank=True, on_delete=models.CASCADE, related_name="tools")
+    # The tool's name on the server; `name` above is the server's name plus this.
+    remote_name = models.CharField(max_length=200, blank=True)
+    # The server's own claim that the tool changes nothing. A hint for the owner.
+    read_only = models.BooleanField(default=False)
+    # A hash of the name, description and schema the server sends now, and of the ones the
+    # owner approved by switching the tool on. When they differ the tool isn't offered.
+    definition_hash = models.CharField(max_length=64, blank=True)
+    approved_hash = models.CharField(max_length=64, blank=True)
+
     class Meta:
         ordering = ["name"]
         constraints = [models.UniqueConstraint(fields=["workspace", "name"], name="unique_tool_name_per_workspace")]
 
     def __str__(self):
         return self.name
+
+    @property
+    def needs_review(self) -> bool:
+        """An MCP tool whose definition changed since the owner approved it (or never was)."""
+        return self.mcp_server_id is not None and self.approved_hash != self.definition_hash
 
 
 class Rule(models.Model):

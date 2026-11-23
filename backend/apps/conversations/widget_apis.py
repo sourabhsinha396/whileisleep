@@ -67,8 +67,7 @@ def session(request, key: str, payload: WidgetSessionIn):
         page_title=payload.title,
         referrer=payload.referrer or None,
         user_agent=request.headers.get("User-Agent", ""),
-        name=payload.name,
-        email=payload.email,
+        details=payload.details(),
     )
     conversation = current_conversation(visitor)
     last = conversation.messages.filter(is_note=False).order_by("-id").first() if conversation else None

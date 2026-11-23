@@ -1,5 +1,6 @@
 """Model → response dicts shared by the dashboard and widget APIs."""
 
+from . import attributes
 from .models import Conversation, Message, Visitor
 
 
@@ -8,6 +9,7 @@ def visitor_out(visitor: Visitor, conversation_id: int | None = None) -> dict:
         "id": visitor.id,
         "name": visitor.display_name,
         "email": visitor.email,
+        "attributes": attributes.listing(visitor),
         "online": visitor.is_online,
         "current_url": visitor.current_url,
         "page_title": visitor.page_title,
@@ -42,6 +44,7 @@ def conversation_row(conversation: Conversation, last: Message | None = None) ->
         "unread": conversation.unread,
         "human_requested": conversation.human_requested,
         "tags": conversation.tags or [],
+        "attributes": attributes.listing(conversation),
         "assignee_id": conversation.assignee_id,
         "last_message_at": conversation.last_message_at,
         "preview": (last.body[:140] if last else ""),

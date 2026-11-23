@@ -6,10 +6,22 @@ from ninja import Schema
 from pydantic import Field, field_validator
 
 
+class AttributeOut(Schema):
+    key: str
+    value: str | int | float | bool
+    # Who said so: verified, agent, rule, host, visitor or ai.
+    source: str
+
+
+class AttributeIn(Schema):
+    value: str | int | float | bool
+
+
 class VisitorOut(Schema):
     id: int
     name: str
     email: str
+    attributes: list[AttributeOut] = []
     online: bool
     current_url: str
     page_title: str
@@ -38,6 +50,7 @@ class ConversationRow(Schema):
     unread: bool
     human_requested: bool
     tags: list[str] = []
+    attributes: list[AttributeOut] = []
     assignee_id: int | None
     last_message_at: datetime
     preview: str
@@ -72,12 +85,22 @@ class WidgetConfigOut(Schema):
     max_message_length: int = settings.VISITOR_MESSAGE_MAX_CHARS
 
 
+AttributeValue = str | int | float | bool
+
+
 class WidgetSessionIn(Schema):
     url: str = ""
     title: str = ""
     referrer: str = ""
+    # From window.whileisleep.identify(): what the host page says about its signed-in user.
     name: str | None = Field(None, max_length=120)
     email: str | None = Field(None, max_length=254)
+    attributes: dict[str, AttributeValue] = Field(default_factory=dict, max_length=20)
+
+    def details(self) -> dict:
+        """Everything identify() sent, as attributes."""
+        named = {"name": self.name, "email": self.email}
+        return self.attributes | {key: value for key, value in named.items() if value}
 
 
 class WidgetSessionOut(Schema):

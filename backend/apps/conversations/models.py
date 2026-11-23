@@ -28,6 +28,10 @@ class Visitor(models.Model):
     last_seen = models.DateTimeField(default=timezone.now)
     # Set when the visitor starts a new chat; the widget hides conversations quiet since then.
     chat_cleared_at = models.DateTimeField(null=True, blank=True)
+    # What we know about this person, with who said so: {"plan": {"value": "pro", "source":
+    # "verified"}}. Read and written through apps.conversations.attributes; `name` and
+    # `email` above mirror the attributes of the same name.
+    attributes = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return self.display_name
@@ -58,6 +62,9 @@ class Conversation(models.Model):
     unread = models.BooleanField(default=True)
     # Labels set by rules ("exam-request") or the team.
     tags = models.JSONField(default=list, blank=True)
+    # What we learned in this conversation (order_number, topic), same shape as
+    # Visitor.attributes.
+    attributes = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_message_at = models.DateTimeField(default=timezone.now)
 

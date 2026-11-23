@@ -20,6 +20,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 
+from apps.conversations import attributes
+
 from . import a2ui
 
 FIELD_TYPES = ("text", "long_text", "email", "phone", "number", "choice")
@@ -28,7 +30,7 @@ MAX_OPTIONS = 8
 MAX_VALUE = settings.VISITOR_MESSAGE_MAX_CHARS
 NAME = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 PHONE = re.compile(r"^[+()0-9 .-]{5,30}$")
-# Submitted fields that also update the visitor's record.
+# Field names that mean the visitor's own name.
 NAME_FIELDS = {"name", "full_name", "your_name"}
 
 FORM_SCHEMA = {
@@ -151,19 +153,21 @@ def as_text(form: dict, values: dict[str, str]) -> str:
     return "\n".join(f"{labels[name]}: {value}" for name, value in values.items()) or "(sent the form empty)"
 
 
-def update_visitor(visitor, form: dict, values: dict[str, str]) -> list[str]:
-    """Copies an email or name answer onto the visitor. Returns the fields it set."""
-    changed = []
+def remember(conversation, form: dict, values: dict[str, str]) -> list[str]:
+    """Keeps the answers as attributes, so rules, tools and the AI can use them later.
+
+    Every answer becomes an attribute of the conversation under its field name. An email,
+    phone number or name is about the person, so it is also kept on the visitor, and the
+    names of those that changed are returned. All of it is Source.VISITOR: typed, not proven.
+    """
+    about_visitor = {}
     for field in form["fields"]:
         value = values.get(field["name"])
         if not value:
             continue
-        if field["type"] == "email" and visitor.email != value:
-            visitor.email = value
-            changed.append("email")
-        elif field["name"] in NAME_FIELDS and visitor.name != value:
-            visitor.name = value[:120]
-            changed.append("name")
-    if changed:
-        visitor.save(update_fields=changed)
-    return changed
+        if field["type"] in ("email", "phone"):
+            about_visitor[field["type"]] = value
+        elif field["name"] in NAME_FIELDS:
+            about_visitor["name"] = value
+    attributes.set_many(conversation, values, attributes.Source.VISITOR)
+    return attributes.set_many(conversation.visitor, about_visitor, attributes.Source.VISITOR)

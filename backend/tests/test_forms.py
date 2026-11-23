@@ -3,6 +3,7 @@
 import pytest
 
 from apps.agent import a2ui, bot, forms
+from apps.conversations import attributes
 from apps.conversations.models import Message
 
 from .conftest import Api, assistant, final, tool_call
@@ -278,5 +279,7 @@ def test_name_and_choice_answers():
     with pytest.raises(forms.FormError, match="phone number"):
         forms.check(spec, {"phone": "call me"})
     answers = forms.check(spec, {"name": "Sofia", "level": "B", "phone": "+44 20 7946 0000"})
-    assert forms.update_visitor(conversation.visitor, spec, answers) == ["name"]
+    assert forms.remember(conversation, spec, answers) == ["name", "phone"]
+    assert attributes.get(conversation, "level") == "B"
+    assert attributes.source_of(conversation.visitor, "phone") == attributes.Source.VISITOR
     assert forms.as_text(spec, answers) == "Name: Sofia\nLevel: B\nPhone: +44 20 7946 0000"

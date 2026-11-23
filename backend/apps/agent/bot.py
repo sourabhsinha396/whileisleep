@@ -18,7 +18,7 @@ import uuid
 from django.conf import settings
 from django.db import close_old_connections
 
-from apps.conversations import limits
+from apps.conversations import attributes, limits
 from apps.conversations.models import Conversation, Message
 from apps.conversations.services import add_message
 from apps.knowledge.models import Article
@@ -234,6 +234,7 @@ def conversation_facts(conversation: Conversation) -> list[str]:
         if visitor.email
         else "We don't have the visitor's email yet."
     )
+    facts.extend(known_attributes(conversation))
     if visitor.current_url:
         page = f"{visitor.page_title} ({visitor.current_url})" if visitor.page_title else visitor.current_url
         facts.append(f"They are on this page: {page}.")
@@ -265,6 +266,23 @@ def conversation_facts(conversation: Conversation) -> list[str]:
         facts.append(f"Your last message showed a form{title} the visitor hasn't sent yet.")
     if conversation.tags:
         facts.append(f"Tags on this conversation: {', '.join(conversation.tags)}.")
+    return facts
+
+
+def known_attributes(conversation: Conversation) -> list[str]:
+    """Attributes as facts, so the AI uses what we have instead of asking again. Name and
+    email have their own lines; private values are named, not shown."""
+    facts = []
+    for name, value in attributes.flat(conversation).items():
+        scope, key = name.split(".", 1)
+        if key in attributes.COLUMNS:
+            continue
+        label = key.replace("_", " ")
+        owner = "the visitor's" if scope == "contact" else "this conversation's"
+        if key in attributes.PRIVATE:
+            facts.append(f"We already have {owner} {label}; don't ask for it again.")
+        else:
+            facts.append(f"We know {owner} {label}: {value}.")
     return facts
 
 

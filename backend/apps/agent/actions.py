@@ -79,7 +79,7 @@ def submit_form(conversation: Conversation, surface_id: str, values) -> None:
     message.form = {**form, "submitted": True}
     message.save(update_fields=["form"])
     visitor = conversation.visitor
-    changed = forms.update_visitor(visitor, form, answers)
+    changed = forms.remember(conversation, form, answers)
     add_message(conversation, Message.Sender.VISITOR, forms.as_text(form, answers))
     if changed:
         add_message(
@@ -92,6 +92,7 @@ def submit_form(conversation: Conversation, surface_id: str, values) -> None:
     if will_reply(conversation):
         maybe_reply(conversation, followup_instruction(form))
     else:
+        visitor.refresh_from_db(fields=["email"])
         thanks = f"Thanks! We'll also reply to {visitor.email}." if "email" in changed else "Thanks, we got it."
         add_message(conversation, Message.Sender.BOT, thanks)
 

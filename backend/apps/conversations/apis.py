@@ -13,8 +13,18 @@ from apps.accounts.security import token_auth
 from apps.workspaces.models import Membership
 from apps.workspaces.services import member_workspace
 
+from . import attributes
 from .models import Conversation, Message, Visitor
-from .schemas import ConversationDetail, ConversationPatch, ConversationRow, MessageOut, ReplyIn, VisitorOut
+from .schemas import (
+    AttributeIn,
+    AttributeOut,
+    ConversationDetail,
+    ConversationPatch,
+    ConversationRow,
+    MessageOut,
+    ReplyIn,
+    VisitorOut,
+)
 from .serializers import conversation_row, message_out, visitor_out
 from .services import add_message
 
@@ -105,6 +115,46 @@ def list_visitors(request, workspace_id: int, online: bool = False):
     else:
         rows = rows.filter(last_seen__gte=timezone.now() - timedelta(days=7))
     return [visitor_out(v, v.conversation_id) for v in rows[:200]]
+
+
+def save_attribute(target, key: str, payload: AttributeIn) -> list[dict]:
+    if not attributes.KEY.match(key):
+        raise HttpError(400, "Attribute names are lowercase letters, digits and underscores, starting with a letter.")
+    if attributes.clean(key, payload.value) is None:
+        raise HttpError(400, "That value can't be saved.")
+    # A teammate's value replaces anything except one the host site signed.
+    if attributes.is_verified(target, key):
+        raise HttpError(400, "This value was verified by your website and can't be changed here.")
+    attributes.set_attribute(target, key, payload.value, attributes.Source.AGENT)
+    return attributes.listing(target)
+
+
+@router.put("/workspaces/{workspace_id}/visitors/{visitor_id}/attributes/{key}", response=list[AttributeOut])
+def set_visitor_attribute(request, workspace_id: int, visitor_id: int, key: str, payload: AttributeIn):
+    """A teammate records or corrects something about a visitor."""
+    workspace = member_workspace(request.auth, workspace_id)
+    return save_attribute(get_object_or_404(Visitor, pk=visitor_id, workspace=workspace), key, payload)
+
+
+@router.delete("/workspaces/{workspace_id}/visitors/{visitor_id}/attributes/{key}", response=list[AttributeOut])
+def delete_visitor_attribute(request, workspace_id: int, visitor_id: int, key: str):
+    visitor = get_object_or_404(Visitor, pk=visitor_id, workspace=member_workspace(request.auth, workspace_id))
+    attributes.remove(visitor, key)
+    return attributes.listing(visitor)
+
+
+@router.put("/workspaces/{workspace_id}/conversations/{conversation_id}/attributes/{key}", response=list[AttributeOut])
+def set_conversation_attribute(request, workspace_id: int, conversation_id: int, key: str, payload: AttributeIn):
+    return save_attribute(get_conversation(request, workspace_id, conversation_id), key, payload)
+
+
+@router.delete(
+    "/workspaces/{workspace_id}/conversations/{conversation_id}/attributes/{key}", response=list[AttributeOut]
+)
+def delete_conversation_attribute(request, workspace_id: int, conversation_id: int, key: str):
+    conversation = get_conversation(request, workspace_id, conversation_id)
+    attributes.remove(conversation, key)
+    return attributes.listing(conversation)
 
 
 @router.post("/workspaces/{workspace_id}/visitors/{visitor_id}/conversations", response=ConversationRow)

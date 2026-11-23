@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
 
+from . import attributes
 from .models import Conversation, Message, Visitor
 
 
@@ -63,9 +64,13 @@ def current_conversation(visitor: Visitor) -> Conversation | None:
     return conversations.first()
 
 
-def touch_visitor(visitor: Visitor, **page) -> None:
+def touch_visitor(visitor: Visitor, *, details: dict | None = None, **page) -> None:
+    """Records where the visitor is now. `details` are attributes the host page sent with
+    identify() (name, email, plan...): unsigned, so they are stored as Source.HOST."""
     for field, value in page.items():
         if value is not None:
             setattr(visitor, field, value[: Visitor._meta.get_field(field).max_length])
     visitor.last_seen = timezone.now()
     visitor.save()
+    if details:
+        attributes.set_many(visitor, details, attributes.Source.HOST)

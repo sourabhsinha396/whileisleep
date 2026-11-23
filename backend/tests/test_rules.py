@@ -1,19 +1,26 @@
 """Rules (run in code before the AI) and playbooks (instructions the AI loads on demand)."""
 
+from datetime import UTC, datetime
+
 import pytest
 
 from apps.agent import bot, rules
 from apps.agent.models import Rule
+from apps.conversations import attributes
 from apps.conversations.models import Conversation, Message
 
 from .conftest import Api, assistant, final, tool_call
 from .factories import (
+    AuthTokenFactory,
     ConversationFactory,
+    MembershipFactory,
     MessageFactory,
     OrganizationFactory,
     PlaybookFactory,
     RuleFactory,
+    VisitorFactory,
     WorkspaceFactory,
+    cond,
 )
 
 pytestmark = pytest.mark.django_db
@@ -79,9 +86,7 @@ def test_rule_runs_after_handoff_only_when_allowed():
 
 def test_instruction_rule_reaches_the_ai_for_that_message_only(llm):
     workspace = WorkspaceFactory(organization=OrganizationFactory(ready=True))
-    RuleFactory(
-        workspace=workspace, intent="", keywords="refund\nmoney back", reply="", ai_instruction="Be extra kind."
-    )
+    RuleFactory(workspace=workspace, keywords=["refund", "money back"], instruct="Be extra kind.")
     widget, _ = widget_for(workspace)
     fake = llm(final("Of course."), final("Hello."))
 
@@ -97,7 +102,7 @@ def test_instruction_rule_reaches_the_ai_for_that_message_only(llm):
 
 def test_handoff_rule_pauses_the_ai(llm):
     workspace = WorkspaceFactory(organization=OrganizationFactory(ready=True))
-    RuleFactory(workspace=workspace, intent="", keywords="lawyer", reply="", handoff=True)
+    RuleFactory(workspace=workspace, keywords=["lawyer"], handoff=True)
     widget, conversation = widget_for(workspace)
     fake = llm()
     send(widget, workspace, "I'll call my lawyer")
@@ -114,36 +119,210 @@ def test_first_matching_rule_by_position_wins():
     assert send(widget, workspace, "x", intent="exam_request").json()["messages"][-1]["body"] == "first"
 
 
+# --- What a rule can look at ---
+
+
+def facts(conversation=None, at=None, **message):
+    conversation = conversation or ConversationFactory()
+    msg = MessageFactory(conversation=conversation, **{"body": "hi", **message})
+    return rules.context_for(conversation, msg, rules.is_first_message(conversation, msg), at)
+
+
+def test_facts_about_the_message_and_the_page():
+    conversation = ConversationFactory(
+        visitor__current_url="https://shop.example.com/pricing", visitor__page_title="Pricing"
+    )
+    context = facts(conversation, body="Need a REFUND", intent="exam_request", intent_data={"exam_code": "SY0-401"})
+    assert context["message.text"] == "Need a REFUND"
+    assert context["message.intent"] == "exam_request"
+    assert context["message.data.exam_code"] == "SY0-401"
+    assert context["message.is_first"] is True
+    assert context["page.url"] == "https://shop.example.com/pricing" and context["page.title"] == "Pricing"
+
+
+def test_only_the_first_visitor_message_is_first():
+    conversation = ConversationFactory()
+    MessageFactory(conversation=conversation, sender=Message.Sender.BOT, body="Hi! How can we help?")
+    assert facts(conversation)["message.is_first"] is True
+    assert facts(conversation)["message.is_first"] is False
+
+
+def test_facts_about_the_visitor_and_the_conversation():
+    conversation = ConversationFactory(tags=["vip"], human_requested=True)
+    attributes.set_attribute(conversation.visitor, "plan", "pro", attributes.Source.HOST)
+    attributes.set_attribute(conversation, "topic", "billing", attributes.Source.RULE)
+    context = facts(conversation)
+    assert context["contact.plan"] == "pro" and context["conversation.topic"] == "billing"
+    assert context["contact.verified"] is False
+    assert context["conversation.tags"] == ["vip"] and context["conversation.has_human"] is True
+
+
+def test_time_is_local_to_the_workspace():
+    conversation = ConversationFactory(workspace__timezone="Asia/Kolkata")
+    # Friday 20:00 UTC is Saturday 01:30 in India.
+    context = facts(conversation, at=datetime(2026, 11, 20, 20, 0, tzinfo=UTC))
+    assert (context["time.hour"], context["time.weekday"]) == (1, "sat")
+
+
 @pytest.mark.parametrize(
-    ("rule", "message", "url", "first", "expected"),
+    ("conditions", "expected"),
     [
-        ({"intent": "exam_request"}, {"intent": "exam_request"}, "", True, True),
-        ({"intent": "exam_request"}, {"intent": "other"}, "", True, False),
-        ({"intent": "", "keywords": "refund"}, {"body": "Need a REFUND"}, "", True, True),
-        ({"intent": "", "keywords": "refund\nmoney"}, {"body": "hello"}, "", True, False),
-        ({"intent": "", "page_contains": "/pricing"}, {}, "https://shop.example.com/pricing", True, True),
-        ({"intent": "", "page_contains": "/pricing"}, {}, "https://shop.example.com/", True, False),
-        ({"intent": "", "first_message_only": True}, {}, "", False, False),
-        ({"intent": "exam_request", "keywords": "security"}, {"intent": "exam_request", "body": "x"}, "", True, False),
-        ({"intent": ""}, {}, "", True, False),  # no conditions never matches
+        ({"all": [cond("message.intent", "equals", "exam_request")]}, True),
+        ({"all": [cond("message.intent", "equals", "other")]}, False),
+        ({"all": [cond("message.text", "contains_any", ["refund", "money"])]}, True),
+        ({"all": [cond("message.text", "has_word", "fund")]}, False),
+        ({"all": [cond("page.url", "contains", "/pricing"), cond("message.is_first", "equals", True)]}, True),
+        ({"all": [cond("page.url", "contains", "/pricing"), cond("contact.plan", "equals", "pro")]}, False),
+        ({"any": [cond("contact.plan", "equals", "pro"), cond("message.text", "contains", "refund")]}, True),
+        ({"not": cond("conversation.tags", "equals", "vip")}, True),
     ],
 )
-def test_matches(rule, message, url, first, expected):
-    conversation = ConversationFactory(visitor__current_url=url)
-    msg = MessageFactory(conversation=conversation, **{"body": "hi", **message})
-    assert rules.matches(RuleFactory.build(**rule), msg, first) is expected
+def test_matches(conditions, expected):
+    conversation = ConversationFactory(visitor__current_url="https://shop.example.com/pricing")
+    context = facts(conversation, body="Need a REFUND", intent="exam_request")
+    assert rules.matches(RuleFactory.build(conditions=conditions), context) is expected
 
 
-def test_placeholders_fill_from_visitor_and_data_and_stay_short():
-    message = MessageFactory(
-        conversation__visitor__name="Sofia",
-        intent_data={"exam_name": "Line one\nline two " + "x" * 500},
+def test_an_office_hours_rule(llm):
+    """The kind of decision that needs no model: outside 9 to 18, say when we're back."""
+    workspace = WorkspaceFactory(organization=OrganizationFactory(ready=True), timezone="Europe/Berlin")
+    closed = {
+        "any": [cond("time.hour", "lt", 9), cond("time.hour", "gte", 18), cond("time.weekday", "in", ["sat", "sun"])]
+    }
+    rule = RuleFactory(workspace=workspace, conditions=closed, reply="We're back at 9:00.")
+    conversation = ConversationFactory(workspace=workspace)
+    message = MessageFactory(conversation=conversation, body="anyone there?")
+    night = rules.context_for(conversation, message, True, at=datetime(2026, 11, 23, 22, 0, tzinfo=UTC))
+    noon = rules.context_for(conversation, message, True, at=datetime(2026, 11, 23, 11, 0, tzinfo=UTC))
+    assert rules.matches(rule, night) and not rules.matches(rule, noon)
+
+
+# --- Actions ---
+
+
+def test_actions_run_in_order_and_set_attributes(llm):
+    workspace = WorkspaceFactory(organization=OrganizationFactory(ready=True))
+    RuleFactory(
+        workspace=workspace,
+        conditions={"all": [cond("message.text", "has_any_word", ["invoice", "billing"])]},
+        actions=[
+            {"type": "tag", "value": "billing"},
+            {"type": "set_attribute", "scope": "conversation", "key": "topic", "value": "billing"},
+            {"type": "set_attribute", "scope": "contact", "key": "segment", "value": "payer"},
+            {"type": "instruct", "text": "Link the billing portal for {contact.name}."},
+        ],
     )
-    filled = rules.fill("Hi {visitor.name}, {data.exam_name}! {data.missing}{nope}", message)
+    visitor = VisitorFactory(workspace=workspace)
+    attributes.set_attribute(visitor, "name", "Sofia", attributes.Source.HOST)
+    conversation = ConversationFactory(workspace=workspace, visitor=visitor)
+    fake = llm(final("Here it is."))
+
+    send(Api(visitor_token=visitor.token), workspace, "Where is my invoice?")
+
+    conversation.refresh_from_db()
+    visitor.refresh_from_db()
+    assert conversation.tags == ["billing"]
+    assert attributes.get(conversation, "topic") == "billing"
+    assert attributes.source_of(visitor, "segment") == attributes.Source.RULE
+    assert "Link the billing portal for Sofia." in fake.requests[0]["messages"][0]["content"]
+
+
+def test_a_rule_cannot_overwrite_a_verified_attribute():
+    workspace = WorkspaceFactory()
+    RuleFactory(
+        workspace=workspace,
+        actions=[
+            {"type": "set_attribute", "scope": "contact", "key": "plan", "value": "free"},
+            {"type": "reply", "text": "ok"},
+        ],
+    )
+    visitor = VisitorFactory(workspace=workspace)
+    attributes.set_attribute(visitor, "plan", "pro", attributes.Source.VERIFIED)
+    ConversationFactory(workspace=workspace, visitor=visitor)
+    send(Api(visitor_token=visitor.token), workspace, "x", intent="exam_request")
+    visitor.refresh_from_db()
+    assert attributes.get(visitor, "plan") == "pro"
+
+
+def test_a_later_rule_can_use_what_an_earlier_message_set():
+    """Attributes are how rules build on each other across messages."""
+    workspace = WorkspaceFactory()
+    RuleFactory(
+        workspace=workspace,
+        position=1,
+        conditions={"all": [cond("conversation.topic", "equals", "billing"), cond("message.text", "has_word", "yes")]},
+        reply="Great, opening the billing form.",
+    )
+    RuleFactory(
+        workspace=workspace,
+        position=2,
+        conditions={"all": [cond("message.text", "has_word", "invoice")]},
+        actions=[
+            {"type": "set_attribute", "scope": "conversation", "key": "topic", "value": "billing"},
+            {"type": "reply", "text": "Is this about billing?"},
+        ],
+    )
+    widget, _ = widget_for(workspace)
+    first = send(widget, workspace, "invoice please").json()["messages"][-1]["body"]
+    second = send(widget, workspace, "yes").json()["messages"][-1]["body"]
+    assert (first, second) == ("Is this about billing?", "Great, opening the billing form.")
+
+
+def test_placeholders_fill_from_the_facts_and_stay_short():
+    conversation = ConversationFactory()
+    attributes.set_attribute(conversation.visitor, "name", "Sofia", attributes.Source.HOST)
+    attributes.set_attribute(conversation, "topic", "billing", attributes.Source.RULE)
+    context = facts(conversation, intent_data={"exam_name": "Line one\nline two " + "x" * 500})
+    filled = rules.fill(
+        "Hi {contact.name}, {message.data.exam_name}! About {conversation.topic}. {contact.missing}{nope} {a.b}",
+        context,
+    )
     assert filled.startswith("Hi Sofia, Line one line two xxx")
     assert "\n" not in filled
-    assert len(filled) < 200
-    assert filled.endswith("! {nope}")
+    assert "About billing." in filled
+    # Unknown attribute: empty. Not a placeholder of ours: left alone.
+    assert filled.endswith(". {nope} {a.b}")
+    assert len(filled) < 250
+
+
+def test_older_placeholder_names_still_fill():
+    conversation = ConversationFactory()
+    attributes.set_attribute(conversation.visitor, "name", "Sofia", attributes.Source.HOST)
+    context = facts(conversation, intent_data={"exam_name": "Security+"})
+    assert rules.fill("Hi {visitor.name}, {data.exam_name}", context) == "Hi Sofia, Security+"
+
+
+# --- Trying a rule on past messages ---
+
+
+def test_backtest_counts_matches_and_shows_examples():
+    workspace = WorkspaceFactory()
+    conversation = ConversationFactory(workspace=workspace)
+    MessageFactory(conversation=conversation, body="I want a refund")
+    MessageFactory(conversation=conversation, body="hello")
+    MessageFactory(conversation=conversation, sender=Message.Sender.BOT, body="refund policy is...")
+    MessageFactory(body="refund in another workspace")
+    result = rules.backtest(workspace, {"all": [cond("message.text", "has_word", "refund")]})
+    assert (result["checked"], result["matched"]) == (2, 1)
+    assert [sample["text"] for sample in result["samples"]] == ["I want a refund"]
+
+
+def test_backtest_knows_which_message_was_first():
+    workspace = WorkspaceFactory()
+    conversation = ConversationFactory(workspace=workspace)
+    MessageFactory(conversation=conversation, body="first")
+    MessageFactory(conversation=conversation, body="second")
+    result = rules.backtest(workspace, {"all": [cond("message.is_first", "equals", True)]})
+    assert [sample["text"] for sample in result["samples"]] == ["first"]
+
+
+def test_backtest_endpoint(api, workspace):
+    MessageFactory(conversation=ConversationFactory(workspace=workspace), body="refund please")
+    path = f"/workspaces/{workspace.id}/rules/backtest"
+    tried = api.post(path, {"conditions": {"all": [cond("message.text", "contains", "refund")]}})
+    assert tried.status_code == 200 and tried.json()["matched"] == 1
+    assert api.post(path, {"conditions": {"all": []}}).status_code == 400
+    assert api.post(path, {"conditions": {"all": [cond("secrets.key", "exists")]}}).status_code == 400
 
 
 # --- Widget input limits ---
@@ -225,36 +404,67 @@ def test_button_context_outlasts_later_messages(llm):
 def rule_payload(**overrides):
     return {
         "name": "Exam requests",
-        "intent": "exam_request",
-        "reply": "We'll add {data.exam_name} within 12 hours.",
-        "tag": "exam-request",
+        "conditions": {"all": [cond("message.intent", "equals", "exam_request")]},
+        "actions": [
+            {"type": "tag", "value": "exam-request"},
+            {"type": "reply", "text": "We'll add {message.data.exam_name} within 12 hours."},
+        ],
         "also_when_human": True,
     } | overrides
 
 
 def test_rule_crud(api, workspace):
-    created = api.post(f"/workspaces/{workspace.id}/rules", rule_payload(keywords=" a \n\n b "))
+    created = api.post(f"/workspaces/{workspace.id}/rules", rule_payload())
     assert created.status_code == 200, created.json()
     rule_id = created.json()["id"]
-    assert Rule.objects.get(pk=rule_id).keywords == "a\nb"
+    assert Rule.objects.get(pk=rule_id).conditions == rule_payload()["conditions"]
     updated = api.put(f"/workspaces/{workspace.id}/rules/{rule_id}", rule_payload(enabled=False))
     assert updated.json()["enabled"] is False
-    assert len(api.get(f"/workspaces/{workspace.id}/rules").json()) == 1
+    listed = api.get(f"/workspaces/{workspace.id}/rules").json()
+    assert len(listed) == 1 and listed[0]["actions"] == rule_payload()["actions"]
     api.delete(f"/workspaces/{workspace.id}/rules/{rule_id}")
     assert not Rule.objects.exists()
+
+
+REPLY = {"type": "reply", "text": "Hi"}
 
 
 @pytest.mark.parametrize(
     ("overrides", "error"),
     [
-        ({"intent": ""}, "at least one condition"),
-        ({"reply": "", "tag": "", "handoff": False}, "at least one action"),
-        ({"ai_instruction": "Be kind"}, "not both"),
+        ({"conditions": {"all": []}}, "at least one condition"),
+        ({"conditions": {"all": [cond("message.text", "matches", ".*")]}}, "Unknown operator"),
+        ({"conditions": {"all": [cond("secrets.key", "exists")]}}, "Unknown field"),
+        ({"actions": []}, "at least one action"),
+        ({"actions": [REPLY, {"type": "instruct", "text": "Be kind"}]}, "not both"),
+        ({"actions": [REPLY, REPLY]}, "only one reply"),
+        ({"actions": [{"type": "email_ceo"}]}, "needs a type"),
+        ({"actions": [{"type": "reply", "text": "  "}]}, "needs text"),
+        ({"actions": [{"type": "tag", "value": "x" * 41}]}, "needs a tag"),
+        ({"actions": [{"type": "set_attribute", "scope": "galaxy", "key": "a", "value": 1}]}, "needs a scope"),
+        ({"actions": [{"type": "set_attribute", "scope": "contact", "key": "Bad Key", "value": 1}]}, "Attribute names"),
+        (
+            {"actions": [{"type": "set_attribute", "scope": "contact", "key": "email", "value": "nope"}]},
+            "can't be stored",
+        ),
+        ({"actions": [{"type": "handoff"}] * 11}, "at most 10"),
     ],
 )
 def test_rule_validation(api, workspace, overrides, error):
     response = api.post(f"/workspaces/{workspace.id}/rules", rule_payload(**overrides))
-    assert response.status_code == 400 and error in response.json()["detail"]
+    assert response.status_code == 400 and error in response.json()["detail"], response.json()
+
+
+def test_only_owners_change_rules(workspace):
+    agent = MembershipFactory(workspace=workspace, role="agent")
+    as_agent = Api(token=AuthTokenFactory(user=agent.user).key)
+    assert as_agent.get(f"/workspaces/{workspace.id}/rules").status_code == 200
+    assert as_agent.post(f"/workspaces/{workspace.id}/rules", rule_payload()).status_code == 404
+
+
+def test_timezone_is_set_and_checked(api, workspace):
+    assert api.patch(f"/workspaces/{workspace.id}", {"timezone": "Asia/Kolkata"}).json()["timezone"] == "Asia/Kolkata"
+    assert api.patch(f"/workspaces/{workspace.id}", {"timezone": "Mars/Olympus"}).status_code == 400
 
 
 def test_playbook_crud_and_unique_title(api, workspace):

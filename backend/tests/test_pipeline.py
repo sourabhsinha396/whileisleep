@@ -44,7 +44,7 @@ def only_turn() -> Turn:
 
 def test_a_rule_with_a_fixed_reply_answers_without_the_model(llm):
     workspace = workspace_with_llm()
-    rule = RuleFactory(workspace=workspace, intent="", keywords="opening hours", reply="We're open 9 to 5.")
+    rule = RuleFactory(workspace=workspace, keywords=["opening hours"], reply="We're open 9 to 5.")
     fake = llm()
 
     send(VisitorFactory(workspace=workspace), "What are your opening hours?")
@@ -59,7 +59,7 @@ def test_a_rule_with_a_fixed_reply_answers_without_the_model(llm):
 
 def test_a_rule_that_only_instructs_still_goes_to_the_ai_and_is_remembered(llm):
     workspace = workspace_with_llm()
-    rule = RuleFactory(workspace=workspace, intent="", keywords="refund", reply="", ai_instruction="Be brief.")
+    rule = RuleFactory(workspace=workspace, keywords=["refund"], instruct="Be brief.")
     fake = llm(final("Refunds take 5 days."))
 
     send(VisitorFactory(workspace=workspace), "refund?")
@@ -251,7 +251,7 @@ def test_a_model_that_never_answers_is_a_fallback_with_a_reason(llm):
 
 def test_a_submitted_form_skips_rules_and_records_its_own_turn(llm):
     workspace = workspace_with_llm()
-    RuleFactory(workspace=workspace, intent="", keywords="email", reply="Rule reply.")
+    RuleFactory(workspace=workspace, keywords=["email"], reply="Rule reply.")
     visitor = VisitorFactory(workspace=workspace)
     form = {"fields": [{"name": "email", "label": "Email", "type": "email", "required": True}]}
     ask_for_email = assistant(
@@ -306,7 +306,7 @@ def test_turns_of_a_conversation(api, workspace, llm):
     workspace.organization.openrouter_api_key = "sk-or-test-key-1234"
     workspace.organization.llm_model = "test/model"
     workspace.organization.save()
-    rule = RuleFactory(workspace=workspace, intent="", keywords="hours", reply="9 to 5.")
+    rule = RuleFactory(workspace=workspace, keywords=["hours"], reply="9 to 5.")
     visitor = VisitorFactory(workspace=workspace)
     llm(final("Yes."))
     send(visitor, "opening hours?")

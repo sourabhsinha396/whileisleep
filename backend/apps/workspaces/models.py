@@ -53,6 +53,8 @@ class Workspace(models.Model):
     identity_secret = EncryptedTextField(default=new_identity_secret)
     color = models.CharField(max_length=16, default="#2563eb")
     greeting = models.CharField(max_length=300, default="Hi! How can we help?")
+    # An IANA name ("Europe/Berlin"). Rules read the local hour and weekday in it.
+    timezone = models.CharField(max_length=64, default="UTC")
     ai_enabled = models.BooleanField(default=True)
     # Extra instructions for the AI agent: tone, scope, product facts.
     ai_instructions = models.TextField(blank=True)

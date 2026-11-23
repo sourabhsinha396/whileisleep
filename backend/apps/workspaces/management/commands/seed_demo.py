@@ -74,9 +74,14 @@ WORKSPACES = [
         "rules": [
             {
                 "name": "Exam requests",
-                "intent": "exam_request",
-                "reply": "Thanks! We'll try to add {data.exam_name} within 12 hours, and we'll reply here once it's live.",
-                "tag": "exam-request",
+                "conditions": {"all": [{"field": "message.intent", "op": "equals", "value": "exam_request"}]},
+                "actions": [
+                    {"type": "tag", "value": "exam-request"},
+                    {
+                        "type": "reply",
+                        "text": "Thanks! We'll try to add {message.data.exam_name} within 12 hours, and we'll reply here once it's live.",
+                    },
+                ],
                 "also_when_human": True,
             },
         ],

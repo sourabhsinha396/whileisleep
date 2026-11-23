@@ -1,6 +1,7 @@
 """Dashboard APIs for rules and playbooks. Members read; owners change them."""
 
 from datetime import datetime
+from typing import Any
 
 from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
@@ -10,6 +11,7 @@ from pydantic import Field
 from apps.accounts.security import token_auth
 from apps.workspaces.services import member_workspace, owner_workspace
 
+from . import rules
 from .models import Playbook, Rule
 
 router = Router(tags=["automation"], auth=token_auth)
@@ -19,14 +21,9 @@ class RuleIn(Schema):
     name: str = Field(min_length=1, max_length=120)
     enabled: bool = True
     position: int = Field(0, ge=0)
-    intent: str = Field("", max_length=64, pattern=r"^[a-z0-9_.-]*$")
-    keywords: str = Field("", max_length=2000)
-    page_contains: str = Field("", max_length=300)
-    first_message_only: bool = False
-    reply: str = Field("", max_length=4000)
-    ai_instruction: str = Field("", max_length=4000)
-    tag: str = Field("", max_length=40)
-    handoff: bool = False
+    # A condition tree and a list of actions; apps.agent.rules documents both.
+    conditions: dict[str, Any]
+    actions: list[dict[str, Any]]
     also_when_human: bool = False
 
 
@@ -34,6 +31,24 @@ class RuleOut(RuleIn):
     id: int
     match_count: int
     last_matched_at: datetime | None
+
+
+class BacktestIn(Schema):
+    conditions: dict[str, Any]
+
+
+class BacktestSample(Schema):
+    message_id: int
+    conversation_id: int
+    text: str
+    created_at: datetime
+
+
+class BacktestOut(Schema):
+    # Recent visitor messages looked at, and how many the conditions matched.
+    checked: int
+    matched: int
+    samples: list[BacktestSample]
 
 
 class PlaybookIn(Schema):
@@ -49,16 +64,11 @@ class PlaybookOut(PlaybookIn):
 
 
 def check_rule(payload: RuleIn) -> dict:
-    data = payload.dict()
-    data["keywords"] = "\n".join(k.strip() for k in data["keywords"].splitlines() if k.strip())
-    data["tag"] = data["tag"].strip()
-    if not (data["intent"] or data["keywords"] or data["page_contains"].strip() or data["first_message_only"]):
-        raise HttpError(400, "Set at least one condition, or the rule would fire on every message.")
-    if data["reply"].strip() and data["ai_instruction"].strip():
-        raise HttpError(400, "Use a fixed reply or an AI instruction, not both.")
-    if not (data["reply"].strip() or data["ai_instruction"].strip() or data["tag"] or data["handoff"]):
-        raise HttpError(400, "Set at least one action.")
-    return data
+    try:
+        rules.validate(payload.conditions, payload.actions)
+    except rules.InvalidRule as error:
+        raise HttpError(400, str(error)) from error
+    return payload.dict()
 
 
 # --- Rules ---
@@ -72,6 +82,17 @@ def list_rules(request, workspace_id: int):
 @router.post("/workspaces/{workspace_id}/rules", response=RuleOut)
 def create_rule(request, workspace_id: int, payload: RuleIn):
     return Rule.objects.create(workspace=owner_workspace(request.auth, workspace_id), **check_rule(payload))
+
+
+@router.post("/workspaces/{workspace_id}/rules/backtest", response=BacktestOut)
+def backtest_rule(request, workspace_id: int, payload: BacktestIn):
+    """Tries conditions on the workspace's recent visitor messages, before saving a rule."""
+    workspace = member_workspace(request.auth, workspace_id)
+    try:
+        rules.validate(payload.conditions, [{"type": "handoff"}])
+    except rules.InvalidRule as error:
+        raise HttpError(400, str(error)) from error
+    return rules.backtest(workspace, payload.conditions)
 
 
 @router.put("/workspaces/{workspace_id}/rules/{rule_id}", response=RuleOut)

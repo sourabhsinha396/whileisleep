@@ -114,14 +114,53 @@ class ToolFactory(factory.django.DjangoModelFactory):
     )
 
 
+def cond(field: str, op: str, value=None) -> dict:
+    """One condition: cond("contact.plan", "equals", "pro")."""
+    return {"field": field, "op": op} | ({} if value is None else {"value": value})
+
+
 class RuleFactory(factory.django.DjangoModelFactory):
+    """A rule. Pass `conditions` / `actions` as stored, or use the shorthand that covers most
+    tests: intent=, keywords= (a list), page=, first=True for conditions (all must hold), and
+    reply=, instruct=, tag=, handoff=True for actions.
+
+    With no arguments: on intent "exam_request", reply with a fixed text.
+    """
+
     class Meta:
         model = Rule
 
     workspace = factory.SubFactory(WorkspaceFactory)
     name = factory.Sequence(lambda n: f"Rule {n}")
-    intent = "exam_request"
-    reply = "Thanks! We'll try to add {data.exam_name} within 12 hours."
+
+    @classmethod
+    def _adjust_kwargs(cls, **kwargs):
+        shorthand = {key: kwargs.pop(key, None) for key in ("intent", "keywords", "page", "first")}
+        actions = {key: kwargs.pop(key, None) for key in ("reply", "instruct", "tag", "handoff")}
+        if "conditions" not in kwargs:
+            tests = []
+            if shorthand["intent"]:
+                tests.append(cond("message.intent", "equals", shorthand["intent"]))
+            if shorthand["keywords"]:
+                tests.append(cond("message.text", "contains_any", list(shorthand["keywords"])))
+            if shorthand["page"]:
+                tests.append(cond("page.url", "contains", shorthand["page"]))
+            if shorthand["first"]:
+                tests.append(cond("message.is_first", "equals", True))
+            kwargs["conditions"] = {"all": tests or [cond("message.intent", "equals", "exam_request")]}
+        if "actions" not in kwargs:
+            built = []
+            if actions["tag"]:
+                built.append({"type": "tag", "value": actions["tag"]})
+            if actions["handoff"]:
+                built.append({"type": "handoff"})
+            if actions["instruct"]:
+                built.append({"type": "instruct", "text": actions["instruct"]})
+            elif actions["reply"] or not actions["handoff"]:
+                text = actions["reply"] or "Thanks! We'll try to add {message.data.exam_name} within 12 hours."
+                built.append({"type": "reply", "text": text})
+            kwargs["actions"] = built
+        return kwargs
 
 
 class PlaybookFactory(factory.django.DjangoModelFactory):

@@ -12,6 +12,7 @@ class WorkspacePatch(Schema):
     website: str | None = None
     color: str | None = Field(None, max_length=16)
     greeting: str | None = Field(None, max_length=300)
+    timezone: str | None = Field(None, max_length=64)
     ai_enabled: bool | None = None
     ai_instructions: str | None = None
 
@@ -23,6 +24,7 @@ class WorkspaceOut(Schema):
     website: str
     color: str
     greeting: str
+    timezone: str
     ai_enabled: bool
     ai_instructions: str
     role: str = ""

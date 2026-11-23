@@ -52,9 +52,9 @@ class Tool(models.Model):
 class Rule(models.Model):
     """When a visitor message meets the conditions, act in code before (or instead of) the AI.
 
-    Rules are checked in `position` order and the first match wins. All the conditions that
-    are set must hold; empty ones are ignored. Use them for replies that must be exact or
-    always happen, e.g. "exam_request → we'll add it within 12 hours".
+    Rules are checked in `position` order and the first match wins. Use them for replies
+    that must be exact or always happen, e.g. "exam_request → we'll add it within 12 hours".
+    apps.agent.rules explains and runs them.
     """
 
     workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="rules")
@@ -62,23 +62,12 @@ class Rule(models.Model):
     enabled = models.BooleanField(default=True)
     position = models.PositiveIntegerField(default=0)
 
-    # Conditions
-    # The label a button on the host site attached to the message (window.whileisleep.open(text, {intent})).
-    intent = models.CharField(max_length=64, blank=True)
-    # One per line; the message must contain any of them (case-insensitive).
-    keywords = models.TextField(blank=True)
-    # The visitor's current page URL must contain this.
-    page_contains = models.CharField(max_length=300, blank=True)
-    first_message_only = models.BooleanField(default=False)
-
-    # Actions
-    # A fixed reply, sent instead of the AI's. {visitor.name}, {visitor.email} and {data.KEY}
-    # (from the message's intent data) are filled in.
-    reply = models.TextField(blank=True)
-    # Without a fixed reply: an extra instruction the AI follows for this message only.
-    ai_instruction = models.TextField(blank=True)
-    tag = models.CharField(max_length=40, blank=True)
-    handoff = models.BooleanField(default=False, help_text="Flag the conversation for a person.")
+    # When it applies: a condition tree, e.g. {"all": [{"field": "message.intent", "op":
+    # "equals", "value": "exam_request"}]}. See apps.agent.conditions.
+    conditions = models.JSONField(default=dict)
+    # What it does, in order: [{"type": "tag", "value": "exam-request"}, {"type": "reply",
+    # "text": "..."}]. See apps.agent.rules.
+    actions = models.JSONField(default=list)
     # Also run after a person took over the conversation (the AI is paused then).
     also_when_human = models.BooleanField(default=False)
 
@@ -91,10 +80,6 @@ class Rule(models.Model):
 
     def __str__(self):
         return self.name
-
-    @property
-    def keyword_list(self) -> list[str]:
-        return [k.strip().lower() for k in self.keywords.splitlines() if k.strip()]
 
 
 class Playbook(models.Model):

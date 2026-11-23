@@ -1,3 +1,5 @@
+from zoneinfo import available_timezones
+
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 from ninja import Router
@@ -52,7 +54,10 @@ def get(request, workspace_id: int):
 @router.patch("/workspaces/{workspace_id}", response=WorkspaceOut)
 def update(request, workspace_id: int, payload: WorkspacePatch):
     workspace = owner_workspace(request.auth, workspace_id)
-    for field, value in payload.dict(exclude_unset=True).items():
+    data = payload.dict(exclude_unset=True)
+    if data.get("timezone") is not None and data["timezone"] not in available_timezones():
+        raise HttpError(400, "Unknown timezone. Use a name like Europe/Berlin or Asia/Kolkata.")
+    for field, value in data.items():
         setattr(workspace, field, value)
     workspace.save()
     return workspace_out(workspace, request.auth, Membership.Role.OWNER)

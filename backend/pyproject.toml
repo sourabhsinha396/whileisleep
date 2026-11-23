@@ -3,6 +3,7 @@ name = "whileisleep-backend"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
+    "cryptography>=44",
     "django>=6.1.3",
     "django-cors-headers>=4.9.0",
     "django-ninja>=1.8.0",

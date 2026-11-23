@@ -27,6 +27,8 @@ class EnvFile(BaseModel):
     DJANGO_SECRET_KEY: str | None = None
     DJANGO_DEBUG: bool | None = None
     ALLOWED_HOSTS: str | None = None
+    # Comma-separated Fernet keys for stored secrets; see whileisleep/encryption.py.
+    ENCRYPTION_KEYS: str | None = None
     # Only `manage.py seed_demo` reads these. The running app takes each organization's
     # OpenRouter key from its settings page, never from here.
     # Plain pattern: reserved test domains (demo@whileisleep.test) are fine here.

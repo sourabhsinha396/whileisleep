@@ -115,6 +115,11 @@ CONVERSATION_IDLE_HOURS = 24
 # A visitor counts as online if the widget pinged within this many seconds.
 ONLINE_WINDOW_SECONDS = 60
 
+# Fernet keys for secrets stored in the database (whileisleep.encryption): the first encrypts,
+# all decrypt. Empty derives one from SECRET_KEY, which is fine for development only.
+# Make one with: python manage.py generate_encryption_key
+ENCRYPTION_KEYS = [k.strip() for k in os.environ.get("ENCRYPTION_KEYS", "").split(",") if k.strip()]
+
 # Reverse proxies between the internet and Django (Caddy, a load balancer...). Rate limits
 # read the visitor's address from X-Forwarded-For only as far as these can vouch for it
 # (whileisleep.client_ip). 0 ignores the header.

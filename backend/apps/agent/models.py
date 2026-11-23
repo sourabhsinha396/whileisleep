@@ -2,6 +2,7 @@ from django.core.validators import RegexValidator
 from django.db import models
 
 from apps.workspaces.models import Workspace
+from whileisleep.fields import EncryptedJSONField
 
 tool_name = RegexValidator(
     r"^[a-z][a-z0-9_]{1,63}$", "Lowercase letters, digits and underscores, starting with a letter."
@@ -30,8 +31,9 @@ class Tool(models.Model):
     url = models.CharField(max_length=1000)
     # JSON Schema of the inputs, e.g. {"type": "object", "properties": {"q": {"type": "string"}}}.
     input_schema = models.JSONField(default=dict, blank=True)
-    # Sent with every call, e.g. {"Authorization": "Bearer ..."}. Never shown to visitors or the model.
-    headers = models.JSONField(default=dict, blank=True)
+    # Sent with every call, e.g. {"Authorization": "Bearer ..."}. Encrypted in the database and
+    # never shown to visitors, the dashboard or the model.
+    headers = EncryptedJSONField(blank=True)
     enabled = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

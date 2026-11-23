@@ -3,6 +3,8 @@ import secrets
 from django.conf import settings
 from django.db import models
 
+from whileisleep.fields import EncryptedTextField
+
 
 def new_public_key() -> str:
     return "ws_" + secrets.token_urlsafe(12)
@@ -14,8 +16,9 @@ class Organization(models.Model):
 
     name = models.CharField(max_length=120)
     owner = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="organization")
-    # Secret: the API never returns it, only whether it is set and its last characters.
-    openrouter_api_key = models.CharField(max_length=200, blank=True)
+    # Secret: encrypted in the database, and the API never returns it, only whether it is set
+    # and its last characters.
+    openrouter_api_key = EncryptedTextField(blank=True)
     # An OpenRouter model id (see openrouter.ai/models) that supports tool calling.
     llm_model = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

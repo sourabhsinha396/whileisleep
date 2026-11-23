@@ -158,6 +158,61 @@ def test_long_tool_results_are_shortened_in_the_record(llm, monkeypatch):
     assert len(step["result"]) == 500
 
 
+# --- Help center passages before the first model call ---
+
+
+def test_matching_passages_are_in_the_first_prompt(llm):
+    workspace = workspace_with_llm()
+    article = ArticleFactory(
+        workspace=workspace,
+        title="Store policies",
+        body="# Refunds\n\nRefunds within 30 days.\n\n# Shipping\n\nWe ship to Canada in 5 days.",
+    )
+    fake = llm(final("Yes, in 5 days.", article_ids=[article.id]))
+
+    send(VisitorFactory(workspace=workspace), "Do you ship to Canada?")
+
+    # One model call answered a help center question: no search round-trip.
+    assert len(fake.requests) == 1
+    prompt = fake.requests[0]["messages"][0]["content"]
+    assert f"[article {article.id}] Store policies > Shipping" in prompt
+    assert "We ship to Canada in 5 days." in prompt
+    [retrieval] = [s for s in only_turn().steps if s["type"] == "retrieval"]
+    assert retrieval["query"] == "Do you ship to Canada?"
+    assert {"article_id": article.id, "label": "Store policies > Shipping"} in retrieval["passages"]
+
+
+def test_no_match_adds_nothing_to_the_prompt(llm):
+    workspace = workspace_with_llm()
+    ArticleFactory(workspace=workspace, title="Refunds", body="30 days.")
+    fake = llm(final("Hello!"))
+    send(VisitorFactory(workspace=workspace), "hello")
+    assert "From the help center" not in fake.requests[0]["messages"][0]["content"]
+    [retrieval] = [s for s in only_turn().steps if s["type"] == "retrieval"]
+    assert retrieval["passages"] == []
+
+
+def test_passages_of_other_workspaces_and_drafts_never_reach_the_prompt(llm):
+    workspace = workspace_with_llm()
+    ArticleFactory(title="Shipping elsewhere", body="We ship to Canada by rocket.")
+    ArticleFactory(workspace=workspace, title="Draft", body="We ship to Canada by drone.", published=False)
+    fake = llm(final("Let me check."))
+    send(VisitorFactory(workspace=workspace), "Do you ship to Canada?")
+    prompt = fake.requests[0]["messages"][0]["content"]
+    assert "rocket" not in prompt and "drone" not in prompt
+
+
+def test_the_prompt_goes_from_stable_to_changing():
+    """Providers cache a prompt by its beginning, so what changes per message must come last."""
+    workspace = WorkspaceFactory(ai_instructions="Be kind.")
+    article = ArticleFactory(workspace=workspace, title="Shipping", body="We ship to Canada.")
+    found = bot.passages(workspace, "ship canada")
+    assert found[0].article_id == article.id
+    prompt = bot.system_prompt(workspace, (), "Offer a discount.", ["The visitor's name is Sofia."], found)
+    order = [prompt.index(part) for part in ("Be kind.", "name is Sofia", "From the help center", "Offer a discount.")]
+    assert order == sorted(order)
+
+
 # --- Fallback ---
 
 

@@ -10,7 +10,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from apps.accounts.security import token_auth
-from apps.realtime import events
+from apps.realtime import events, presence
 from apps.workspaces.models import Membership
 from apps.workspaces.services import member_workspace
 
@@ -52,9 +52,11 @@ def list_conversations(request, workspace_id: int, status: str = "open", mine: b
         rows = rows.filter(status=status)
     if mine:
         rows = rows.filter(assignee=request.auth)
+    rows = list(rows[:200])
+    online = presence.online_ids({c.visitor_id for c in rows})
     result = []
-    for conversation in rows[:200]:
-        row = conversation_row(conversation)
+    for conversation in rows:
+        row = conversation_row(conversation, online=None if online is None else conversation.visitor_id in online)
         row["preview"] = (conversation.preview or "")[:140]
         result.append(row)
     return result
@@ -114,11 +116,17 @@ def update(request, workspace_id: int, conversation_id: int, payload: Conversati
 def list_visitors(request, workspace_id: int, online: bool = False):
     workspace = member_workspace(request.auth, workspace_id)
     rows = workspace.visitors.annotate(conversation_id=Max("conversations__id")).order_by("-last_seen")
-    if online:
-        rows = rows.filter(last_seen__gte=timezone.now() - timedelta(seconds=settings.ONLINE_WINDOW_SECONDS))
+    online_now = presence.online_in(workspace.id)
+    if online and online_now is not None:
+        rows = rows.filter(pk__in=online_now)
+    elif online:
+        # No Redis: the last time the widget called us.
+        rows = rows.filter(last_seen__gte=timezone.now() - timedelta(seconds=settings.PRESENCE_TTL_SECONDS))
     else:
         rows = rows.filter(last_seen__gte=timezone.now() - timedelta(days=7))
-    return [visitor_out(v, v.conversation_id) for v in rows[:200]]
+    rows = list(rows[:200])
+    online_set = set(online_now) if online_now is not None else None
+    return [visitor_out(v, v.conversation_id, None if online_set is None else v.id in online_set) for v in rows]
 
 
 def save_attribute(target, key: str, payload: AttributeIn) -> list[dict]:

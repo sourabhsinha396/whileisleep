@@ -123,8 +123,13 @@ KNOWLEDGE_BUDGET_CHARS = 5000
 # the inbox but stop feeding the AI).
 CONVERSATION_IDLE_HOURS = 24
 
-# A visitor counts as online if the widget pinged within this many seconds.
-ONLINE_WINDOW_SECONDS = 60
+# Live updates (apps.realtime). A visitor is online while their presence key lives; an
+# open stream refreshes it on every keep-alive ping, so the TTL must be a few pings long.
+PRESENCE_TTL_SECONDS = 45
+STREAM_PING_SECONDS = 15
+# A stream ends after this long and the browser reconnects at once. Checks the visitor or
+# dashboard token again, and spreads connections over restarted stream processes.
+STREAM_MAX_SECONDS = 600
 
 # Redis does two jobs: the cache (rate-limit counters and reply locks, which every process
 # must share) and the Celery broker (the queue of AI replies waiting for a worker). They

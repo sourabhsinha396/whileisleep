@@ -49,8 +49,21 @@ def fake_redis(monkeypatch):
     """Real-time features on an in-memory Redis. The sync client (publishers, presence) and
     every async client (streams) share one fake server, so pub/sub crosses between them."""
     import fakeredis
+    import fakeredis.aioredis
 
     from apps.realtime import bus
+
+    # redis-py 8.2's asyncio client checks writer.transport.is_closing() before each command;
+    # fakeredis 2.34's fake writer has no transport. (Later fakeredis releases fix that but
+    # break the sync client on redis-py 8.2.)
+    class Transport:
+        def __init__(self, writer):
+            self.writer = writer
+
+        def is_closing(self):
+            return self.writer._socket is None
+
+    monkeypatch.setattr(fakeredis.aioredis.FakeWriter, "transport", property(Transport), raising=False)
 
     server = fakeredis.FakeServer()
     sync = fakeredis.FakeRedis(server=server)

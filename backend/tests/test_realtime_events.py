@@ -96,8 +96,13 @@ def test_a_redis_failure_does_not_fail_the_request(conversation, monkeypatch):
     import redis
 
     class Broken:
-        def pipeline(self, transaction=False):
-            raise redis.ConnectionError("down")
+        """Every command fails as with Redis down."""
+
+        def __getattr__(self, name):
+            def fail(*args, **kwargs):
+                raise redis.ConnectionError("down")
+
+            return fail
 
     monkeypatch.setattr(bus, "client", lambda: Broken())
     message = add_message(conversation, Message.Sender.AGENT, "Hello!")

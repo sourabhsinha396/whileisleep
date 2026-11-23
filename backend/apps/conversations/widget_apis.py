@@ -12,6 +12,7 @@ from ninja.errors import HttpError
 from apps.agent import actions, pipeline
 from apps.knowledge.models import Article
 from apps.knowledge.search import search
+from apps.realtime import presence
 from apps.workspaces.models import Workspace
 from whileisleep.client_ip import client_ip
 
@@ -52,7 +53,8 @@ def config(request, key: str):
 
 @router.post("/{key}/session", response=WidgetSessionOut)
 def session(request, key: str, payload: WidgetSessionIn):
-    """Start or resume a visitor. The widget calls it on load and every 20 s as a heartbeat."""
+    """Start or resume a visitor. The widget calls it on each page load; its live stream
+    (or, without one, its polling) keeps the visitor online after that."""
     workspace = get_workspace(key)
     token = request.headers.get("X-Visitor-Token", "")
     visitor = Visitor.objects.filter(workspace=workspace, token=token).first() if token else None
@@ -75,6 +77,7 @@ def session(request, key: str, payload: WidgetSessionIn):
         user_agent=request.headers.get("User-Agent", ""),
         details=payload.details(),
     )
+    presence.touch(visitor)
     conversation = current_conversation(visitor)
     last = conversation.messages.filter(is_note=False).order_by("-id").first() if conversation else None
     return {
@@ -97,8 +100,11 @@ def restart(request, key: str):
 
 @router.get("/{key}/messages", response=WidgetMessagesOut)
 def messages(request, key: str, after: int = 0):
+    """New messages since `after`. The widget polls this when it has no live stream, so it
+    also keeps the visitor online."""
     workspace = get_workspace(key)
     visitor = get_visitor(request, workspace)
+    presence.touch(visitor)
     conversation = current_conversation(visitor)
     if conversation is None:
         return {"conversation_id": None, "messages": []}

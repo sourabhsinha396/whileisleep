@@ -60,7 +60,9 @@ class Visitor(models.Model):
 
     @property
     def is_online(self) -> bool:
-        return (timezone.now() - self.last_seen).total_seconds() < settings.ONLINE_WINDOW_SECONDS
+        from apps.realtime import presence
+
+        return presence.is_online(self)
 
 
 class Conversation(models.Model):

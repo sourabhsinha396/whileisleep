@@ -1,10 +1,8 @@
-"""
-ASGI config for whileisleep project.
+"""ASGI entry point, for the stream process: `uvicorn whileisleep.asgi:application`.
 
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/6.1/howto/deployment/asgi/
+It serves the live streams (apps/realtime/views.py), async views that hold one connection
+per open widget or inbox while they wait on Redis. The REST API runs on WSGI (gunicorn,
+wsgi.py); the reverse proxy sends only the stream paths here.
 """
 
 import os

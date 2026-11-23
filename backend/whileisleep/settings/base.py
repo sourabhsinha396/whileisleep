@@ -88,7 +88,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # The dashboard and the widget both send bearer tokens, never cookies, so the
 # API can answer any origin. The widget runs on customers' own websites.
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_HEADERS = (*default_headers, "x-visitor-token")
+# last-event-id: a live stream resuming after a disconnect (apps.realtime.views).
+CORS_ALLOW_HEADERS = (*default_headers, "x-visitor-token", "last-event-id")
 
 # Longest message a visitor can send, and longest free-text form answer. Keeps each AI call
 # small; the widget reads it from /widget/{key}/config and stops typing at it.

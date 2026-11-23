@@ -199,7 +199,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                   {workspace.ai_enabled ? (
                     <span className="text-warning">No LLM set up yet, so it answers by keyword search.</span>
                   ) : (
-                    "Visitors wait for your team. Turn it on to answer them automatically."
+                    "Turn it on to answer them automatically."
                   )}
                 </span>
               </Link>

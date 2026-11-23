@@ -81,6 +81,11 @@ def request(method: str, url: str, *, headers: dict | None = None, timeout: floa
         address = public_address(target.host, target.port or DEFAULT_PORTS[target.scheme])
         target, host_headers, extensions = pin(target, address)
         headers = {k: v for k, v in headers.items() if k.lower() != "host"} | host_headers
-    return httpx.request(
-        method, target, headers=headers, timeout=timeout, follow_redirects=False, extensions=extensions, **kwargs
-    )
+    return send(method, target, headers=headers, timeout=timeout, extensions=extensions, **kwargs)
+
+
+def send(method: str, url: httpx.URL, *, headers: dict, timeout: float, extensions: dict, **kwargs) -> httpx.Response:
+    """The one place a guarded request leaves this process. Redirects are never followed:
+    one could lead back inside the network we just refused."""
+    with httpx.Client(follow_redirects=False, timeout=timeout) as client:
+        return client.request(method, url, headers=headers, extensions=extensions, **kwargs)

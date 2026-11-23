@@ -5,7 +5,7 @@ from whileisleep import outbound
 
 
 class Recorder:
-    """Stands in for httpx.request."""
+    """Stands in for outbound.send, the last step before the network."""
 
     def __init__(self):
         self.calls = []
@@ -18,8 +18,22 @@ class Recorder:
 @pytest.fixture
 def sent(monkeypatch):
     recorder = Recorder()
-    monkeypatch.setattr(outbound.httpx, "request", recorder)
+    monkeypatch.setattr(outbound, "send", recorder)
     return recorder
+
+
+@pytest.fixture
+def wire(monkeypatch):
+    """Lets requests run through real httpx, stopping at the socket: records what would
+    have been sent and answers 302 (to prove redirects aren't followed)."""
+    seen = []
+
+    def handle(self, request):
+        seen.append(request)
+        return httpx.Response(302, headers={"Location": "http://169.254.169.254/"}, request=request)
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", handle)
+    return seen
 
 
 @pytest.fixture
@@ -64,7 +78,31 @@ def test_request_connects_to_the_checked_address(sent, dns):
     assert call["url"] == "https://93.184.216.34/orders?id=7"
     assert call["headers"] == {"X-Key": "k", "Host": "api.example.com"}
     assert call["extensions"] == {"sni_hostname": "api.example.com"}
-    assert call["follow_redirects"] is False
+
+
+def test_the_pinned_request_survives_real_httpx(wire, dns):
+    """Through httpx itself, not a stand-in: an argument httpx rejects, or a Host header it
+    rewrites, would only show up here."""
+    dns("93.184.216.34")
+    response = outbound.request(
+        "POST", "https://api.example.com/orders", params={"id": "7"}, json={"q": "x"}, headers={"X-Key": "k"}
+    )
+    [request] = wire
+    assert str(request.url) == "https://93.184.216.34/orders?id=7"
+    assert request.headers["host"] == "api.example.com"
+    assert request.headers["x-key"] == "k"
+    assert request.extensions["sni_hostname"] == "api.example.com"
+    assert request.content == b'{"q":"x"}'
+    # The redirect to the metadata address was returned, not followed.
+    assert response.status_code == 302 and len(wire) == 1
+
+
+def test_an_allowed_private_request_survives_real_httpx(wire, settings):
+    settings.OUTBOUND_ALLOW_PRIVATE_NETWORKS = True
+    outbound.request("GET", "http://host.docker.internal:8006/api", headers={"X-Key": "k"})
+    [request] = wire
+    assert str(request.url) == "http://host.docker.internal:8006/api"
+    assert request.headers["host"] == "host.docker.internal:8006"
 
 
 def test_host_header_keeps_an_unusual_port(sent, dns):

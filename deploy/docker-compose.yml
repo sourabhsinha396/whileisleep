@@ -5,6 +5,10 @@
 #
 # docs/deploy-hetzner.md walks through it. Only Caddy is reachable from outside; it gets and
 # renews the TLS certificate for SITE_DOMAIN by itself.
+#
+#   caddy ─┬─ web (Django API) ──┬─ db (Postgres: everything that must survive)
+#          └─ frontend (Next.js) └─ redis (the reply queue, counters, locks)
+#                                     └─ worker (writes AI replies) and beat (scheduler)
 
 # Not "whileisleep": that is the development stack in backend/, and sharing the name would
 # share its database volume.
@@ -61,11 +65,44 @@ services:
       redis:
         condition: service_started
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready')"]
+      # Asks the app itself, under the site's own host name: Django refuses any other.
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import os, urllib.request
+          host = os.environ["SITE_URL"].removeprefix("https://")
+          urllib.request.urlopen(urllib.request.Request("http://127.0.0.1:8000/api/v1/ready", headers={"Host": host}), timeout=4)
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  # Writes the AI's replies (backend/apps/agent/tasks.py). Threads, because a reply spends
+  # its time waiting on the LLM: 16 replies can be in progress at once. To handle more, raise
+  # --concurrency or run more of this service (docker compose up -d --scale worker=2).
+  worker:
+    <<: *backend
+    command: celery -A whileisleep worker --pool threads --concurrency 16 --loglevel info
+    depends_on:
+      release:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    # A reply in progress gets time to finish before the container is stopped.
+    stop_grace_period: 150s
+
+  # The scheduler: once a minute it asks the worker to look for visitor messages whose
+  # reply job was lost. Exactly one of these, never scaled.
+  beat:
+    <<: *backend
+    command: celery -A whileisleep beat --loglevel info --schedule /tmp/celerybeat-schedule
+    depends_on:
+      release:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
 
   frontend:
     build: ../frontend
@@ -87,12 +124,20 @@ services:
 
   redis:
     image: redis:7-alpine
-    # Only rate-limit counters live here; nothing to keep across restarts.
-    command: redis-server --save "" --appendonly no
+    # Holds the queue of AI replies waiting for a worker (and rate-limit counters). Every
+    # write is logged to disk within a second, so a restart doesn't drop queued replies.
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  redis_data:
   caddy_data:
   caddy_config:
   static:

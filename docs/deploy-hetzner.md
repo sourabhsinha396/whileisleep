@@ -1,7 +1,8 @@
 # Deploying whileisleep on a Hetzner server
 
-One small server runs everything with Docker Compose: Caddy (HTTPS), the Django API, the
-Next.js dashboard, Postgres and Redis. The same steps work on any Linux host with Docker.
+One small server runs everything with Docker Compose: Caddy (HTTPS), the Django API, a
+Celery worker that writes the AI's replies, the Next.js dashboard, Postgres and Redis. The
+same steps work on any Linux host with Docker.
 
 ## What you need
 
@@ -56,8 +57,9 @@ docker compose up -d --build
 docker compose ps
 ```
 
-The `release` service runs the database migrations and exits; `web` starts after it. The
-first HTTPS request takes a few seconds while Caddy obtains the certificate.
+The `release` service runs the database migrations and exits; `web`, `worker` and `beat`
+start after it. The first HTTPS request takes a few seconds while Caddy obtains the
+certificate.
 
 Open `https://YOUR_DOMAIN`, sign up (the first account owns its organization), then:
 
@@ -101,11 +103,29 @@ gunzip -c 2026-01-31.sql.gz | docker compose exec -T db psql -U whileisleep whil
 
 ```sh
 docker compose logs -f web        # the API
+docker compose logs -f worker     # AI replies: one "Task ... answer ... succeeded" per reply
 docker compose logs -f caddy      # HTTPS and certificates
 curl https://YOUR_DOMAIN/api/v1/ready
 ```
 
 `/api/v1/ready` answers `{"ok": true}` when the API can reach the database and Redis.
+
+### If the AI stops answering
+
+Replies are written by the `worker` service, not by the API, so the widget keeps accepting
+messages even when it is down. Check, in this order:
+
+```sh
+docker compose ps worker beat redis                      # all three should be "running"
+docker compose logs --tail 50 worker                     # errors while writing a reply
+docker compose exec redis redis-cli -n 1 llen celery     # replies waiting; should stay near 0
+```
+
+A number that keeps growing means replies arrive faster than they are written: raise
+`--concurrency` on the worker in `docker-compose.yml`, or run a second one with
+`docker compose up -d --scale worker=2`. Messages that were missed while the worker was down
+are picked up by themselves within a few minutes of it coming back (only those less than 30
+minutes old: a late answer to an old question helps nobody).
 
 ## Settings reference
 

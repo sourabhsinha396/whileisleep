@@ -14,6 +14,7 @@ from apps.agent.bot import maybe_reply
 from apps.knowledge.models import Article
 from apps.knowledge.search import search
 from apps.workspaces.models import Workspace
+from whileisleep.client_ip import client_ip
 
 from . import limits
 from .models import Conversation, Message, Visitor
@@ -43,11 +44,6 @@ def get_visitor(request, workspace: Workspace) -> Visitor:
     if visitor is None:
         raise HttpError(401, "Unknown visitor. Start a session first.")
     return visitor
-
-
-def client_ip(request) -> str | None:
-    forwarded = request.headers.get("X-Forwarded-For", "")
-    return forwarded.split(",")[0].strip() or request.META.get("REMOTE_ADDR")
 
 
 @router.get("/{key}/config", response=WidgetConfigOut)

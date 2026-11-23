@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 import pytest
+from django.test import Client
 from django.utils import timezone
 
 from apps.agent import bot, forms
@@ -48,6 +49,22 @@ def test_ip_limit_catches_rotating_visitors(low_limits):
 def test_new_visitors_per_ip(low_limits):
     workspace = WorkspaceFactory()
     codes = [Api().post(f"/widget/{workspace.public_key}/session", {}).status_code for _ in range(3)]
+    assert codes == [200, 200, 429]
+
+
+def test_a_forged_forwarded_header_does_not_dodge_the_ip_limit(low_limits):
+    workspace = WorkspaceFactory()
+    codes = [
+        Client()
+        .post(
+            f"/api/v1/widget/{workspace.public_key}/session",
+            data="{}",
+            content_type="application/json",
+            headers={"X-Forwarded-For": f"198.51.100.{n}"},
+        )
+        .status_code
+        for n in range(3)
+    ]
     assert codes == [200, 200, 429]
 
 

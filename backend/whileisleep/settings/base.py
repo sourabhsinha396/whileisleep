@@ -115,6 +115,11 @@ CONVERSATION_IDLE_HOURS = 24
 # A visitor counts as online if the widget pinged within this many seconds.
 ONLINE_WINDOW_SECONDS = 60
 
+# Reverse proxies between the internet and Django (Caddy, a load balancer...). Rate limits
+# read the visitor's address from X-Forwarded-For only as far as these can vouch for it
+# (whileisleep.client_ip). 0 ignores the header.
+TRUSTED_PROXY_COUNT = 0
+
 # Tools call URLs that workspace owners typed in. Unless this is on, whileisleep.outbound
 # refuses any that resolve to a private address (this server's own network).
 OUTBOUND_ALLOW_PRIVATE_NETWORKS = False

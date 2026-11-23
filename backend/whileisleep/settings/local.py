@@ -22,3 +22,5 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY") or "dev-secret-key-not-for-prod
 ALLOWED_HOSTS = ["*"]
 # In development the tools you try are usually on this machine (host.docker.internal).
 OUTBOUND_ALLOW_PRIVATE_NETWORKS = True
+# The Next.js dev server proxies /api to Django.
+TRUSTED_PROXY_COUNT = 1

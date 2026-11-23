@@ -153,7 +153,7 @@ def action(request, key: str, payload: WidgetActionIn):
 def articles(request, key: str, q: str = ""):
     workspace = get_workspace(key)
     rows = (
-        search(workspace, q, limit=10)
+        search(workspace, q, limit=10, prefix=True)
         if q.strip()
         else Article.objects.filter(workspace=workspace, published=True)[:20]
     )

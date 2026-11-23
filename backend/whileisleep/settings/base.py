@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "corsheaders",
     "apps.accounts",
     "apps.workspaces",
@@ -107,6 +108,14 @@ RATE_LIMITS = {
 HISTORY_BUDGET_CHARS = 6000
 HISTORY_MESSAGE_CHARS = 1500
 HISTORY_MIN_MESSAGES = 4
+
+# Knowledge base search (apps.knowledge.search). SEARCH_LANGUAGE is a Postgres text search
+# configuration: it decides word stemming ("refunds" finds "refund"). Use "simple" for a
+# help center in a language Postgres has no configuration for, then run
+# `manage.py reindex_knowledge`.
+SEARCH_LANGUAGE = "english"
+# How much article text one search hands the AI, in characters (about 4 per token).
+KNOWLEDGE_BUDGET_CHARS = 5000
 
 # A visitor writing after this long a silence starts a new conversation (old ones stay in
 # the inbox but stop feeding the AI).

@@ -22,7 +22,7 @@ from apps.conversations import attributes, limits
 from apps.conversations.models import Conversation, Message
 from apps.conversations.services import add_message
 from apps.knowledge.models import Article
-from apps.knowledge.search import search
+from apps.knowledge.search import passages, search
 
 from . import a2ui, forms, http_tools, openrouter
 from .models import Playbook, Tool
@@ -71,8 +71,9 @@ BUILTIN_TOOLS = [
     {
         "name": "search_knowledge_base",
         "description": (
-            "Search this business's help center articles. Returns matching articles with id, title "
-            "and text. Use it for policies, how-tos, pricing rules, shipping, refunds and similar."
+            "Search this business's help center. Returns the best-matching passages, each with the id "
+            "and title of its article. Use it for policies, how-tos, pricing rules, shipping, refunds "
+            "and similar."
         ),
         "input_schema": {
             "type": "object",
@@ -407,10 +408,12 @@ def run_agent(conversation: Conversation, history: list[dict], instruction: str 
 
 def call_tool(conversation: Conversation, tools: dict[str, Tool], name: str, inputs: dict) -> tuple[str, bool]:
     if name == "search_knowledge_base":
-        found = search(conversation.workspace, str(inputs.get("query", "")), limit=4)
+        found = passages(conversation.workspace, str(inputs.get("query", "")))
         if not found:
             return "No matching articles.", False
-        return json.dumps([{"id": a.id, "title": a.title, "text": a.body[:3000]} for a in found]), False
+        return json.dumps(
+            [{"article_id": p.article_id, "title": p.label, "text": p.text} for p in found], ensure_ascii=False
+        ), False
     if name == "handoff_to_human":
         request_human(conversation, str(inputs.get("reason", "")))
         return "Handed off. Tell the visitor a teammate will reply here.", False

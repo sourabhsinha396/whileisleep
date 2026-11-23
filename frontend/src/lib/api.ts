@@ -1,6 +1,7 @@
 "use client";
 
 import type { A2uiMessage } from "@/lib/a2ui/surface";
+import type { Action, Condition } from "@/lib/rules";
 
 const TOKEN_KEY = "whileisleep:token";
 
@@ -164,14 +165,9 @@ export interface Rule {
   name: string;
   enabled: boolean;
   position: number;
-  intent: string;
-  keywords: string;
-  page_contains: string;
-  first_message_only: boolean;
-  reply: string;
-  ai_instruction: string;
-  tag: string;
-  handoff: boolean;
+  /** When it applies and what it does; see lib/rules.ts. */
+  conditions: Condition;
+  actions: Action[];
   also_when_human: boolean;
   match_count: number;
   last_matched_at: string | null;

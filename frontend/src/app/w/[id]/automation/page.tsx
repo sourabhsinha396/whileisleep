@@ -5,8 +5,10 @@ import { BookText, Plus, Zap } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Button, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
+import { NEW_RULE, type RuleDraft, RuleEditor } from "@/components/rule-editor";
 import { api, type Playbook, type Rule } from "@/lib/api";
 import { ago } from "@/lib/format";
+import { describeRule } from "@/lib/rules";
 import { usePoll } from "@/lib/use-poll";
 
 export default function AutomationPage() {
@@ -25,39 +27,6 @@ export default function AutomationPage() {
 
 // --- Rules ---
 
-type RuleDraft = Omit<Rule, "id" | "match_count" | "last_matched_at"> & { id?: number };
-
-const NEW_RULE: RuleDraft = {
-  name: "",
-  enabled: true,
-  position: 0,
-  intent: "",
-  keywords: "",
-  page_contains: "",
-  first_message_only: false,
-  reply: "",
-  ai_instruction: "",
-  tag: "",
-  handoff: false,
-  also_when_human: false,
-};
-
-function describe(rule: Rule): string {
-  const when = [
-    rule.intent && `intent is ${rule.intent}`,
-    rule.keywords && `message mentions ${rule.keywords.split("\n").join(" or ")}`,
-    rule.page_contains && `page has ${rule.page_contains}`,
-    rule.first_message_only && "first message",
-  ].filter(Boolean);
-  const then = [
-    rule.reply && "fixed reply",
-    rule.ai_instruction && "instructs the AI",
-    rule.tag && `tag ${rule.tag}`,
-    rule.handoff && "hand off",
-  ].filter(Boolean);
-  return `When ${when.join(" and ")} → ${then.join(", ")}`;
-}
-
 function Rules({ canEdit }: { canEdit: boolean }) {
   const { workspace } = useWorkspace();
   const base = `/workspaces/${workspace.id}/rules`;
@@ -73,8 +42,8 @@ function Rules({ canEdit }: { canEdit: boolean }) {
             <Zap size={18} /> Rules
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Checked on every visitor message, in order, before the AI. The first match acts in code: an exact reply, a tag, a hand-off, or
-            one extra instruction for the AI. They cost no tokens when they don&apos;t match.
+            Checked on every visitor message, in order, before the AI. The first match acts in code: an exact reply, a tag, a hand-off, something
+            to remember, or one extra instruction for the AI. They cost no tokens when they don&apos;t match.
           </p>
         </div>
         {canEdit && (
@@ -92,7 +61,7 @@ function Rules({ canEdit }: { canEdit: boolean }) {
               <p className={clsx("font-medium", !rule.enabled && "text-muted-foreground")}>
                 {rule.name} {!rule.enabled && <span className="text-xs font-normal">(off)</span>}
               </p>
-              <p className="truncate text-xs text-muted-foreground">{describe(rule)}</p>
+              <p className="truncate text-xs text-muted-foreground">{describeRule(rule)}</p>
             </div>
             <span className="text-xs text-muted-foreground" title="Times matched">
               {rule.match_count}× {rule.last_matched_at && `· ${ago(rule.last_matched_at)} ago`}
@@ -107,133 +76,6 @@ function Rules({ canEdit }: { canEdit: boolean }) {
       </ul>
       {draft && <RuleEditor key={draft.id ?? "new"} initial={draft} base={base} onDone={() => (setDraft(null), reload())} />}
     </section>
-  );
-}
-
-function RuleEditor({ initial, base, onDone }: { initial: RuleDraft; base: string; onDone: () => void }) {
-  const [d, setD] = useState<RuleDraft>(initial);
-  const [error, setError] = useState("");
-  const [mode, setMode] = useState<"reply" | "instruction" | "none">(initial.ai_instruction ? "instruction" : initial.reply || !initial.id ? "reply" : "none");
-  const set = (patch: Partial<RuleDraft>) => setD({ ...d, ...patch });
-
-  async function save() {
-    setError("");
-    const body = { ...d, reply: mode === "reply" ? d.reply : "", ai_instruction: mode === "instruction" ? d.ai_instruction : "" };
-    try {
-      if (d.id) await api(`${base}/${d.id}`, { method: "PUT", body });
-      else await api(base, { method: "POST", body });
-      onDone();
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
-
-  async function remove() {
-    if (!d.id || !window.confirm(`Delete the rule "${d.name}"?`)) return;
-    await api(`${base}/${d.id}`, { method: "DELETE" });
-    onDone();
-  }
-
-  return (
-    <div className="space-y-5 rounded-lg border border-primary/30 bg-primary-soft/40 shadow-sm p-5">
-      <div className="grid grid-cols-[1fr_100px_auto] items-end gap-3">
-        <Field label="Name">
-          <input className={inputClass} placeholder="Exam requests" value={d.name} onChange={(e) => set({ name: e.target.value })} />
-        </Field>
-        <Field label="Order">
-          <input className={inputClass} type="number" min={0} value={d.position} onChange={(e) => set({ position: Number(e.target.value) || 0 })} />
-        </Field>
-        <label className="flex items-center gap-2 pb-2 text-sm">
-          <input type="checkbox" checked={d.enabled} onChange={(e) => set({ enabled: e.target.checked })} /> Enabled
-        </label>
-      </div>
-
-      <fieldset className="space-y-3">
-        <legend className="mb-2 text-sm font-semibold">When (all that are set must hold)</legend>
-        <Field label="Intent" hint={'Label a button on your site sends: window.whileisleep.open(text, { intent: "exam_request", data: {...} }).'}>
-          <input className={clsx(inputClass, "font-mono")} placeholder="exam_request" value={d.intent} onChange={(e) => set({ intent: e.target.value })} />
-        </Field>
-        <Field label="Message mentions any of" hint="One phrase per line, not case-sensitive.">
-          <textarea className={clsx(inputClass, "min-h-16")} placeholder={"refund\nmoney back"} value={d.keywords} onChange={(e) => set({ keywords: e.target.value })} />
-        </Field>
-        <Field label="Page URL contains">
-          <input className={inputClass} placeholder="/pricing" value={d.page_contains} onChange={(e) => set({ page_contains: e.target.value })} />
-        </Field>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={d.first_message_only} onChange={(e) => set({ first_message_only: e.target.checked })} /> Only the
-          visitor&apos;s first message
-        </label>
-      </fieldset>
-
-      <fieldset className="space-y-3">
-        <legend className="mb-2 text-sm font-semibold">Then</legend>
-        <div className="flex gap-1 text-sm">
-          {(
-            [
-              ["reply", "Send a fixed reply"],
-              ["instruction", "Instruct the AI"],
-              ["none", "Neither"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setMode(value)}
-              className={clsx("rounded-md px-3 py-1.5", mode === value ? "bg-surface font-semibold shadow-sm ring-1 ring-border" : "text-muted-foreground")}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {mode === "reply" && (
-          <Field label="Reply" hint="Sent as is; the AI doesn't answer this message. Fills in {visitor.name}, {visitor.email} and {data.KEY} from the intent's data.">
-            <textarea
-              className={clsx(inputClass, "min-h-20")}
-              placeholder="Thanks! We'll try to add {data.exam_name} within 12 hours and reply here when it's live."
-              value={d.reply}
-              onChange={(e) => set({ reply: e.target.value })}
-            />
-          </Field>
-        )}
-        {mode === "instruction" && (
-          <Field label="Instruction for the AI" hint="The AI still writes the answer, following this for this message only.">
-            <textarea
-              className={clsx(inputClass, "min-h-20")}
-              placeholder="Apologise first, then check the order with get_order before answering."
-              value={d.ai_instruction}
-              onChange={(e) => set({ ai_instruction: e.target.value })}
-            />
-          </Field>
-        )}
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Tag the conversation">
-            <input className={inputClass} placeholder="exam-request" value={d.tag} onChange={(e) => set({ tag: e.target.value })} />
-          </Field>
-          <div className="space-y-2 pt-6 text-sm">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={d.handoff} onChange={(e) => set({ handoff: e.target.checked })} /> Hand off to a person
-            </label>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={d.also_when_human} onChange={(e) => set({ also_when_human: e.target.checked })} /> Also after a person
-              took over
-            </label>
-          </div>
-        </div>
-      </fieldset>
-
-      <ErrorText>{error}</ErrorText>
-      <div className="flex gap-2">
-        <Button onClick={save}>Save rule</Button>
-        <Button variant="ghost" onClick={onDone}>
-          Cancel
-        </Button>
-        {d.id && (
-          <Button variant="danger" className="ml-auto" onClick={remove}>
-            Delete
-          </Button>
-        )}
-      </div>
-    </div>
   );
 }
 

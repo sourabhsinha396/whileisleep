@@ -160,6 +160,11 @@ CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 900}
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_TIMEZONE = "UTC"
+# Run by `celery beat` (one per installation).
+CELERY_BEAT_SCHEDULE = {
+    # Picks up visitor messages whose reply job was lost; see apps/agent/tasks.py.
+    "sweep-unanswered": {"task": "apps.agent.tasks.sweep_unanswered", "schedule": 60.0},
+}
 
 # Whether anyone can create an account (and with it an organization). Turn it off on a
 # private installation once your own accounts exist.

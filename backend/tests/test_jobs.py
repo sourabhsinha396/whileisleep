@@ -1,10 +1,13 @@
 """The job queue: how the AI stage is queued, locked per conversation, and run."""
 
+from datetime import timedelta
+
 import httpx
 import pytest
 from celery.exceptions import Retry
 from django.core.cache import cache
 from django.db import transaction
+from django.utils import timezone
 
 from apps.agent import openrouter, pipeline, tasks
 from apps.agent.models import Turn
@@ -247,6 +250,128 @@ def test_a_network_failure_counts_as_passing(monkeypatch):
     with pytest.raises(openrouter.OpenRouterError) as error:
         openrouter.complete("k", "m", [], [])
     assert error.value.transient
+
+
+# --- The sweep for messages that slipped through ---
+
+
+def aged(message, minutes):
+    Message.objects.filter(pk=message.pk).update(created_at=timezone.now() - timedelta(minutes=minutes))
+    return message
+
+
+@pytest.mark.django_db
+def test_the_sweep_answers_a_message_whose_job_was_lost(llm):
+    conversation, message = asking()
+    aged(message, 8)
+    llm(final("Sorry for the wait. Yes, we do."))
+
+    assert tasks.sweep_unanswered.apply().get() == 1
+
+    turn = Turn.objects.get()
+    assert turn.trigger == message and turn.reply.body == "Sorry for the wait. Yes, we do."
+    # Answered now, so the next sweep leaves it alone.
+    assert tasks.sweep_unanswered.apply().get() == 0
+
+
+@pytest.mark.django_db
+def test_the_sweep_runs_rules_too(llm):
+    conversation, message = asking("opening hours?")
+    aged(message, 8)
+    RuleFactory(workspace=conversation.workspace, keywords=["hours"], reply="9 to 5.")
+    fake = llm()
+    tasks.sweep_unanswered.apply().get()
+    assert Turn.objects.get().stage == Turn.Stage.RULE and fake.requests == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("minutes", "why"),
+    [(1, "may still be in progress"), (45, "too late to be useful")],
+)
+def test_the_sweep_leaves_fresh_and_stale_messages(llm, minutes, why):
+    _, message = asking()
+    aged(message, minutes)
+    fake = llm()
+    assert tasks.sweep_unanswered.apply().get() == 0, why
+    assert fake.requests == []
+
+
+@pytest.mark.django_db
+def test_the_sweep_skips_what_was_handled_or_is_not_the_ais(llm):
+    fake = llm()
+    # Already has a turn.
+    conversation, answered = asking()
+    aged(answered, 8)
+    Turn.objects.create(workspace=conversation.workspace, conversation=conversation, trigger=answered, stage="ai")
+    # A teammate replied after it.
+    conversation, replied = asking()
+    aged(replied, 8)
+    MessageFactory(conversation=conversation, sender=Message.Sender.AGENT, body="On it!")
+    # A person has the conversation.
+    conversation, human = asking()
+    aged(human, 8)
+    conversation.human_requested = True
+    conversation.save()
+    # The AI is off for the workspace.
+    conversation, off = asking()
+    aged(off, 8)
+    conversation.workspace.ai_enabled = False
+    conversation.workspace.save()
+
+    assert tasks.sweep_unanswered.apply().get() == 0
+    assert fake.requests == []
+
+
+@pytest.mark.django_db
+def test_the_sweep_answers_only_the_newest_of_several_messages(llm):
+    conversation, first = asking("hi")
+    second = MessageFactory(conversation=conversation, body="do you ship to Canada?")
+    aged(first, 9)
+    aged(second, 8)
+    llm(final("Yes."))
+    assert tasks.sweep_unanswered.apply().get() == 1
+    assert Turn.objects.get().trigger == second
+
+
+@pytest.mark.django_db
+def test_an_internal_note_after_a_message_does_not_count_as_an_answer(llm):
+    conversation, message = asking()
+    aged(message, 8)
+    MessageFactory(conversation=conversation, sender=Message.Sender.SYSTEM, body="Rule matched: x", is_note=True)
+    llm(final("Yes."))
+    assert tasks.sweep_unanswered.apply().get() == 1
+
+
+def test_the_sweep_waits_longer_than_any_reply_can_take(settings):
+    """So it doesn't re-queue a message whose reply is still being written. The slowest
+    reply: every retried try times out on its first model call, the waits between tries,
+    then a last try that uses its whole deadline and overruns it by one model call."""
+    one_call = openrouter.TIMEOUT_SECONDS
+    retried = len(tasks.LLM_RETRY_DELAYS) * one_call + sum(tasks.LLM_RETRY_DELAYS)
+    slowest = settings.REPLY_DEBOUNCE_SECONDS + retried + settings.REPLY_DEADLINE_SECONDS + one_call
+    assert tasks.SWEEP_AFTER.total_seconds() > slowest
+    assert tasks.SWEEP_AFTER < tasks.SWEEP_UNTIL
+
+
+@pytest.mark.django_db
+def test_a_job_that_arrives_twice_answers_once(llm):
+    """The queue redelivers after a worker dies; the sweep re-queues what looks lost."""
+    conversation, message = asking()
+    fake = llm(final("Yes, we do."), final("Yes, we do. (again)"))
+    arguments = (conversation.pk, "", message.pk, None)
+
+    tasks.answer.apply(args=arguments).get()
+    tasks.answer.apply(args=arguments).get()
+
+    assert len(fake.requests) == 1 and Turn.objects.count() == 1
+    assert conversation.messages.filter(sender=Message.Sender.BOT).count() == 1
+
+
+def test_the_sweep_is_scheduled():
+    schedule = celery_app.conf.beat_schedule["sweep-unanswered"]
+    assert schedule["task"] == "apps.agent.tasks.sweep_unanswered" and schedule["schedule"] == 60.0
+    assert schedule["task"] in celery_app.tasks
 
 
 # --- Configuration ---

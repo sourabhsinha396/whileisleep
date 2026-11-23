@@ -150,6 +150,11 @@ def reply(
         return None
     visitor_messages = conversation.messages.filter(sender=Message.Sender.VISITOR)
     trigger = visitor_messages.filter(pk=trigger_id).first() if trigger_id else visitor_messages.last()
+    if trigger is not None and Turn.objects.filter(trigger=trigger).exists():
+        # This message already has its turn. A job can arrive twice (the queue redelivers
+        # after a worker dies, the sweep re-queues what looks lost); the visitor must not
+        # get two answers to one message.
+        return None
     recorder = Recorder(conversation, trigger)
     rule = Rule.objects.filter(pk=rule_id).first() if rule_id else None
     if superseded(conversation, trigger):

@@ -10,6 +10,7 @@ from ninja.errors import HttpError
 from pydantic import Field
 
 from apps.accounts.security import token_auth
+from apps.conversations import attributes
 from apps.conversations.models import Visitor
 from apps.workspaces.services import member_workspace, owner_workspace
 
@@ -18,6 +19,16 @@ from .bot import BUILTIN_TOOLS, PLAYBOOK_TOOL
 from .models import Tool, tool_name
 
 router = Router(tags=["tools"], auth=token_auth)
+TOOL_FIELDS = (
+    "id",
+    "name",
+    "description",
+    "method",
+    "url",
+    "input_schema",
+    "allow_unverified_identity",
+    "enabled",
+)
 RESERVED = {t["name"] for t in BUILTIN_TOOLS} | {PLAYBOOK_TOOL}
 
 
@@ -28,6 +39,7 @@ class ToolIn(Schema):
     url: str = Field(min_length=8, max_length=1000)
     input_schema: dict[str, Any] = {"type": "object", "properties": {}}
     headers: dict[str, str] = {}
+    allow_unverified_identity: bool = False
     enabled: bool = True
 
 
@@ -40,6 +52,7 @@ class ToolOut(Schema):
     input_schema: dict[str, Any]
     # Names only: header values are secrets.
     header_names: list[str]
+    allow_unverified_identity: bool
     enabled: bool
     created_at: datetime
 
@@ -55,7 +68,7 @@ class ToolTestOut(Schema):
 
 def tool_out(tool: Tool) -> dict:
     return {
-        **{f: getattr(tool, f) for f in ("id", "name", "description", "method", "url", "input_schema", "enabled")},
+        **{field: getattr(tool, field) for field in TOOL_FIELDS},
         "header_names": sorted(tool.headers or {}),
         "created_at": tool.created_at,
     }
@@ -116,6 +129,15 @@ def delete(request, workspace_id: int, tool_id: int):
 def test(request, workspace_id: int, tool_id: int, payload: ToolTestIn):
     """Calls the tool as the bot would, with a stand-in visitor, so owners can check it."""
     tool = get_object_or_404(Tool, pk=tool_id, workspace=owner_workspace(request.auth, workspace_id))
-    stand_in = Visitor(pk=0, workspace=tool.workspace, name="Test visitor", email=request.auth.email)
+    stand_in = Visitor(
+        pk=0,
+        workspace=tool.workspace,
+        external_id="test-user",
+        # Verified, so tools that need a proven identity can be tried.
+        attributes={
+            "name": {"value": "Test visitor", "source": attributes.Source.VERIFIED},
+            "email": {"value": request.auth.email, "source": attributes.Source.VERIFIED},
+        },
+    )
     result, is_error = http_tools.run(tool, payload.inputs, stand_in)
     return {"result": result, "is_error": is_error}

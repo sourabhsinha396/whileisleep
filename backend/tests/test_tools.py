@@ -3,6 +3,7 @@ import pytest
 
 from apps.agent import http_tools
 from apps.agent.models import Tool
+from apps.conversations import attributes
 
 from .factories import ToolFactory, VisitorFactory
 
@@ -55,11 +56,70 @@ def test_post_sends_json_body(http):
     assert recorder.calls[0]["json"] == {"q": "aws"}
 
 
+def verified_visitor(**facts):
+    visitor = VisitorFactory(external_id="user_42")
+    attributes.set_many(visitor, facts, attributes.Source.VERIFIED)
+    return visitor
+
+
 def test_visitor_placeholders_come_from_the_visitor_not_the_model(http):
     tool = ToolFactory(url="https://api.example.com/orders?email={visitor.email}")
     recorder = http(json=[])
-    http_tools.run(tool, {"visitor.email": "victim@example.com"}, VisitorFactory(email="me@example.com"))
+    http_tools.run(tool, {"visitor.email": "victim@example.com"}, verified_visitor(email="me@example.com"))
     assert recorder.calls[0]["url"] == "https://api.example.com/orders?email=me%40example.com"
+
+
+def test_a_typed_email_does_not_unlock_a_lookup(http):
+    """The attack this guards: type a customer's email into a form, then ask for their orders."""
+    tool = ToolFactory(url="https://api.example.com/orders?email={visitor.email}")
+    recorder = http(json=[{"order": "A-100"}])
+    visitor = VisitorFactory()
+    attributes.set_attribute(visitor, "email", "victim@example.com", attributes.Source.VISITOR)
+
+    result, is_error = http_tools.run(tool, {}, visitor)
+
+    assert is_error and "verified email" in result
+    assert recorder.calls == []
+
+
+def test_an_unsigned_identify_does_not_unlock_a_lookup_either(http):
+    tool = ToolFactory(url="https://api.example.com/orders?email={visitor.email}")
+    recorder = http(json=[])
+    visitor = VisitorFactory()
+    attributes.set_attribute(visitor, "email", "victim@example.com", attributes.Source.HOST)
+    assert http_tools.run(tool, {}, visitor)[1]
+    assert recorder.calls == []
+
+
+def test_a_tool_can_opt_in_to_unverified_details(http):
+    tool = ToolFactory(url="https://api.example.com/subscribe?email={visitor.email}", allow_unverified_identity=True)
+    recorder = http(json={"ok": True})
+    visitor = VisitorFactory()
+    attributes.set_attribute(visitor, "email", "me@example.com", attributes.Source.VISITOR)
+    assert not http_tools.run(tool, {}, visitor)[1]
+    assert recorder.calls[0]["url"] == "https://api.example.com/subscribe?email=me%40example.com"
+
+
+def test_external_id_and_other_verified_attributes_fill_placeholders(http):
+    tool = ToolFactory(url="https://api.example.com/users/{visitor.external_id}/plan/{visitor.plan}")
+    recorder = http(json={})
+    http_tools.run(tool, {}, verified_visitor(plan="pro"))
+    assert recorder.calls[0]["url"] == "https://api.example.com/users/user_42/plan/pro"
+
+
+def test_external_id_is_refused_for_anonymous_visitors(http):
+    tool = ToolFactory(url="https://api.example.com/users/{visitor.external_id}", allow_unverified_identity=True)
+    recorder = http(json={})
+    result, is_error = http_tools.run(tool, {}, VisitorFactory())
+    assert is_error and "verified user id" in result and recorder.calls == []
+
+
+def test_our_own_visitor_id_needs_no_verification(http):
+    tool = ToolFactory(url="https://api.example.com/sessions/{visitor.id}")
+    recorder = http(json={})
+    visitor = VisitorFactory()
+    http_tools.run(tool, {}, visitor)
+    assert recorder.calls[0]["url"] == f"https://api.example.com/sessions/{visitor.pk}"
 
 
 def test_http_error_is_reported_to_the_model(http):
@@ -126,6 +186,14 @@ def test_update_keeps_headers_when_left_empty(api, workspace):
     api.put(f"/workspaces/{workspace.id}/tools/{tool.id}", tool_payload(headers={}))
     tool.refresh_from_db()
     assert tool.headers == {"X-Api-Key": "k"}
+
+
+def test_test_endpoint_stands_in_a_verified_visitor(api, workspace, http):
+    tool = ToolFactory(workspace=workspace, url="https://api.example.com/orders?email={visitor.email}")
+    recorder = http(json=[])
+    tested = api.post(f"/workspaces/{workspace.id}/tools/{tool.id}/test", {"inputs": {}})
+    assert tested.json()["is_error"] is False
+    assert "email=user" in recorder.calls[0]["url"]
 
 
 def test_test_endpoint_calls_the_tool(api, workspace, http):

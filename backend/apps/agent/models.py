@@ -15,8 +15,9 @@ class Tool(models.Model):
 
     The agent fills the inputs described by `input_schema`. `{name}` placeholders in the
     URL take the input of that name. Other inputs go in the query string (GET) or a JSON
-    body (POST). `{visitor.email}`, `{visitor.name}` and `{visitor.id}` placeholders take
-    the visitor's details, never the model's, so the model can't ask about someone else.
+    body (POST). `{visitor.KEY}` placeholders (`{visitor.email}`, `{visitor.external_id}`,
+    any attribute) take the visitor's details, never the model's, so the model can't ask
+    about someone else, and only details the host site verified (see http_tools).
     """
 
     class Method(models.TextChoices):
@@ -34,6 +35,9 @@ class Tool(models.Model):
     # Sent with every call, e.g. {"Authorization": "Bearer ..."}. Encrypted in the database and
     # never shown to visitors, the dashboard or the model.
     headers = EncryptedJSONField(blank=True)
+    # Fill {visitor.KEY} placeholders from unverified attributes too (an email typed into a
+    # form). Only for tools where knowing the value reveals nothing private.
+    allow_unverified_identity = models.BooleanField(default=False)
     enabled = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

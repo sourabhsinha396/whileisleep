@@ -32,6 +32,9 @@ export default function Home() {
           <a href="#demo" className="hidden rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground sm:block">
             Try the demo
           </a>
+          <Link href="/pricing" className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+            Pricing
+          </Link>
           <ThemeToggle />
           <Link href={signedIn ? "/app" : "/login"} className={`${cta} bg-primary px-4 py-2 text-primary-foreground hover:bg-primary-hover`}>
             {signedIn ? "Open inbox" : "Log in"}

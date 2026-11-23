@@ -1,6 +1,6 @@
 import { renderSurface } from "@/lib/a2ui/render";
 import { applyMessages, type ActionEvent } from "@/lib/a2ui/surface";
-import { WidgetApi, type ChatMessage, type Intent, type WidgetConfig } from "./api";
+import { WidgetApi, type ChatMessage, type Identity, type Intent, type WidgetConfig } from "./api";
 import { styles } from "./styles";
 import { counterText } from "./limits";
 import { formatText } from "./text";
@@ -97,9 +97,17 @@ export class Widget {
     if (hidden && this.open) this.close();
   }
 
-  async identify(details: { name?: string; email?: string }) {
+  async identify(details: Identity) {
     await this.ready;
-    await this.api.session(details);
+    const before = this.api.token;
+    const session = await this.api.session(details);
+    if (this.api.token !== before) {
+      // Now a different visitor (the signed-in user's own record): show their chat.
+      this.clearLocal();
+      if (session.conversation_id) await this.poll(false);
+      this.renderBody();
+      this.renderBadge();
+    }
   }
 
   /** Forgets this visitor (call on sign-out) so the next person here starts a new chat. */

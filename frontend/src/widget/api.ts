@@ -33,6 +33,16 @@ export interface Intent {
   data?: Record<string, string | number | boolean>;
 }
 
+/** What identify() accepts. Without `token` these are the page's word for it: shown to the
+ * team, but not proof. `token` is a short-lived JWT your server signed with the workspace's
+ * identity secret; its claims become verified attributes. */
+export interface Identity {
+  name?: string;
+  email?: string;
+  attributes?: Record<string, string | number | boolean>;
+  token?: string;
+}
+
 export interface Article {
   id: number;
   title: string;
@@ -78,14 +88,23 @@ export class WidgetApi {
     return this.call<WidgetConfig>("/config");
   }
 
-  async session(extra: { name?: string; email?: string } = {}) {
+  async session(identity: Identity = {}) {
+    const { token, ...details } = identity;
     const data = await this.call<{ token: string; conversation_id: number | null; last_message_id: number | null }>(
       "/session",
       {
         method: "POST",
-        body: JSON.stringify({ url: location.href, title: document.title, referrer: document.referrer, ...extra }),
+        body: JSON.stringify({
+          url: location.href,
+          title: document.title,
+          referrer: document.referrer,
+          ...details,
+          ...(token ? { identity_token: token } : {}),
+        }),
       },
     );
+    // A signed-in user may already have a visitor record (from another device): the server
+    // answers with that one's token, and we continue as them.
     this.token = data.token;
     writeStorage(this.storageKey, data.token);
     return data;

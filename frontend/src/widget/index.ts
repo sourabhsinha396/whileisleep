@@ -10,12 +10,14 @@
  *                       intent ({ intent: "exam_request", data: {...} }) labels it for rules
  *   close()
  *   hide() / show()     remove the bubble from pages where it would be in the way
- *   identify({ name, email })   attach a signed-in user to the conversation
+ *   identify({ name, email, attributes })   say who the signed-in user is (shown to the team)
+ *   identify({ token })   prove it: a JWT your server signed with the workspace's identity
+ *                       secret; its claims become verified attributes, which tools can rely on
  *   restart()           clear the chat and start a new conversation (same visitor)
  *   reset()             forget this visitor, e.g. on sign-out
  */
 
-import { WidgetApi, type Intent } from "./api";
+import { WidgetApi, type Identity, type Intent } from "./api";
 import { Widget } from "./widget";
 
 export interface WhileisleepApi {
@@ -23,7 +25,7 @@ export interface WhileisleepApi {
   close(): Promise<void>;
   hide(): void;
   show(): void;
-  identify(details: { name?: string; email?: string }): Promise<void>;
+  identify(details: Identity): Promise<void>;
   restart(): Promise<void>;
   reset(): Promise<void>;
 }

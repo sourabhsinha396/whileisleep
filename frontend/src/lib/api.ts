@@ -72,6 +72,8 @@ export interface Workspace {
   website: string;
   color: string;
   greeting: string;
+  /** IANA name; rules read the local hour and weekday in it. */
+  timezone: string;
   ai_enabled: boolean;
   ai_instructions: string;
   role: "owner" | "agent";
@@ -99,10 +101,20 @@ export interface KeyCheck {
   limit_remaining: number | null;
 }
 
+/** A named value about a visitor or a conversation, and who said so. */
+export interface Attribute {
+  key: string;
+  value: string | number | boolean;
+  source: "verified" | "agent" | "rule" | "host" | "visitor" | "ai";
+}
+
 export interface Visitor {
   id: number;
   name: string;
   email: string;
+  /** The host site signed for this visitor's identity. */
+  verified: boolean;
+  attributes: Attribute[];
   online: boolean;
   current_url: string;
   page_title: string;
@@ -131,6 +143,7 @@ export interface ConversationRow {
   unread: boolean;
   human_requested: boolean;
   tags: string[];
+  attributes: Attribute[];
   assignee_id: number | null;
   last_message_at: string;
   preview: string;

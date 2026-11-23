@@ -32,8 +32,16 @@ export class Widget {
   private pollTimer?: ReturnType<typeof setTimeout>;
   private el: { [name: string]: HTMLElement } = {};
 
-  constructor(private api: WidgetApi, host: HTMLElement) {
+  // Resolves once the panel is built; calls made before then wait for it.
+  private ready: Promise<void>;
+  private markReady!: () => void;
+
+  constructor(
+    private api: WidgetApi,
+    private host: HTMLElement,
+  ) {
     this.root = host.attachShadow({ mode: "open" });
+    this.ready = new Promise((resolve) => (this.markReady = resolve));
   }
 
   async start() {
@@ -41,12 +49,52 @@ export class Widget {
     const session = await this.api.session();
     this.seenId = Number(readSeen(this.api.key)) || 0;
     this.build();
+    this.markReady();
     if (session.conversation_id) await this.poll(false);
     this.schedulePoll();
     setInterval(() => this.api.session().catch(() => {}), HEARTBEAT_MS);
   }
 
   // --- public API (window.whileisleep) ---
+
+  /** Opens the chat; with `message`, types it in ready to send. */
+  async openWith(message?: string) {
+    await this.ready;
+    this.switchTab("chat");
+    this.toggle(true);
+    if (message) (this.el.input as HTMLTextAreaElement).value = message;
+  }
+
+  async close() {
+    await this.ready;
+    this.toggle(false);
+  }
+
+  /** Hides the bubble entirely, e.g. on pages where it would cover the work. */
+  setHidden(hidden: boolean) {
+    this.host.style.display = hidden ? "none" : "";
+    if (hidden && this.open) this.close();
+  }
+
+  async identify(details: { name?: string; email?: string }) {
+    await this.ready;
+    await this.api.session(details);
+  }
+
+  /** Forgets this visitor (call on sign-out) so the next person here starts a new chat. */
+  async reset() {
+    await this.ready;
+    this.api.forget();
+    writeSeen(this.api.key, "");
+    this.messages = [];
+    this.lastId = this.seenId = 0;
+    this.humanRequested = false;
+    this.waitingForReply = 0;
+    this.usedSurfaces.clear();
+    await this.api.session();
+    this.renderBody();
+    this.renderBadge();
+  }
 
   toggle(force?: boolean) {
     this.open = force ?? !this.open;
@@ -62,9 +110,6 @@ export class Widget {
     this.renderBadge();
   }
 
-  async identify(details: { name?: string; email?: string }) {
-    await this.api.session(details);
-  }
 
   // --- building ---
 

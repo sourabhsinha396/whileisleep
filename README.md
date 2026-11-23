@@ -46,7 +46,9 @@ Add the widget to any site (Settings & widget shows the snippet):
 <script src="http://localhost:3004/widget.js" data-workspace="ws_..." async></script>
 ```
 
-Then optionally `window.whileisleep.identify({ name, email })` for signed-in users.
+The script sets `window.whileisleep` and fires `whileisleep:ready` on `window`:
+`open(message?)` (opens with the message typed in), `close()`, `hide()` / `show()` (for pages where the
+bubble is in the way), `identify({ name, email })` for signed-in users, and `reset()` on sign-out.
 
 ## Test
 

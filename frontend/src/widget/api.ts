@@ -54,6 +54,16 @@ export class WidgetApi {
     return data as T;
   }
 
+  /** Drops the visitor token; the next session() starts a new visitor. */
+  forget() {
+    this.token = "";
+    try {
+      localStorage.removeItem(this.storageKey);
+    } catch {
+      /* ignore */
+    }
+  }
+
   config() {
     return this.call<WidgetConfig>("/config");
   }

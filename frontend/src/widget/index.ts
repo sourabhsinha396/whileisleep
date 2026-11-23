@@ -4,19 +4,30 @@
  *   <script src="https://YOUR-WHILEISLEEP-HOST/widget.js" data-workspace="ws_..." async></script>
  *
  * Optional: data-api="https://api.example.com" when the API isn't on the script's origin.
- * Then: window.whileisleep.open(), .close(), .identify({ name, email }).
+ *
+ * window.whileisleep, once the script has run (it fires a "whileisleep:ready" event on window):
+ *   open(message?)      open the chat, optionally with a message typed in, ready to send
+ *   close()
+ *   hide() / show()     remove the bubble from pages where it would be in the way
+ *   identify({ name, email })   attach a signed-in user to the conversation
+ *   reset()             forget this visitor, e.g. on sign-out
  */
 
 import { WidgetApi } from "./api";
 import { Widget } from "./widget";
 
+export interface WhileisleepApi {
+  open(message?: string): Promise<void>;
+  close(): Promise<void>;
+  hide(): void;
+  show(): void;
+  identify(details: { name?: string; email?: string }): Promise<void>;
+  reset(): Promise<void>;
+}
+
 declare global {
   interface Window {
-    whileisleep?: {
-      open(): void;
-      close(): void;
-      identify(details: { name?: string; email?: string }): Promise<void>;
-    };
+    whileisleep?: WhileisleepApi;
   }
 }
 
@@ -32,10 +43,14 @@ function boot(current: HTMLScriptElement | null) {
 
   const widget = new Widget(new WidgetApi(apiOrigin, key), host);
   window.whileisleep = {
-    open: () => widget.toggle(true),
-    close: () => widget.toggle(false),
+    open: (message) => widget.openWith(message),
+    close: () => widget.close(),
+    hide: () => widget.setHidden(true),
+    show: () => widget.setHidden(false),
     identify: (details) => widget.identify(details),
+    reset: () => widget.reset(),
   };
+  window.dispatchEvent(new Event("whileisleep:ready"));
   widget.start().catch((error) => console.warn("whileisleep widget failed to start:", error));
 }
 

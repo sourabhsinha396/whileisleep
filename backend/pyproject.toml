@@ -35,7 +35,7 @@ DJANGO_SETTINGS_MODULE = "whileisleep.settings.testing"
 testpaths = ["tests"]
 addopts = "-p no:cacheprovider"
 # fakeredis passes redis-py an argument redis-py has deprecated; not ours to fix.
-filterwarnings = ["ignore:.*lib_version.*:DeprecationWarning"]
+filterwarnings = ["ignore:Call to '__init__' function with deprecated usage:DeprecationWarning"]
 
 [tool.ruff]
 line-length = 120

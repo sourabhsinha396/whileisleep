@@ -176,6 +176,7 @@ def reply(
             error = "The model gave no usable answer."
     if result is None:
         stage = Turn.Stage.FALLBACK
+        recorder.doing("retrieval")
         result = keyword_answer(conversation, history[-1]["content"])
 
     if superseded(conversation, trigger):
@@ -406,6 +407,7 @@ def final_answer(arguments: dict) -> dict:
 
 def prefetch(conversation: Conversation, question: str, recorder: Recorder) -> list:
     """Help center passages for the visitor's message, found before the model is asked."""
+    recorder.doing("retrieval")
     found = passages(conversation.workspace, question, limit=PREFETCH_PASSAGES)
     recorder.step(
         "retrieval",
@@ -434,6 +436,7 @@ def run_agent(
         if time.monotonic() - recorder.started > settings.REPLY_DEADLINE_SECONDS:
             # Slow tools or a slow model: stop here rather than keep the visitor waiting.
             break
+        recorder.doing("model")
         completion = openrouter.complete(organization.openrouter_api_key, organization.llm_model, messages, definitions)
         recorder.completion(completion, organization.llm_model)
         message = completion.message
@@ -452,6 +455,7 @@ def run_agent(
                 result = final_answer(arguments)
                 content, is_error = "Sent.", False
             else:
+                recorder.doing("tool", name)
                 started = time.monotonic()
                 content, is_error = call_tool(conversation, tools, name, arguments)
                 recorder.tool(name, arguments, content, is_error, started)

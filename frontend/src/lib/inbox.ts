@@ -18,8 +18,15 @@ export function addMessage(detail: ConversationDetail | null, message: Message):
   return { ...detail, messages: [...detail.messages, message].sort((a, b) => a.id - b.id) };
 }
 
-/** Rows with one visitor's online dot changed. */
-export function setOnline<T extends { visitor: { id: number; online: boolean } }>(rows: T[] | null, visitorId: number, online: boolean) {
+type WithVisitor = { visitor: { id: number; online: boolean; last_seen: string } };
+
+/** The visitor after a presence event. Leaving means they were last seen just now. */
+export function withPresence<V extends WithVisitor["visitor"]>(visitor: V, online: boolean, now = new Date()): V {
+  return { ...visitor, online, ...(online ? {} : { last_seen: now.toISOString() }) };
+}
+
+/** Rows with one visitor's presence changed. */
+export function setOnline<T extends WithVisitor>(rows: T[] | null, visitorId: number, online: boolean) {
   if (!rows?.some((r) => r.visitor.id === visitorId)) return rows;
-  return rows.map((r) => (r.visitor.id === visitorId ? { ...r, visitor: { ...r.visitor, online } } : r));
+  return rows.map((r) => (r.visitor.id === visitorId ? { ...r, visitor: withPresence(r.visitor, online) } : r));
 }

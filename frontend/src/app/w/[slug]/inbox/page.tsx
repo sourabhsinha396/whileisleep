@@ -29,7 +29,7 @@ import { Avatar, Badge, Button, Segmented } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, type ConversationDetail, type ConversationRow, type Message } from "@/lib/api";
 import { ago, browserName, clock } from "@/lib/format";
-import { addMessage, applyConversation, setOnline, type Filter } from "@/lib/inbox";
+import { addMessage, applyConversation, setOnline, withPresence, type Filter } from "@/lib/inbox";
 import { throttle } from "@/lib/live-stream";
 import { usePoll } from "@/lib/use-poll";
 
@@ -214,7 +214,7 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
         reload();
         return;
       case "presence":
-        setData((d) => (d && d.visitor.id === e.data.visitor_id ? { ...d, visitor: { ...d.visitor, online: e.data.online } } : d));
+        setData((d) => (d && d.visitor.id === e.data.visitor_id ? { ...d, visitor: withPresence(d.visitor, e.data.online) } : d));
         return;
       case "conversation":
         if (e.data.id === id) setData((d) => (d ? { ...d, ...e.data, messages: d.messages } : d));

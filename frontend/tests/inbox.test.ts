@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ConversationDetail, ConversationRow, Message } from "@/lib/api";
-import { addMessage, applyConversation, setOnline } from "@/lib/inbox";
+import { addMessage, applyConversation, setOnline, withPresence } from "@/lib/inbox";
 
 function row(id: number, last: string, status: "open" | "resolved" = "open", visitorId = id): ConversationRow {
   return {
@@ -75,6 +75,15 @@ describe("setOnline", () => {
     const rows = [row(1, "x", "open", 7), row(2, "x", "open", 8)];
     const next = setOnline(rows, 7, true)!;
     expect(next.map((r) => r.visitor.online)).toEqual([true, false]);
+    expect(next[0].visitor.last_seen).toBe("x");
     expect(setOnline(rows, 99, true)).toBe(rows);
+  });
+});
+
+describe("withPresence", () => {
+  it("marks a visitor who left as last seen now", () => {
+    const visitor = { ...row(1, "2026-11-23T09:00:00.000Z").visitor, online: true };
+    const left = withPresence(visitor, false, new Date("2026-11-23T10:30:00.000Z"));
+    expect(left).toMatchObject({ online: false, last_seen: "2026-11-23T10:30:00.000Z" });
   });
 });

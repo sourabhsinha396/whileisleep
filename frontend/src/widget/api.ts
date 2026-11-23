@@ -1,8 +1,10 @@
 import type { A2uiMessage, ActionEvent } from "@/lib/a2ui/surface";
+import { errorMessage } from "./limits";
 
 export interface WidgetConfig {
   name: string;
   website: string;
+  max_message_length: number;
   color: string;
   greeting: string;
   ai_enabled: boolean;
@@ -14,6 +16,8 @@ export interface ChatMessage {
   author_name: string;
   body: string;
   a2ui: A2uiMessage[] | null;
+  /** Its form was sent; show it disabled. */
+  form_submitted?: boolean;
   created_at: string;
 }
 
@@ -21,6 +25,12 @@ export interface MessagesResponse {
   conversation_id: number | null;
   human_requested: boolean;
   messages: ChatMessage[];
+}
+
+/** What a host-site button says the visitor wants, sent with the message it typed in. */
+export interface Intent {
+  intent: string;
+  data?: Record<string, string | number | boolean>;
 }
 
 export interface Article {
@@ -50,7 +60,7 @@ export class WidgetApi {
       },
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error((data as { detail?: string }).detail ?? `HTTP ${response.status}`);
+    if (!response.ok) throw new Error(errorMessage(data, response.status));
     return data as T;
   }
 
@@ -85,8 +95,11 @@ export class WidgetApi {
     return this.call<MessagesResponse>(`/messages?after=${after}`);
   }
 
-  send(body: string) {
-    return this.call<MessagesResponse>("/messages", { method: "POST", body: JSON.stringify({ body }) });
+  send(body: string, intent?: Intent) {
+    return this.call<MessagesResponse>("/messages", {
+      method: "POST",
+      body: JSON.stringify({ body, ...(intent ? { intent: intent.intent, data: intent.data ?? {} } : {}) }),
+    });
   }
 
   action(event: ActionEvent) {

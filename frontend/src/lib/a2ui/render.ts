@@ -2,7 +2,7 @@
  * Renders an A2UI surface to plain DOM, for the widget (no framework) and the dashboard.
  *
  * Implements part of the basic catalog: Column, Row, Card, Text, Button, TextField,
- * CheckBox, Divider, Image. Unknown components render nothing, so an agent can never
+ * CheckBox, ChoicePicker, Divider, Image. Unknown components render nothing, so an agent can never
  * inject markup: every string goes in as text, and image URLs must be http(s).
  * Styling uses `a2ui-*` class names that the host styles.
  */
@@ -92,7 +92,7 @@ function renderComponent(id: string, surface: Surface, options: RenderOptions, d
       label.textContent = asText(resolve(component.label, surface));
       const multiline = component.variant === "longText";
       const input = el(multiline ? "textarea" : "input", "a2ui-input") as HTMLInputElement;
-      if (!multiline) input.type = component.variant === "obscured" ? "password" : "text";
+      if (!multiline) input.type = component.variant === "obscured" ? "password" : component.variant === "number" ? "number" : "text";
       input.value = asText(resolve(component.value, surface));
       input.disabled = !!options.disabled;
       const binding = (component.value as { "@path"?: string } | undefined)?.["@path"];
@@ -116,6 +116,41 @@ function renderComponent(id: string, surface: Surface, options: RenderOptions, d
       const text = el("span", "");
       text.textContent = asText(resolve(component.label, surface));
       wrap.append(input, text);
+      return wrap;
+    }
+    case "ChoicePicker": {
+      // mutuallyExclusive: one value (radio buttons); otherwise a list of values (checkboxes).
+      const single = component.variant !== "multipleSelection";
+      const wrap = el("fieldset", "a2ui-choices");
+      wrap.setAttribute("role", single ? "radiogroup" : "group");
+      const legend = el("legend", "a2ui-field-label");
+      legend.textContent = asText(resolve(component.label, surface));
+      wrap.appendChild(legend);
+      const binding = (component.value as { "@path"?: string } | undefined)?.["@path"];
+      const current = resolve(component.value, surface);
+      const choices = Array.isArray(component.options) ? (component.options as { label?: unknown; value?: unknown }[]) : [];
+      for (const choice of choices) {
+        const value = asText(choice?.value as Json);
+        const row = el("label", "a2ui-choice");
+        const input = document.createElement("input");
+        input.type = single ? "radio" : "checkbox";
+        input.name = `${surface.surfaceId}-${component.id}`;
+        input.value = value;
+        input.checked = single ? current === value : Array.isArray(current) && current.includes(value);
+        input.disabled = !!options.disabled;
+        input.addEventListener("change", () => {
+          if (!binding) return;
+          if (single) setPointer(surface.dataModel, binding, value);
+          else {
+            const picked = Array.from(wrap.querySelectorAll("input:checked"), (i) => (i as HTMLInputElement).value);
+            setPointer(surface.dataModel, binding, picked);
+          }
+        });
+        const text = el("span", "");
+        text.textContent = asText(resolve(choice?.label, surface)) || value;
+        row.append(input, text);
+        wrap.appendChild(row);
+      }
       return wrap;
     }
     default:

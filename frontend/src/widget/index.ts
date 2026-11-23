@@ -6,18 +6,19 @@
  * Optional: data-api="https://api.example.com" when the API isn't on the script's origin.
  *
  * window.whileisleep, once the script has run (it fires a "whileisleep:ready" event on window):
- *   open(message?)      open the chat, optionally with a message typed in, ready to send
+ *   open(message?, intent?)   open the chat, optionally with a message typed in, ready to send;
+ *                       intent ({ intent: "exam_request", data: {...} }) labels it for rules
  *   close()
  *   hide() / show()     remove the bubble from pages where it would be in the way
  *   identify({ name, email })   attach a signed-in user to the conversation
  *   reset()             forget this visitor, e.g. on sign-out
  */
 
-import { WidgetApi } from "./api";
+import { WidgetApi, type Intent } from "./api";
 import { Widget } from "./widget";
 
 export interface WhileisleepApi {
-  open(message?: string): Promise<void>;
+  open(message?: string, intent?: Intent): Promise<void>;
   close(): Promise<void>;
   hide(): void;
   show(): void;
@@ -43,7 +44,7 @@ function boot(current: HTMLScriptElement | null) {
 
   const widget = new Widget(new WidgetApi(apiOrigin, key), host);
   window.whileisleep = {
-    open: (message) => widget.openWith(message),
+    open: (message, intent) => widget.openWith(message, intent),
     close: () => widget.close(),
     hide: () => widget.setHidden(true),
     show: () => widget.setHidden(false),

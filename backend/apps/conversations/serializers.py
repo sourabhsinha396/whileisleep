@@ -28,6 +28,9 @@ def message_out(message: Message) -> dict:
         "body": message.body,
         "a2ui": message.a2ui,
         "is_note": message.is_note,
+        "intent": message.intent,
+        # The widget shows a sent form disabled.
+        "form_submitted": bool(message.form and message.form.get("submitted")),
         "created_at": message.created_at,
     }
 
@@ -38,6 +41,7 @@ def conversation_row(conversation: Conversation, last: Message | None = None) ->
         "status": conversation.status,
         "unread": conversation.unread,
         "human_requested": conversation.human_requested,
+        "tags": conversation.tags or [],
         "assignee_id": conversation.assignee_id,
         "last_message_at": conversation.last_message_at,
         "preview": (last.body[:140] if last else ""),

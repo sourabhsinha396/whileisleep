@@ -14,11 +14,11 @@ from apps.conversations.models import Visitor
 from apps.workspaces.services import member_workspace, owner_workspace
 
 from . import http_tools
-from .bot import BUILTIN_TOOLS
+from .bot import BUILTIN_TOOLS, PLAYBOOK_TOOL
 from .models import Tool, tool_name
 
 router = Router(tags=["tools"], auth=token_auth)
-RESERVED = {t["name"] for t in BUILTIN_TOOLS}
+RESERVED = {t["name"] for t in BUILTIN_TOOLS} | {PLAYBOOK_TOOL}
 
 
 class ToolIn(Schema):

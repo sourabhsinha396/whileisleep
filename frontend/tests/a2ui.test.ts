@@ -114,6 +114,56 @@ describe("renderSurface", () => {
     expect(node.textContent).toContain("<img src=x onerror=alert(1)>");
   });
 
+  it("renders an AI form (the backend's a2ui.form shape) and submits all fields", () => {
+    const surface = applyMessages([
+      { version: "1.0", createSurface: { surfaceId: "form_1", catalogId: CATALOG, dataModel: { fields: { email: "", level: "" } } } },
+      {
+        version: "1.0",
+        updateComponents: {
+          surfaceId: "form_1",
+          components: [
+            { id: "root", component: "Column", children: ["f_email", "f_level", "submit"] },
+            { id: "f_email", component: "TextField", label: "Email *", variant: "shortText", value: { "@path": "/fields/email" } },
+            {
+              id: "f_level",
+              component: "ChoicePicker",
+              label: "Level",
+              variant: "mutuallyExclusive",
+              options: [
+                { label: "Beginner", value: "Beginner" },
+                { label: "Pro", value: "Pro" },
+              ],
+              value: { "@path": "/fields/level" },
+            },
+            {
+              id: "submit",
+              component: "Button",
+              child: "submit_label",
+              variant: "primary",
+              action: { event: { name: "submit_form", context: { fields: { "@path": "/fields" } } } },
+            },
+            { id: "submit_label", component: "Text", text: "Notify me" },
+          ],
+        },
+      },
+    ]).get("form_1")!;
+    const onAction = vi.fn();
+    const node = renderSurface(surface, { onAction });
+
+    const radios = node.querySelectorAll<HTMLInputElement>("input[type=radio]");
+    expect(Array.from(radios, (r) => r.value)).toEqual(["Beginner", "Pro"]);
+    const email = node.querySelector<HTMLInputElement>("input[type=text]")!;
+    email.value = "sofia@example.com";
+    email.dispatchEvent(new Event("input"));
+    radios[1].checked = true;
+    radios[1].dispatchEvent(new Event("change"));
+    node.querySelector("button")!.click();
+
+    expect(onAction).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "submit_form", context: { fields: { email: "sofia@example.com", level: "Pro" } } }),
+    );
+  });
+
   it("disables controls in read-only mode", () => {
     const node = renderSurface(applyMessages(emailForm()).get("email_1")!, { disabled: true });
     expect(node.querySelector("button")!.disabled).toBe(true);

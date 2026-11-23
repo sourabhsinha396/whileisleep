@@ -11,9 +11,28 @@ Open-source customer chat, like Crisp, with an AI agent that answers from your o
 - **AI agent and tools**: the LLM answers visitors. Each workspace adds **tools** (HTTP endpoints on its own
   systems: product search, stock, order status…) so the agent looks facts up instead of guessing.
   Built in: `search_knowledge_base`, `handoff_to_human`, and `reply_to_visitor` (how the model finishes).
+- **Rules & playbooks** (no flow builder):
+  - *Rules* run in code on each visitor message, before the AI, first match wins. Conditions: intent,
+    keywords, page URL, first message. Actions: an exact reply (the AI stays quiet), a one-off
+    instruction for the AI, a tag, a hand-off. Optionally also after a person took over.
+  - *Intents*: a button on the host site opens the chat with `window.whileisleep.open(text, { intent:
+    "exam_request", data: { exam_name } })`; rules match the intent and fill `{data.exam_name}` in replies.
+  - *Playbooks*: plain-language procedures. The AI sees only each title and "when to use" line and
+    loads the full text with the `read_playbook` tool when a conversation matches.
 - **A2UI**: bot replies carry [A2UI](https://a2ui.org) v1.0 surfaces (article buttons, "Talk to a person", an
   email form). The server builds them from templates; the widget renders them with a small safe renderer
   (`frontend/src/lib/a2ui`), and button events come back to `POST /api/v1/widget/{key}/actions`.
+
+## Limits and context (`backend/whileisleep/settings/base.py`)
+
+- Visitor messages: 500 characters (`VISITOR_MESSAGE_MAX_CHARS`), enforced in the widget and the API.
+- `RATE_LIMITS`: messages per visitor and per IP per minute, new visitors per IP per hour, and daily
+  AI replies per visitor and per workspace. Past an AI cap the conversation goes to a person. Counters
+  live in Django's cache: use Redis once there's more than one worker.
+- What the AI sees: recent messages up to `HISTORY_BUDGET_CHARS` (always the last few), plus an
+  "About this conversation" block built from stored data: name, whether we have their email, current
+  page, what button they came from, any unanswered form, tags.
+- A visitor writing after `CONVERSATION_IDLE_HOURS` (24) of quiet starts a new conversation.
 
 ## Layout
 

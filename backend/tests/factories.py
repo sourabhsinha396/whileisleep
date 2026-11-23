@@ -8,7 +8,7 @@ import factory
 from django.contrib.auth import get_user_model
 
 from apps.accounts.models import AuthToken
-from apps.agent.models import Tool
+from apps.agent.models import Playbook, Rule, Tool
 from apps.conversations.models import Conversation, Message, Visitor
 from apps.knowledge.models import Article
 from apps.workspaces.models import Membership, Organization, Workspace
@@ -112,3 +112,23 @@ class ToolFactory(factory.django.DjangoModelFactory):
     input_schema = factory.LazyFunction(
         lambda: {"type": "object", "properties": {"q": {"type": "string"}}, "required": ["q"]}
     )
+
+
+class RuleFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Rule
+
+    workspace = factory.SubFactory(WorkspaceFactory)
+    name = factory.Sequence(lambda n: f"Rule {n}")
+    intent = "exam_request"
+    reply = "Thanks! We'll try to add {data.exam_name} within 12 hours."
+
+
+class PlaybookFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Playbook
+
+    workspace = factory.SubFactory(WorkspaceFactory)
+    title = factory.Sequence(lambda n: f"Playbook {n}")
+    when_to_use = "When someone asks for a refund."
+    instructions = "Ask for the exam date first. Refunds only within 30 days."

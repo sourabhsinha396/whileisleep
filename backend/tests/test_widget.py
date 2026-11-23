@@ -100,3 +100,13 @@ def test_article_search_and_read():
     found = Api().get(f"/widget/{workspace.public_key}/articles", q="refund").json()
     assert [a["id"] for a in found] == [article.id]
     assert Api().get(f"/widget/{workspace.public_key}/articles/{article.id}").json()["body"].startswith("Refunds")
+
+
+def test_visitor_messages_are_capped_at_500_characters():
+    workspace = WorkspaceFactory(ai_enabled=False)
+    widget = start(workspace)
+    assert Api().get(f"/widget/{workspace.public_key}/config").json()["max_message_length"] == 500
+    assert widget.post(f"/widget/{workspace.public_key}/messages", {"body": "x" * 500}).status_code == 200
+    too_long = widget.post(f"/widget/{workspace.public_key}/messages", {"body": "x" * 501})
+    assert too_long.status_code == 422
+    assert too_long.json()["detail"][0]["type"] == "string_too_long"

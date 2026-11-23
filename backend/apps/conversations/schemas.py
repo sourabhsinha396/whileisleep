@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Any
 
+from django.conf import settings
 from ninja import Schema
-from pydantic import Field
+from pydantic import Field, field_validator
 
 
 class VisitorOut(Schema):
@@ -26,6 +27,8 @@ class MessageOut(Schema):
     body: str
     a2ui: list[dict[str, Any]] | None = None
     is_note: bool
+    intent: str = ""
+    form_submitted: bool = False
     created_at: datetime
 
 
@@ -34,6 +37,7 @@ class ConversationRow(Schema):
     status: str
     unread: bool
     human_requested: bool
+    tags: list[str] = []
     assignee_id: int | None
     last_message_at: datetime
     preview: str
@@ -65,6 +69,7 @@ class WidgetConfigOut(Schema):
     color: str
     greeting: str
     ai_enabled: bool
+    max_message_length: int = settings.VISITOR_MESSAGE_MAX_CHARS
 
 
 class WidgetSessionIn(Schema):
@@ -83,8 +88,22 @@ class WidgetSessionOut(Schema):
     last_message_id: int | None
 
 
+IntentValue = str | int | float | bool
+
+
 class WidgetMessageIn(Schema):
-    body: str = Field(min_length=1, max_length=5000)
+    body: str = Field(min_length=1, max_length=settings.VISITOR_MESSAGE_MAX_CHARS)
+    # Set by a button on the host site that opened the chat (window.whileisleep.open(text, {intent, data})).
+    intent: str = Field("", max_length=64, pattern=r"^[a-z0-9_.-]*$")
+    data: dict[str, IntentValue] = Field(default_factory=dict, max_length=20)
+
+    @field_validator("data")
+    @classmethod
+    def short_values(cls, data: dict) -> dict:
+        for key, value in data.items():
+            if len(key) > 40 or len(str(value)) > 300:
+                raise ValueError("intent data keys must be at most 40 characters and values 300")
+        return data
 
 
 class WidgetActionIn(Schema):

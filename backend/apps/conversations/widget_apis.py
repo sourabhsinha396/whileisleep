@@ -8,12 +8,13 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.errors import HttpError
 
-from apps.agent import actions
+from apps.agent import actions, rules
 from apps.agent.bot import maybe_reply
 from apps.knowledge.models import Article
 from apps.knowledge.search import search
 from apps.workspaces.models import Workspace
 
+from . import limits
 from .models import Conversation, Message, Visitor
 from .schemas import (
     ArticleOut,
@@ -26,7 +27,7 @@ from .schemas import (
     WidgetSessionOut,
 )
 from .serializers import message_out
-from .services import add_message, current_conversation, touch_visitor
+from .services import add_message, current_conversation, is_stale, touch_visitor
 
 router = Router(tags=["widget"])
 
@@ -60,6 +61,8 @@ def session(request, key: str, payload: WidgetSessionIn):
     token = request.headers.get("X-Visitor-Token", "")
     visitor = Visitor.objects.filter(workspace=workspace, token=token).first() if token else None
     if visitor is None:
+        if not limits.allow_new_visitor(client_ip(request)):
+            raise HttpError(429, "Too many new chats from your network. Please try again later.")
         visitor = Visitor(workspace=workspace, ip=client_ip(request))
     touch_visitor(
         visitor,
@@ -99,11 +102,18 @@ def messages(request, key: str, after: int = 0):
 def send(request, key: str, payload: WidgetMessageIn):
     workspace = get_workspace(key)
     visitor = get_visitor(request, workspace)
+    if not limits.allow_message(visitor.id, client_ip(request)):
+        raise HttpError(429, "You're sending messages too quickly. Please wait a minute.")
     conversation = current_conversation(visitor)
-    if conversation is None:
+    if conversation is None or is_stale(conversation):
         conversation = Conversation.objects.create(workspace=workspace, visitor=visitor)
-    message = add_message(conversation, Message.Sender.VISITOR, payload.body.strip())
-    maybe_reply(conversation)
+    message = add_message(
+        conversation, Message.Sender.VISITOR, payload.body.strip(), intent=payload.intent, intent_data=payload.data
+    )
+    outcome = rules.apply(conversation, message)
+    if not outcome.replied:
+        maybe_reply(conversation, outcome.instruction)
+    conversation.refresh_from_db(fields=["human_requested"])
     rows = conversation.messages.filter(is_note=False, id__gte=message.id).exclude(sender=Message.Sender.SYSTEM)
     return {
         "conversation_id": conversation.id,
@@ -121,7 +131,7 @@ def action(request, key: str, payload: WidgetActionIn):
     if conversation is None:
         raise HttpError(400, "No conversation yet.")
     try:
-        return actions.handle(conversation, payload.name, payload.context)
+        return actions.handle(conversation, payload.name, payload.context, payload.surfaceId)
     except actions.ActionError as error:
         raise HttpError(400, str(error)) from error
 

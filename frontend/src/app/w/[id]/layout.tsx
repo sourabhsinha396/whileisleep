@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { BookOpen, Bot, Building2, ChevronsUpDown, Eye, Inbox, LogOut, Plus, Settings } from "lucide-react";
+import { BookOpen, Bot, Building2, ChevronsUpDown, Eye, Inbox, LogOut, Plus, Settings, Zap } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -14,6 +14,7 @@ const NAV = [
   { href: "visitors", label: "Visitors", icon: Eye },
   { href: "knowledge", label: "Knowledge base", icon: BookOpen },
   { href: "ai", label: "AI agent & tools", icon: Bot },
+  { href: "automation", label: "Rules & playbooks", icon: Zap },
   { href: "settings", label: "Settings & widget", icon: Settings },
   { href: "organization", label: "Organization & LLM", icon: Building2 },
 ];

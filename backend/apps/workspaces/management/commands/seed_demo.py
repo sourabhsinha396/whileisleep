@@ -13,7 +13,7 @@ import os
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.agent.models import Tool
+from apps.agent.models import Playbook, Rule, Tool
 from apps.knowledge.models import Article
 from apps.workspaces.models import Workspace
 from apps.workspaces.services import create_workspace, organization_for
@@ -70,6 +70,29 @@ WORKSPACES = [
                 },
             },
         ],
+        # The "Ask us in chat" button on exams in preparation sends intent exam_request.
+        "rules": [
+            {
+                "name": "Exam requests",
+                "intent": "exam_request",
+                "reply": "Thanks! We'll try to add {data.exam_name} within 12 hours, and we'll reply here once it's live.",
+                "tag": "exam-request",
+                "also_when_human": True,
+            },
+        ],
+        "playbooks": [
+            {
+                "title": "Refund requests",
+                "when_to_use": "The visitor asks for a refund or says they failed their exam.",
+                "instructions": (
+                    "1. Say sorry about the result.\n"
+                    "2. Ask for the exam date and a photo of the score report.\n"
+                    "3. If the exam was within 30 days, say a teammate will process the refund and call "
+                    "handoff_to_human.\n"
+                    "4. Otherwise explain kindly that refunds are only within 30 days of the exam."
+                ),
+            },
+        ],
     },
     {
         "name": "Little Fern Coffee",
@@ -87,6 +110,8 @@ WORKSPACES = [
             ("Changing your delivery address", "You can change the address until the order ships, usually Thursday."),
         ],
         "tools": [],
+        "rules": [],
+        "playbooks": [],
     },
 ]
 
@@ -115,11 +140,16 @@ class Command(BaseCommand):
         for spec in WORKSPACES:
             spec = dict(spec)
             articles, tools = spec.pop("articles"), spec.pop("tools")
+            rules, playbooks = spec.pop("rules"), spec.pop("playbooks")
             workspace = Workspace.objects.filter(name=spec["name"], memberships__user=user).first()
             if workspace is None:
                 workspace = create_workspace(user, **spec)
             for title, body in articles:
                 Article.objects.get_or_create(workspace=workspace, title=title, defaults={"body": body})
+            for rule in rules:
+                Rule.objects.update_or_create(workspace=workspace, name=rule["name"], defaults=rule)
+            for playbook in playbooks:
+                Playbook.objects.update_or_create(workspace=workspace, title=playbook["title"], defaults=playbook)
             for tool in tools:
                 Tool.objects.update_or_create(workspace=workspace, name=tool["name"], defaults=tool)
             self.stdout.write(f"{workspace.name}: {workspace.public_key}")

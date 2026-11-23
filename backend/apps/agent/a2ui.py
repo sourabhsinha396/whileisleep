@@ -59,18 +59,54 @@ def reply_actions(surface_id: str, articles: list, offer_human: bool) -> list[di
     return surface(surface_id, [column("root", children), *components])
 
 
-def email_form(surface_id: str) -> list[dict]:
-    """Asks for an email so the team can follow up if the visitor leaves."""
-    components = [
-        column("root", ["prompt", "email", "save"]),
-        text("prompt", "Leave your email and we'll reply there too if you step away."),
-        {
-            "id": "email",
-            "component": "TextField",
-            "label": "Email",
-            "variant": "shortText",
-            "value": {"@path": "/email"},
-        },
-        *button("save", "Save email", "save_email", {"email": {"@path": "/email"}}, "primary"),
-    ]
-    return surface(surface_id, components, data_model={"email": ""})
+TEXT_VARIANTS = {"long_text": "longText", "number": "number"}
+
+
+def form(surface_id: str, spec: dict) -> list[dict]:
+    """Compiles a checked form spec (apps.agent.forms.normalize) to an A2UI surface.
+
+    Each field binds to /fields/<name>; the submit button sends them all as the
+    submit_form event's `fields` context.
+    """
+    children, components = [], []
+    if spec.get("title"):
+        children.append("title")
+        components.append(text("title", spec["title"]))
+    for field in spec["fields"]:
+        cid = f"f_{field['name']}"
+        children.append(cid)
+        label = field["label"] + (" *" if field["required"] else "")
+        binding = {"@path": f"/fields/{field['name']}"}
+        if field["type"] == "choice":
+            components.append(
+                {
+                    "id": cid,
+                    "component": "ChoicePicker",
+                    "label": label,
+                    "variant": "mutuallyExclusive",
+                    "options": [{"label": o, "value": o} for o in field["options"]],
+                    "value": binding,
+                }
+            )
+        else:
+            components.append(
+                {
+                    "id": cid,
+                    "component": "TextField",
+                    "label": label,
+                    "variant": TEXT_VARIANTS.get(field["type"], "shortText"),
+                    "value": binding,
+                }
+            )
+    children.append("submit")
+    components += button("submit", spec["submit_label"], "submit_form", {"fields": {"@path": "/fields"}}, "primary")
+    data = {"fields": {f["name"]: "" for f in spec["fields"]}}
+    return surface(surface_id, [column("root", children), *components], data_model=data)
+
+
+# Shown when a visitor asks for a person and we don't have their email yet.
+AWAY_FORM = {
+    "title": "Leave your email and we'll reply there too if you step away.",
+    "fields": [{"name": "email", "label": "Email", "type": "email", "required": True}],
+    "submit_label": "Save email",
+}

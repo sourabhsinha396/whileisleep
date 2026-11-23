@@ -3,6 +3,7 @@ import sys
 
 import httpx
 import pytest
+from django.core.cache import cache
 from django.test import Client
 
 from apps.agent import openrouter
@@ -11,6 +12,12 @@ from .factories import AuthTokenFactory, MembershipFactory, OrganizationFactory,
 
 # No __pycache__ folders from test runs.
 sys.dont_write_bytecode = True
+
+
+@pytest.fixture(autouse=True)
+def clear_cache():
+    # Rate-limit counts live in the cache. Without this, one test's requests count against the next.
+    cache.clear()
 
 
 @pytest.fixture(autouse=True)

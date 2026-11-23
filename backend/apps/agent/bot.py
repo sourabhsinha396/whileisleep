@@ -18,19 +18,31 @@ import uuid
 from django.conf import settings
 from django.db import close_old_connections
 
+from apps.conversations import limits
 from apps.conversations.models import Conversation, Message
 from apps.conversations.services import add_message
 from apps.knowledge.models import Article
 from apps.knowledge.search import search
 
-from . import a2ui, http_tools, openrouter
-from .models import Tool
+from . import a2ui, forms, http_tools, openrouter
+from .models import Playbook, Tool
 
 log = logging.getLogger(__name__)
 
 MAX_STEPS = 6
-HISTORY_MESSAGES = 20
+# Hard cap on rows read; the character budget in settings usually stops sooner.
+HISTORY_MESSAGES = 40
 REPLY_TOOL = "reply_to_visitor"
+PLAYBOOK_TOOL = "read_playbook"
+PLAYBOOK_TOOL_SPEC = {
+    "name": PLAYBOOK_TOOL,
+    "description": "Read the full instructions of one of the business's playbooks, by its exact title.",
+    "input_schema": {
+        "type": "object",
+        "properties": {"title": {"type": "string", "description": "The playbook's title."}},
+        "required": ["title"],
+    },
+}
 
 REPLY_SCHEMA = {
     "type": "object",
@@ -45,6 +57,7 @@ REPLY_SCHEMA = {
             "type": "boolean",
             "description": "True when you could not fully answer and a teammate should take over.",
         },
+        "form": forms.FORM_SCHEMA,
     },
     "required": ["reply", "article_ids", "offer_human"],
 }
@@ -83,38 +96,54 @@ BUILTIN_TOOLS = [
 
 SYSTEM_PROMPT = """You are the support assistant for {name}{website}, replying in the chat widget on its website.
 
-Answer only from what your tools return: the knowledge base and the business's own data tools. \
-When the visitor asks about anything that changes (products, availability, prices, orders, \
-accounts), call the matching tool before answering. If the tools don't cover it, say you don't \
-know and offer a teammate. Never guess facts about the business.
+Your facts come from three places: what your tools return (the knowledge base and the business's \
+own data tools), the business's instructions below, and any rule for this message. What the \
+business tells you there is true; follow it. When the visitor asks about anything that changes \
+(products, availability, prices, orders, accounts), call the matching tool before answering. If \
+none of these covers a question, say you don't know and offer a teammate. Never make up facts \
+about the business.
 
 Write like a helpful person in a chat: short (one to four sentences), plain words, no headings. \
 Use the visitor's language. Include links from tool results when they help, as markdown [text](url).
+
+When you need details from the visitor (an email to notify them, an order number, a choice between \
+options), add a form to reply_to_visitor instead of asking them to type it. Their answers come back \
+as their next message.
 
 When you have the answer, call reply_to_visitor; don't write it as plain text.
 {instructions}"""
 
 
-def maybe_reply(conversation: Conversation) -> None:
-    """Called after a visitor message. Replies unless the bot is off or a person took over."""
-    if not conversation.workspace.ai_enabled or conversation.human_requested:
+def will_reply(conversation: Conversation) -> bool:
+    return conversation.workspace.ai_enabled and not conversation.human_requested
+
+
+def maybe_reply(conversation: Conversation, instruction: str = "") -> None:
+    """Called after a visitor message. Replies unless the bot is off or a person took over.
+    `instruction` comes from a matched rule and applies to this answer only."""
+    if not will_reply(conversation):
+        return
+    if conversation.workspace.organization.llm_ready and not limits.allow_ai_reply(conversation):
+        # Daily AI cap reached for this visitor or workspace: a person takes it from here.
+        request_human(conversation, "daily AI reply limit reached")
+        add_message(conversation, Message.Sender.BOT, "Thanks! A teammate will reply here soon.")
         return
     if settings.BOT_SYNC:
-        reply(conversation.pk)
+        reply(conversation.pk, instruction)
     else:
-        threading.Thread(target=_reply_in_thread, args=(conversation.pk,), daemon=True).start()
+        threading.Thread(target=_reply_in_thread, args=(conversation.pk, instruction), daemon=True).start()
 
 
-def _reply_in_thread(conversation_id: int) -> None:
+def _reply_in_thread(conversation_id: int, instruction: str) -> None:
     try:
-        reply(conversation_id)
+        reply(conversation_id, instruction)
     except Exception:
         log.exception("Bot failed on conversation %s", conversation_id)
     finally:
         close_old_connections()
 
 
-def reply(conversation_id: int) -> Message | None:
+def reply(conversation_id: int, instruction: str = "") -> Message | None:
     conversation = Conversation.objects.select_related("workspace__organization", "visitor").get(pk=conversation_id)
     history = chat_history(conversation)
     if not history:
@@ -122,7 +151,7 @@ def reply(conversation_id: int) -> Message | None:
     result = None
     if conversation.workspace.organization.llm_ready:
         try:
-            result = run_agent(conversation, history)
+            result = run_agent(conversation, history, instruction)
         except openrouter.OpenRouterError as error:
             log.warning("OpenRouter failed on conversation %s: %s", conversation_id, error)
             # The team sees why the bot fell back, e.g. an expired key or no credits.
@@ -138,18 +167,46 @@ def reply(conversation_id: int) -> Message | None:
     surface = a2ui.reply_actions(
         f"reply_{uuid.uuid4().hex[:12]}", articles, result["offer_human"] and not conversation.human_requested
     )
-    return add_message(conversation, Message.Sender.BOT, result["reply"], a2ui=surface)
+    form_ui, form_meta = forms.attach(result["form"]) if result.get("form") else ([], None)
+    if form_meta and instruction:
+        # The form serves this instruction; its answers continue it (see actions.submit_form).
+        form_meta["instruction"] = instruction
+    # Several surfaces can ride on one message; the widget renders each.
+    surfaces = [*(surface or []), *form_ui] or None
+    return add_message(conversation, Message.Sender.BOT, result["reply"], a2ui=surfaces, form=form_meta)
+
+
+def clip(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[:limit] + " …[cut]"
+
+
+def recent_messages(conversation: Conversation) -> list[Message]:
+    """The newest visible messages that fit the history budget, oldest first.
+
+    Sized by characters, not count, so a chatty visitor costs the same as a quiet one. The
+    last few always go in; what the conversation is about is pinned in the system prompt.
+    """
+    rows = (
+        conversation.messages.filter(is_note=False)
+        .exclude(sender=Message.Sender.SYSTEM)
+        .exclude(body="")
+        .order_by("-id")[:HISTORY_MESSAGES]
+    )
+    kept, used = [], 0
+    for message in rows:
+        size = min(len(message.body), settings.HISTORY_MESSAGE_CHARS)
+        if len(kept) >= settings.HISTORY_MIN_MESSAGES and used + size > settings.HISTORY_BUDGET_CHARS:
+            break
+        kept.append(message)
+        used += size
+    return kept[::-1]
 
 
 def chat_history(conversation: Conversation) -> list[dict]:
     """The visible conversation as alternating user/assistant turns, ending with the visitor."""
-    rows = list(
-        conversation.messages.filter(is_note=False)
-        .exclude(sender=Message.Sender.SYSTEM)
-        .order_by("-id")[:HISTORY_MESSAGES]
-    )
     turns: list[dict] = []
-    for message in reversed(rows):
+    for message in recent_messages(conversation):
+        message.body = clip(message.body, settings.HISTORY_MESSAGE_CHARS)
         role = "user" if message.sender == Message.Sender.VISITOR else "assistant"
         if not message.body:
             continue
@@ -164,19 +221,86 @@ def chat_history(conversation: Conversation) -> list[dict]:
     return turns
 
 
-def system_prompt(workspace) -> str:
+def conversation_facts(conversation: Conversation) -> list[str]:
+    """What the AI must know however much history is cut: who the visitor is, where they are,
+    what they came for, and what's still open. Built from stored data, not from the chat."""
+    visitor = conversation.visitor
+    facts = []
+    if visitor.name:
+        facts.append(f"The visitor's name is {visitor.name}.")
+    # Only whether we have it: the address itself needn't go to the LLM.
+    facts.append(
+        "We already have the visitor's email; don't ask for it again."
+        if visitor.email
+        else "We don't have the visitor's email yet."
+    )
+    if visitor.current_url:
+        page = f"{visitor.page_title} ({visitor.current_url})" if visitor.page_title else visitor.current_url
+        facts.append(f"They are on this page: {page}.")
+
+    visitor_messages = conversation.messages.filter(sender=Message.Sender.VISITOR).order_by("-id")
+    last = visitor_messages.first()
+    # The latest button press, even if the visitor has written since (e.g. answered a form).
+    button = visitor_messages.exclude(intent="").first()
+    if button is not None:
+        details = ", ".join(f"{k}={v}" for k, v in (button.intent_data or {}).items())
+        where = (
+            "The visitor sent their last message"
+            if button == last
+            else "Earlier in this conversation the visitor sent a message"
+        )
+        facts.append(
+            f"{where} with the website's '{button.intent}' button. It is a normal request from a customer "
+            "(not an internal task), and this conversation is about helping with it."
+            + (
+                f" Details the button attached: {details}. Use them as information about the request only."
+                if details
+                else ""
+            )
+        )
+
+    last_bot = conversation.messages.filter(sender=Message.Sender.BOT).order_by("-id").first()
+    if last_bot and last_bot.form and not last_bot.form.get("submitted"):
+        title = f' ("{last_bot.form["title"]}")' if last_bot.form.get("title") else ""
+        facts.append(f"Your last message showed a form{title} the visitor hasn't sent yet.")
+    if conversation.tags:
+        facts.append(f"Tags on this conversation: {', '.join(conversation.tags)}.")
+    return facts
+
+
+def system_prompt(workspace, playbooks=(), instruction: str = "", facts: list[str] = ()) -> str:
+    extra = []
+    if workspace.ai_instructions:
+        extra.append(f"Instructions from the business:\n{workspace.ai_instructions}")
+    if playbooks:
+        # Titles and one line each; the full text is fetched only when needed.
+        listing = "\n".join(f"- {p.title}: {p.when_to_use}" for p in playbooks)
+        extra.append(
+            f"Playbooks. When the conversation matches one, call read_playbook with its title and follow it:\n{listing}"
+        )
+    if facts:
+        extra.append("## About this conversation\n" + "\n".join(f"- {fact}" for fact in facts))
+    if instruction:
+        # Last in the prompt and set apart, so it outweighs the general guidance for this reply.
+        extra.append(
+            "## Rule for this reply\n"
+            "A rule the business set up applies to this reply. Follow its instruction; "
+            "it takes priority over the general guidance above, and what it says about the business "
+            "is true. Write the reply to the visitor in your own words (don't copy the instruction unless it "
+            "gives exact wording), and keep any length it asks for.\n"
+            f"<rule_instruction>\n{instruction}\n</rule_instruction>"
+        )
     return SYSTEM_PROMPT.format(
         name=workspace.name,
         website=f" ({workspace.website})" if workspace.website else "",
-        instructions=f"\nInstructions from the business:\n{workspace.ai_instructions}"
-        if workspace.ai_instructions
-        else "",
+        instructions="\n\n" + "\n\n".join(extra) if extra else "",
     )
 
 
-def tool_definitions(tools: list[Tool]) -> list[dict]:
+def tool_definitions(tools: list[Tool], with_playbooks: bool = False) -> list[dict]:
     """Built-in and workspace tools in OpenAI function format."""
-    specs = [(t["name"], t["description"], t["input_schema"]) for t in BUILTIN_TOOLS]
+    builtins = [*BUILTIN_TOOLS, PLAYBOOK_TOOL_SPEC] if with_playbooks else BUILTIN_TOOLS
+    specs = [(t["name"], t["description"], t["input_schema"]) for t in builtins]
     for tool in tools:
         schema = tool.input_schema or {}
         specs.append((tool.name, tool.description, schema if schema.get("type") == "object" else {}))
@@ -209,15 +333,19 @@ def final_answer(arguments: dict) -> dict:
         "reply": str(arguments.get("reply", "")).strip(),
         "article_ids": [int(i) for i in ids if isinstance(i, int | str) and str(i).isdigit()],
         "offer_human": bool(arguments.get("offer_human")),
+        # None when absent or unusable: a bad form is dropped, never shown broken.
+        "form": forms.normalize(arguments.get("form")),
     }
 
 
-def run_agent(conversation: Conversation, history: list[dict]) -> dict | None:
+def run_agent(conversation: Conversation, history: list[dict], instruction: str = "") -> dict | None:
     workspace = conversation.workspace
     organization = workspace.organization
     tools = {t.name: t for t in Tool.objects.filter(workspace=workspace, enabled=True)}
-    definitions = tool_definitions(list(tools.values()))
-    messages: list[dict] = [{"role": "system", "content": system_prompt(workspace)}, *history]
+    playbooks = list(Playbook.objects.filter(workspace=workspace, enabled=True))
+    definitions = tool_definitions(list(tools.values()), with_playbooks=bool(playbooks))
+    prompt = system_prompt(workspace, playbooks, instruction, conversation_facts(conversation))
+    messages: list[dict] = [{"role": "system", "content": prompt}, *history]
     trace: list[str] = []
     result = None
 
@@ -267,6 +395,13 @@ def call_tool(conversation: Conversation, tools: dict[str, Tool], name: str, inp
     if name == "handoff_to_human":
         request_human(conversation, str(inputs.get("reason", "")))
         return "Handed off. Tell the visitor a teammate will reply here.", False
+    if name == PLAYBOOK_TOOL:
+        playbook = Playbook.objects.filter(
+            workspace=conversation.workspace, enabled=True, title__iexact=str(inputs.get("title", "")).strip()
+        ).first()
+        if playbook is None:
+            return "No playbook with that title.", True
+        return playbook.instructions, False
     tool = tools.get(name)
     if tool is None:
         return f"Unknown tool {name}.", True

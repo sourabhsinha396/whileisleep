@@ -87,6 +87,31 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_HEADERS = (*default_headers, "x-visitor-token")
 
+# Longest message a visitor can send, and longest free-text form answer. Keeps each AI call
+# small; the widget reads it from /widget/{key}/config and stops typing at it.
+VISITOR_MESSAGE_MAX_CHARS = 500
+
+# Abuse and cost limits (apps.conversations.limits). Past an AI cap, the conversation goes
+# to a person instead of the LLM.
+RATE_LIMITS = {
+    "messages_per_visitor_per_minute": 10,
+    "messages_per_ip_per_minute": 30,
+    "new_visitors_per_ip_per_hour": 30,
+    "ai_replies_per_visitor_per_day": 50,
+    "ai_replies_per_workspace_per_day": 2000,
+}
+
+# What the AI sees of a conversation: recent turns up to this many characters (each message
+# cut at HISTORY_MESSAGE_CHARS), always at least the last HISTORY_MIN_MESSAGES. Who the
+# visitor is and what they came for are pinned in the system prompt instead.
+HISTORY_BUDGET_CHARS = 6000
+HISTORY_MESSAGE_CHARS = 1500
+HISTORY_MIN_MESSAGES = 4
+
+# A visitor writing after this long a silence starts a new conversation (old ones stay in
+# the inbox but stop feeding the AI).
+CONVERSATION_IDLE_HOURS = 24
+
 # A visitor counts as online if the widget pinged within this many seconds.
 ONLINE_WINDOW_SECONDS = 60
 

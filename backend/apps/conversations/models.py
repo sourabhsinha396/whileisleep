@@ -54,6 +54,8 @@ class Conversation(models.Model):
     human_requested = models.BooleanField(default=False)
     # A visitor message the team hasn't opened yet.
     unread = models.BooleanField(default=True)
+    # Labels set by rules ("exam-request") or the team.
+    tags = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_message_at = models.DateTimeField(default=timezone.now)
 
@@ -79,6 +81,14 @@ class Message(models.Model):
     a2ui = models.JSONField(null=True, blank=True)
     # Internal notes are for teammates only and never reach the visitor.
     is_note = models.BooleanField(default=False)
+    # Set by a button on the host site that opened the chat with this text: what the visitor
+    # wants ("exam_request") and details ({"exam_code": "SY0-401"}). Visitor-supplied: treat
+    # as untrusted input.
+    intent = models.CharField(max_length=64, blank=True)
+    intent_data = models.JSONField(default=dict, blank=True)
+    # A bot message's form (apps.agent.forms spec) plus {"surface_id", "submitted"}, to check
+    # the visitor's answers and stop a second submission.
+    form = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

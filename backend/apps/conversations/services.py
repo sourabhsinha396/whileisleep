@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+from django.conf import settings
 from django.utils import timezone
 
 from .models import Conversation, Message, Visitor
@@ -11,9 +14,20 @@ def add_message(
     author=None,
     a2ui: list | None = None,
     is_note: bool = False,
+    intent: str = "",
+    intent_data: dict | None = None,
+    form: dict | None = None,
 ) -> Message:
     message = Message.objects.create(
-        conversation=conversation, sender=sender, body=body, author=author, a2ui=a2ui, is_note=is_note
+        conversation=conversation,
+        sender=sender,
+        body=body,
+        author=author,
+        a2ui=a2ui,
+        is_note=is_note,
+        intent=intent,
+        intent_data=intent_data or {},
+        form=form,
     )
     conversation.last_message_at = message.created_at
     fields = ["last_message_at"]
@@ -30,6 +44,11 @@ def add_message(
         fields.append("human_requested")
     conversation.save(update_fields=fields)
     return message
+
+
+def is_stale(conversation: Conversation) -> bool:
+    """Quiet for so long that a new message starts a new conversation."""
+    return timezone.now() - conversation.last_message_at > timedelta(hours=settings.CONVERSATION_IDLE_HOURS)
 
 
 def current_conversation(visitor: Visitor) -> Conversation | None:

@@ -67,9 +67,16 @@ function Inbox() {
                   <span className="ml-auto text-xs text-gray-500">{ago(row.last_message_at)}</span>
                 </span>
                 <span className="mt-1 line-clamp-2 text-sm text-gray-600">{row.preview || "…"}</span>
-                {row.human_requested && row.status === "open" && (
-                  <span className="mt-1.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">Needs a person</span>
-                )}
+                <span className="mt-1.5 flex flex-wrap gap-1">
+                  {row.human_requested && row.status === "open" && (
+                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">Needs a person</span>
+                  )}
+                  {row.tags.map((tag) => (
+                    <span key={tag} className="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-semibold text-indigo-700">
+                      {tag}
+                    </span>
+                  ))}
+                </span>
               </span>
             </button>
           ))}
@@ -214,6 +221,7 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
         <h3 className="mt-8 text-xs font-semibold tracking-wider text-gray-500 uppercase">This conversation</h3>
         <ul className="mt-3 space-y-2 text-sm">
           <li>Status: {data.status}</li>
+          {data.tags.length > 0 && <li>Tags: {data.tags.join(", ")}</li>}
           <li>Bot: {data.human_requested ? "paused, a person is handling it" : workspace.ai_enabled ? "answering" : "off"}</li>
           <li>ID: #{data.id}</li>
         </ul>
@@ -252,6 +260,11 @@ function MessageBubble({ message: m, visitorName }: { message: Message; visitorN
         <span className="text-gray-500">{clock(m.created_at)}</span>
         {m.sender === "bot" && <span className="rounded bg-green-100 px-1.5 py-0.5 text-[11px] font-bold text-green-800">AI AUTO REPLY</span>}
         {m.is_note && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-800">NOTE</span>}
+        {m.intent && (
+          <span className="rounded bg-indigo-50 px-1.5 py-0.5 font-mono text-[11px] text-indigo-700" title="Sent from a button on your site">
+            {m.intent}
+          </span>
+        )}
       </p>
       <div
         className={clsx(

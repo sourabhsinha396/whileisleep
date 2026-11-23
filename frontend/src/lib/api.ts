@@ -119,6 +119,8 @@ export interface Message {
   body: string;
   a2ui: A2uiMessage[] | null;
   is_note: boolean;
+  /** Label a host-site button attached (rules match on it). */
+  intent: string;
   created_at: string;
 }
 
@@ -127,6 +129,7 @@ export interface ConversationRow {
   status: "open" | "resolved";
   unread: boolean;
   human_requested: boolean;
+  tags: string[];
   assignee_id: number | null;
   last_message_at: string;
   preview: string;
@@ -154,6 +157,33 @@ export interface Tool {
   input_schema: { type: "object"; properties?: Record<string, unknown>; required?: string[] };
   header_names: string[];
   enabled: boolean;
+}
+
+export interface Rule {
+  id: number;
+  name: string;
+  enabled: boolean;
+  position: number;
+  intent: string;
+  keywords: string;
+  page_contains: string;
+  first_message_only: boolean;
+  reply: string;
+  ai_instruction: string;
+  tag: string;
+  handoff: boolean;
+  also_when_human: boolean;
+  match_count: number;
+  last_matched_at: string | null;
+}
+
+export interface Playbook {
+  id: number;
+  title: string;
+  when_to_use: string;
+  instructions: string;
+  enabled: boolean;
+  updated_at: string;
 }
 
 export interface Member {

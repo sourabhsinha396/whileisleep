@@ -1,7 +1,8 @@
 import { renderSurface } from "@/lib/a2ui/render";
 import { applyMessages, type ActionEvent } from "@/lib/a2ui/surface";
-import { WidgetApi, type ChatMessage, type WidgetConfig } from "./api";
+import { WidgetApi, type ChatMessage, type Intent, type WidgetConfig } from "./api";
 import { styles } from "./styles";
+import { counterText } from "./limits";
 import { formatText } from "./text";
 
 const ICONS = {
@@ -30,6 +31,8 @@ export class Widget {
   // Surfaces whose buttons were used; they render disabled so they can't fire twice.
   private usedSurfaces = new Set<string>();
   private pollTimer?: ReturnType<typeof setTimeout>;
+  // Label from open(message, intent), sent with the next message unless the visitor clears the box.
+  private pendingIntent?: Intent;
   private el: { [name: string]: HTMLElement } = {};
 
   // Resolves once the panel is built; calls made before then wait for it.
@@ -57,12 +60,16 @@ export class Widget {
 
   // --- public API (window.whileisleep) ---
 
-  /** Opens the chat; with `message`, types it in ready to send. */
-  async openWith(message?: string) {
+  /** Opens the chat; with `message`, types it in ready to send. `intent` labels that message
+   * for the workspace's rules (e.g. {intent: "exam_request", data: {exam_code: "SY0-401"}}). */
+  async openWith(message?: string, intent?: Intent) {
     await this.ready;
     this.switchTab("chat");
     this.toggle(true);
-    if (message) (this.el.input as HTMLTextAreaElement).value = message;
+    const input = this.el.input as HTMLTextAreaElement;
+    // A host page's message can't skip the limit either.
+    if (message) input.value = message.slice(0, input.maxLength > 0 ? input.maxLength : undefined);
+    this.pendingIntent = message && intent?.intent ? intent : undefined;
   }
 
   async close() {
@@ -158,7 +165,17 @@ export class Widget {
     input.rows = 1;
     input.placeholder = "Write a message…";
     input.setAttribute("aria-label", "Message");
+    // Same limit the server enforces; pasting past it is cut off here instead of failing on send.
+    const max = this.config.max_message_length || 500;
+    input.maxLength = max;
+    const counter = div("counter");
+    counter.setAttribute("aria-live", "polite");
     const send = button("send", "Send", () => this.send());
+    input.addEventListener("input", () => {
+      if (!input.value.trim()) this.pendingIntent = undefined;
+      counter.textContent = counterText(input.value.length, max);
+      counter.classList.toggle("full", input.value.length >= max);
+    });
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -169,10 +186,10 @@ export class Widget {
     const powered = div("powered");
     powered.textContent = "Powered by whileisleep";
 
-    panel.append(head, tabs, body, error, compose, powered);
+    panel.append(head, tabs, body, error, counter, compose, powered);
     wrap.append(launcher, panel);
     this.root.append(style, wrap);
-    this.el = { launcher, panel, tabs, body, error, compose, input, send };
+    this.el = { launcher, panel, tabs, body, error, counter, compose, input, send };
     this.switchTab("chat");
   }
 
@@ -192,10 +209,12 @@ export class Widget {
     const body = input.value.trim();
     if (!body) return;
     input.value = "";
+    this.el.counter.textContent = "";
     this.el.error.textContent = "";
     (this.el.send as HTMLButtonElement).disabled = true;
     try {
-      const data = await this.api.send(body);
+      const data = await this.api.send(body, this.pendingIntent);
+      this.pendingIntent = undefined;
       this.humanRequested = data.human_requested;
       this.merge(data.messages);
       if (this.config.ai_enabled && !this.humanRequested && !data.messages.some((m) => m.sender !== "visitor")) {
@@ -291,7 +310,9 @@ export class Widget {
     body.scrollTop = body.scrollHeight;
   }
 
-  private renderMessage(message: Pick<ChatMessage, "sender" | "body" | "author_name" | "a2ui">): HTMLElement {
+  private renderMessage(
+    message: Pick<ChatMessage, "sender" | "body" | "author_name" | "a2ui" | "form_submitted">,
+  ): HTMLElement {
     const mine = message.sender === "visitor";
     const node = div(`msg${mine ? " me" : ""}`);
     if (!mine) {
@@ -315,7 +336,7 @@ export class Widget {
       for (const surface of applyMessages(message.a2ui).values()) {
         node.appendChild(
           renderSurface(surface, {
-            disabled: this.usedSurfaces.has(surface.surfaceId),
+            disabled: this.usedSurfaces.has(surface.surfaceId) || !!message.form_submitted,
             onAction: (event) => this.onAction(event),
           }),
         );

@@ -1,0 +1,4 @@
+# Store text with LF everywhere, so diffs and Docker builds are the same on every OS.
+* text=auto eol=lf
+*.png binary
+*.ico binary

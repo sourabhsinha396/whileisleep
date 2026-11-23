@@ -4,6 +4,7 @@ import { WidgetApi, type ChatMessage, type Identity, type Intent, type WidgetCon
 import { styles } from "./styles";
 import { counterText } from "./limits";
 import { formatText } from "./text";
+import { chimeFor, playChime, unlockAudio } from "./sound";
 
 const ICONS = {
   // Solid bubble, tilted a little so the launcher reads as friendly rather than a generic icon.
@@ -65,10 +66,13 @@ export class Widget {
   async start() {
     this.config = await this.api.config();
     const session = await this.api.session();
-    this.seenId = Number(readSeen(this.api.key)) || 0;
+    this.seenId = Number(readStored(this.api.key, "seen")) || 0;
     this.build();
     this.markReady();
-    if (session.conversation_id) await this.poll(false);
+    if (session.conversation_id) await this.poll(false, true);
+    // Replies already in the chat when the page loads aren't news; only later ones ring.
+    this.recordChimed(this.lastId);
+    for (const type of ["pointerdown", "keydown"]) document.addEventListener(type, unlockAudio, { capture: true, passive: true });
     this.schedulePoll();
     setInterval(() => this.api.session().catch(() => {}), HEARTBEAT_MS);
   }
@@ -105,7 +109,8 @@ export class Widget {
     if (this.api.token !== before) {
       // Now a different visitor (the signed-in user's own record): show their chat.
       this.clearLocal();
-      if (session.conversation_id) await this.poll(false);
+      if (session.conversation_id) await this.poll(false, true);
+      this.recordChimed(this.lastId);
       this.renderBody();
       this.renderBadge();
     }
@@ -141,7 +146,7 @@ export class Widget {
   }
 
   private clearLocal() {
-    writeSeen(this.api.key, "");
+    writeStored(this.api.key, "seen", "");
     this.messages = [];
     this.lastId = this.seenId = 0;
     this.humanRequested = false;
@@ -303,12 +308,13 @@ export class Widget {
     }
   }
 
-  private async poll(reschedule: boolean) {
+  private async poll(reschedule: boolean, quiet = false) {
     try {
       const data = await this.api.messages(this.lastId);
       this.humanRequested = data.human_requested;
       const before = this.lastId;
       this.merge(data.messages);
+      if (!quiet) this.chime(data.messages);
       if (this.open) this.markSeen();
       if (this.lastId !== before && this.tab === "chat") this.renderBody();
       this.renderBadge();
@@ -325,7 +331,19 @@ export class Widget {
 
   private markSeen() {
     this.seenId = this.lastId;
-    writeSeen(this.api.key, String(this.seenId));
+    writeStored(this.api.key, "seen", String(this.seenId));
+  }
+
+  /** A soft tone when a reply lands while the visitor is on another tab. */
+  private chime(incoming: ChatMessage[]) {
+    const id = chimeFor(incoming, document.hidden, Number(readStored(this.api.key, "chimed")) || 0);
+    if (!id) return;
+    this.recordChimed(id);
+    playChime();
+  }
+
+  private recordChimed(id: number) {
+    if (id > (Number(readStored(this.api.key, "chimed")) || 0)) writeStored(this.api.key, "chimed", String(id));
   }
 
   private renderBadge() {
@@ -502,17 +520,17 @@ function button(className: string, label: string, onClick: () => void): HTMLButt
   return node;
 }
 
-function readSeen(key: string): string {
+function readStored(key: string, name: string): string {
   try {
-    return localStorage.getItem(`whileisleep:${key}:seen`) ?? "";
+    return localStorage.getItem(`whileisleep:${key}:${name}`) ?? "";
   } catch {
     return "";
   }
 }
 
-function writeSeen(key: string, value: string) {
+function writeStored(key: string, name: string, value: string) {
   try {
-    localStorage.setItem(`whileisleep:${key}:seen`, value);
+    localStorage.setItem(`whileisleep:${key}:${name}`, value);
   } catch {
     /* ignore */
   }

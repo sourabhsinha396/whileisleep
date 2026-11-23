@@ -29,6 +29,10 @@ class EnvFile(BaseModel):
     ALLOWED_HOSTS: str | None = None
     # Comma-separated Fernet keys for stored secrets; see whileisleep/encryption.py.
     ENCRYPTION_KEYS: str | None = None
+    # A shared cache for rate limits (redis://...). Unset: in-memory, fine for one process.
+    REDIS_URL: str | None = None
+    # "false" closes account creation.
+    SIGNUP_ENABLED: bool | None = None
     # Only `manage.py seed_demo` reads these. The running app takes each organization's
     # OpenRouter key from its settings page, never from here.
     # Plain pattern: reserved test domains (demo@whileisleep.test) are fine here.

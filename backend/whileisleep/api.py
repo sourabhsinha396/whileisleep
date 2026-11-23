@@ -1,4 +1,7 @@
+from django.core.cache import cache
+from django.db import connection
 from ninja import NinjaAPI
+from ninja.errors import HttpError
 
 from apps.accounts.apis import router as auth_router
 from apps.agent.apis import router as tools_router
@@ -25,4 +28,18 @@ api.add_router("v1/widget", widget_router)
 
 @api.get("v1/health", tags=["health"])
 def health(request):
+    """The process is up. For container liveness checks."""
+    return {"ok": True}
+
+
+@api.get("v1/ready", tags=["health"])
+def ready(request):
+    """The process can do its job: the database and the cache answer. For load balancers
+    and deploy scripts; 503 when it can't."""
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        cache.set("ready-check", 1, 5)
+    except Exception as error:  # any failure here means "not ready"
+        raise HttpError(503, f"Not ready: {type(error).__name__}") from error
     return {"ok": True}

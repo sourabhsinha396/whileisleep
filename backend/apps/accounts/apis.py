@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from ninja import Router
 from ninja.errors import HttpError
@@ -22,6 +23,8 @@ def session_for(user) -> dict:
 
 @router.post("/signup", response=SessionOut)
 def signup(request, payload: SignupIn):
+    if not settings.SIGNUP_ENABLED:
+        raise HttpError(403, "Sign-up is closed on this installation. Ask its owner for an account.")
     email = payload.email.lower()
     if User.objects.filter(username=email).exists():
         raise HttpError(400, "An account with this email already exists.")

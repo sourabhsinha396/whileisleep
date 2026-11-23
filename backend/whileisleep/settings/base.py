@@ -124,6 +124,16 @@ CONVERSATION_IDLE_HOURS = 24
 # A visitor counts as online if the widget pinged within this many seconds.
 ONLINE_WINDOW_SECONDS = 60
 
+# Rate-limit counters live in the cache. One process can keep them in memory; several
+# workers need a shared one, so production sets REDIS_URL.
+REDIS_URL = os.environ.get("REDIS_URL", "")
+if REDIS_URL:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": REDIS_URL}}
+
+# Whether anyone can create an account (and with it an organization). Turn it off on a
+# private installation once your own accounts exist.
+SIGNUP_ENABLED = os.environ.get("SIGNUP_ENABLED", "true").lower() != "false"
+
 # Fernet keys for secrets stored in the database (whileisleep.encryption): the first encrypts,
 # all decrypt. Empty derives one from SECRET_KEY, which is fine for development only.
 # Make one with: python manage.py generate_encryption_key

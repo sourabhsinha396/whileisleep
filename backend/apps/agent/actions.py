@@ -1,8 +1,5 @@
 """Handles A2UI action events the widget sends back when a visitor presses a button."""
 
-from django.core.exceptions import ValidationError
-from django.core.validators import validate_email
-
 from apps.conversations.models import Conversation, Message
 from apps.conversations.services import add_message
 from apps.knowledge.models import Article
@@ -37,18 +34,6 @@ def handle(conversation: Conversation, name: str, context: dict, surface_id: str
 
     if name == "submit_form":
         submit_form(conversation, surface_id, context.get("fields"))
-        return {}
-
-    if name == "save_email":
-        # Email forms sent before generic forms existed.
-        email = str(context.get("email", "")).strip()
-        try:
-            validate_email(email)
-        except ValidationError as error:
-            raise ActionError("That doesn't look like an email address.") from error
-        visitor.email = email
-        visitor.save(update_fields=["email"])
-        add_message(conversation, Message.Sender.BOT, f"Thanks! We'll also reply to {email}.")
         return {}
 
     raise ActionError(f"Unknown action {name}.")

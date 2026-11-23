@@ -62,14 +62,6 @@ def test_talk_to_human_skips_the_form_when_email_is_known(chat):
     assert conversation.messages.filter(is_note=False).last().form is None
 
 
-def test_legacy_save_email(chat):
-    conversation, act = chat
-    assert act("save_email", email="sofia@example.com").status_code == 200
-    conversation.visitor.refresh_from_db()
-    assert conversation.visitor.email == "sofia@example.com"
-    assert act("save_email", email="nope").status_code == 400
-
-
 def test_unknown_action(chat):
     _, act = chat
     assert act("launch_rockets").status_code == 400

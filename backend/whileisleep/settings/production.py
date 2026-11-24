@@ -57,7 +57,7 @@ required("REDIS_URL")
 
 # Half-configured payments would either take no money or lose track of who paid.
 if PAYMENT_PROVIDER:
-    for name in ("DODO_BASE_URL", "DODO_API_KEY", "DODO_PRODUCT_MONTHLY", "DODO_PRODUCT_YEARLY", "DODO_WEBHOOK_KEY"):
+    for name in ("DODO_BASE_URL", "DODO_API_KEY", "DODO_PRODUCT_MONTHLY", "DODO_PRODUCT_YEARLY"):
         required(name)
     if not BILLING_ENABLED:
         raise ImproperlyConfigured("PAYMENT_PROVIDER must be 'dodo', or empty.")

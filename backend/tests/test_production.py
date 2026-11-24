@@ -130,7 +130,11 @@ def test_payments_fully_set_up(monkeypatch):
     assert load_production(monkeypatch, **DODO).BILLING_ENABLED is True
 
 
-@pytest.mark.parametrize("missing", [name for name in DODO if name != "PAYMENT_PROVIDER"])
+def test_payments_need_no_webhook(monkeypatch):
+    assert load_production(monkeypatch, **DODO | {"DODO_WEBHOOK_KEY": None}).BILLING_ENABLED is True
+
+
+@pytest.mark.parametrize("missing", [name for name in DODO if name not in ("PAYMENT_PROVIDER", "DODO_WEBHOOK_KEY")])
 def test_half_set_up_payments_stop_startup(monkeypatch, missing):
     with pytest.raises(ImproperlyConfigured, match=missing):
         load_production(monkeypatch, **DODO | {missing: None})

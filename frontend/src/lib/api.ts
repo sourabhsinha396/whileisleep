@@ -100,6 +100,12 @@ export interface Workspace {
   article_uploads_enabled: boolean;
 }
 
+/** A step of the "Get started" guide; lib/get-started has its words and link. */
+export interface SetupStep {
+  key: string;
+  done: boolean;
+}
+
 export interface Organization {
   id: number;
   name: string;

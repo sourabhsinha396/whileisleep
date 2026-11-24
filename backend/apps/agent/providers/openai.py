@@ -12,6 +12,13 @@ NAME = "OpenAI"
 KEYS_URL = "https://platform.openai.com/api-keys"
 BASE_URL = "https://api.openai.com/v1"
 
+# The models the picker offers: current, cheap or mid-priced, and one high-end. Reviewed 2026-11-24.
+RECOMMENDED = {
+    "gpt-6-luna": "low",
+    "gpt-6.1-terra": "mid",
+    "gpt-6.2-sol": "mid",
+    "gpt-6.2-astra": "high",
+}
 # The model list doesn't say what a model does, so its name has to: these can chat...
 CHAT_MODEL = re.compile(r"^(gpt-|chatgpt-|o\d)")
 # ...and these, which start the same way, are for something else.
@@ -112,4 +119,5 @@ def check_key(api_key: str) -> dict:
 
 def list_models(api_key: str) -> list[dict]:
     ids = [str(row.get("id") or "") for row in base.as_list(_call("GET", "/models", api_key).get("data"))]
-    return [{"id": i, "name": i} for i in sorted(ids) if CHAT_MODEL.match(i) and not OTHER_WORK.search(i)]
+    models = [{"id": i, "name": i} for i in sorted(ids) if CHAT_MODEL.match(i) and not OTHER_WORK.search(i)]
+    return base.shortlist(models, RECOMMENDED)

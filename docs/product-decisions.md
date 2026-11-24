@@ -4,10 +4,10 @@ Product decisions made by the project owner, newest first. Each says what was de
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Technical decisions are in [tech-decisions.md](tech-decisions.md).
 
-## 2026-11-24: A short, opinionated list of OpenRouter models
+## 2026-11-24: Short, opinionated lists of models
 
 **Decision.** The OpenRouter dropdown offers at most 20 models, low and mid tier, with one high-tier model each from
-OpenAI, Anthropic and Gemini.
+OpenAI, Anthropic and Gemini. The lists of OpenAI, Anthropic and Gemini themselves are shortened the same way.
 
 **Why.** The full list is very long.
 

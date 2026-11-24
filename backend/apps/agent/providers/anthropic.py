@@ -12,6 +12,12 @@ NAME = "Anthropic"
 KEYS_URL = "https://platform.claude.com/settings/keys"
 BASE_URL = "https://api.anthropic.com/v1"
 VERSION = "2026-10-21"
+# The models the picker offers: current, cheap or mid-priced, and one high-end. Reviewed 2026-11-24.
+RECOMMENDED = {
+    "claude-haiku-5-5": "low",
+    "claude-sonnet-5-5": "mid",
+    "claude-opus-5-5": "high",
+}
 # Claude caches a prompt only up to where it is told to.
 CACHE = {"cache_control": {"type": "ephemeral"}}
 
@@ -126,4 +132,5 @@ def check_key(api_key: str) -> dict:
 def list_models(api_key: str) -> list[dict]:
     rows = base.as_list(_call("GET", "/models?limit=1000", api_key).get("data"))
     # Newest first, as Anthropic sends them.
-    return [{"id": row["id"], "name": row.get("display_name") or row["id"]} for row in rows if row.get("id")]
+    models = [{"id": row["id"], "name": row.get("display_name") or row["id"]} for row in rows if row.get("id")]
+    return base.shortlist(models, RECOMMENDED)

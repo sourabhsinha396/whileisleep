@@ -261,6 +261,48 @@ def test_checking_a_key_asks_the_provider(http, provider):
         providers.PROVIDERS[provider].check_key("bad")
 
 
+# --- The models the picker offers ---
+
+
+def listing(provider, ids):
+    """The provider's model list, holding `ids`."""
+    if provider == "google":
+        return {"models": [{"name": f"models/{i}", "supportedGenerationMethods": ["generateContent"]} for i in ids]}
+    return {"data": [{"id": i} for i in ids]}
+
+
+OTHER = {"openrouter": "z/other", "openai": "gpt-old", "anthropic": "claude-old", "google": "gemini-old"}
+
+
+@ALL
+def test_a_short_list_is_offered_in_order(http, provider):
+    client = providers.PROVIDERS[provider]
+    # The last one is gone from the provider's list, so it isn't offered.
+    kept = list(client.RECOMMENDED)[:-1]
+    http(listing(provider, [OTHER[provider], *reversed(kept)]))
+    models = client.list_models("k")
+    assert [(m["id"], m["tier"]) for m in models if m["recommended"]] == [(i, client.RECOMMENDED[i]) for i in kept]
+    assert [m["id"] for m in models if not m["recommended"]] == [OTHER[provider]]
+
+
+@ALL
+def test_an_account_with_none_of_them_is_offered_what_it_has(http, provider):
+    http(listing(provider, [OTHER[provider]]))
+    (model,) = providers.PROVIDERS[provider].list_models("k")
+    assert model["recommended"] is True and model["tier"] == ""
+
+
+@ALL
+def test_the_short_list_stays_short(provider):
+    recommended = providers.PROVIDERS[provider].RECOMMENDED
+    assert len(recommended) <= 20
+    # Tier by tier, as the picker groups them, with one high-end model per maker.
+    tiers = list(recommended.values())
+    assert tiers == sorted(tiers, key=["low", "mid", "high"].index)
+    high = sorted(i.split("/")[0] for i, tier in recommended.items() if tier == "high")
+    assert high == ["anthropic", "google", "openai"] if provider == "openrouter" else len(high) == 1
+
+
 # --- OpenRouter ---
 
 
@@ -293,30 +335,7 @@ def test_openrouter_models_skip_those_without_tools(http):
         {"id": "c/unknown", "display_name": "C"},
     ]
     http({"data": rows})
-    assert openrouter.list_models() == [
-        {"id": "b/with-tools", "name": "B", "recommended": False, "tier": ""},
-        {"id": "c/unknown", "name": "C", "recommended": False, "tier": ""},
-    ]
-
-
-def test_openrouter_recommends_a_short_list_in_order(http):
-    kept = list(openrouter.RECOMMENDED)[:-1]
-    ids = ["anthropic/claude-haiku-4.5", *reversed(kept), "z/other"]
-    http({"data": [{"id": i, "name": i} for i in ids]})
-    models = openrouter.list_models()
-    # One that OpenRouter no longer lists isn't offered.
-    assert [m["id"] for m in models if m["recommended"]] == kept
-    assert [m["tier"] for m in models if m["recommended"]] == [openrouter.RECOMMENDED[i] for i in kept]
-    assert [m["id"] for m in models if not m["recommended"]] == ["anthropic/claude-haiku-4.5", "z/other"]
-
-
-def test_the_openrouter_short_list_stays_short():
-    assert len(openrouter.RECOMMENDED) <= 20
-    # Tier by tier, as the picker groups them.
-    tiers = list(openrouter.RECOMMENDED.values())
-    assert tiers == sorted(tiers, key=["low", "mid", "high"].index)
-    high = sorted(i.split("/")[0] for i, tier in openrouter.RECOMMENDED.items() if tier == "high")
-    assert high == ["anthropic", "google", "openai"]
+    assert [(m["id"], m["name"]) for m in openrouter.list_models()] == [("b/with-tools", "B"), ("c/unknown", "C")]
 
 
 # --- OpenAI ---
@@ -428,10 +447,8 @@ def test_anthropic_answers_that_are_not_answers(http, stop, expected):
 
 def test_anthropic_models(http):
     http({"data": [{"id": "claude-x", "display_name": "Claude X"}, {"id": "claude-y"}]})
-    assert anthropic.list_models("k") == [
-        {"id": "claude-x", "name": "Claude X"},
-        {"id": "claude-y", "name": "claude-y"},
-    ]
+    models = [(m["id"], m["name"]) for m in anthropic.list_models("k")]
+    assert models == [("claude-x", "Claude X"), ("claude-y", "claude-y")]
 
 
 # --- Google ---
@@ -509,4 +526,4 @@ def test_google_models_are_the_ones_that_chat(http):
         return {"name": f"models/{name}", "displayName": name.upper(), "supportedGenerationMethods": list(methods)}
 
     http({"models": [row("gemini-x"), row("gemini-embedding", ["embedContent"]), row("gemini-x-image"), row("gemma")]})
-    assert google.list_models("k") == [{"id": "gemini-x", "name": "GEMINI-X"}]
+    assert [(m["id"], m["name"]) for m in google.list_models("k")] == [("gemini-x", "GEMINI-X")]

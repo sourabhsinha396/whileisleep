@@ -13,6 +13,13 @@ from . import base
 NAME = "Google Gemini"
 KEYS_URL = "https://aistudio.google.com/apikey"
 BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+# The models the picker offers: current, cheap or mid-priced, and one high-end. Reviewed 2026-11-24.
+RECOMMENDED = {
+    "gemini-3.5-flash-lite": "low",
+    "gemini-3.8-flash": "mid",
+    "gemini-4-hydrogen": "mid",
+    "gemini-4-neon": "high",
+}
 # Gemini refuses a tool call that lacks the signature it wrote with it. A call another model
 # made has none; Google documents this value for that case.
 NO_SIGNATURE = "skip_thought_signature_validator"
@@ -129,4 +136,4 @@ def list_models(api_key: str) -> list[dict]:
             continue
         if "generateContent" in (row.get("supportedGenerationMethods") or []):
             models.append({"id": model, "name": row.get("displayName") or model})
-    return sorted(models, key=lambda m: m["id"])
+    return base.shortlist(sorted(models, key=lambda m: m["id"]), RECOMMENDED)

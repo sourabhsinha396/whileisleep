@@ -21,7 +21,7 @@ export async function publicMetadata({
 }): Promise<Metadata> {
   const origin = await siteOrigin();
   const url = `${origin}${path}`;
-  const image = { url: `${origin}/og.png`, width: 1200, height: 630, alt: "whileisleep: AI answers, while you sleep" };
+  const image = { url: `${origin}/og.jpg`, width: 1200, height: 630, alt: "Someone asleep in a blindfold, beside the whileisleep logo" };
   return {
     title: absoluteTitle ? { absolute: title } : title,
     description,
@@ -39,7 +39,7 @@ export function softwareData(description: string, origin: string) {
     name: SITE_NAME,
     description,
     url: origin,
-    image: `${origin}/og.png`,
+    image: `${origin}/og.jpg`,
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },

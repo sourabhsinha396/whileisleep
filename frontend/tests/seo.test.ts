@@ -37,7 +37,7 @@ describe("every public page", () => {
   it("says its one address, and what a shared link shows", async () => {
     const data = await publicMetadata({ title: "T", description: "D", path: "/docs/x", markdown: "/docs/x.md" });
     expect(data.alternates).toEqual({ canonical: "https://chat.example.com/docs/x", types: { "text/markdown": "https://chat.example.com/docs/x.md" } });
-    expect(data.openGraph).toMatchObject({ url: "https://chat.example.com/docs/x", images: [{ url: "https://chat.example.com/og.png" }] });
+    expect(data.openGraph).toMatchObject({ url: "https://chat.example.com/docs/x", images: [{ url: "https://chat.example.com/og.jpg" }] });
   });
 });
 

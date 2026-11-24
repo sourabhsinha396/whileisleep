@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  Blocks,
   BookText,
   Bot,
   Building2,
@@ -90,6 +91,7 @@ export function settingsNav(workspace: Pick<Workspace, "role" | "is_organization
     },
   ];
   if (workspace.role === "owner") {
+    groups[0].items.push({ href: "settings/integrations", label: "Integrations", icon: Blocks, area: "settings/integrations" });
     groups[1].items.push({ href: "settings/identity", label: "Verified identity", icon: ShieldCheck });
   }
   if (workspace.is_organization_owner) {

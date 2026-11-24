@@ -42,6 +42,13 @@ describe("settings by role", () => {
     expect(hrefs(settingsNav({ ...ORG_OWNER, billing_state: "off" }))).not.toContain("settings/billing");
   });
 
+  it("shows integrations only to workspace owners, on every page of theirs", () => {
+    expect(hrefs(settingsNav(OWNER))).toContain("settings/integrations");
+    expect(hrefs(settingsNav(AGENT))).not.toContain("settings/integrations");
+    const item = settingsNav(OWNER)[0].items.find((i) => i.href === "settings/integrations")!;
+    expect(isActive("/w/acme/settings/integrations/slack", "acme", item)).toBe(true);
+  });
+
   it("shows the identity secret only to workspace owners", () => {
     expect(hrefs(settingsNav(OWNER))).toContain("settings/identity");
     expect(hrefs(settingsNav(AGENT))).not.toContain("settings/identity");

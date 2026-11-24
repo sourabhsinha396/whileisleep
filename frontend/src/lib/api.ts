@@ -264,6 +264,72 @@ export interface McpServer {
   last_error: string;
 }
 
+/** Something a plugin asks an owner for. "choices" values have commas between them. */
+export interface PluginField {
+  name: string;
+  label: string;
+  kind: "text" | "secret" | "choice" | "choices" | "select";
+  help: string;
+  placeholder: string;
+  options: { value: string; label: string }[];
+  default: string;
+  required: boolean;
+}
+
+/** One connection of a workspace to an outside service. */
+export interface Connection {
+  id: number;
+  /** The account at the other end, as people call it. */
+  account_name: string;
+  settings: Record<string, string>;
+  /** Names of the secrets that are saved; their values never come back. */
+  secrets: string[];
+  ready: boolean;
+  /** Why it isn't working. */
+  last_error: string;
+}
+
+export interface Integration<C extends Connection = Connection> {
+  plugin: string;
+  name: string;
+  description: string;
+  notice: string;
+  /** An SVG, as text. */
+  icon: string;
+  /** The server has what the plugin needs. */
+  available: boolean;
+  missing_options: string[];
+  /** Connecting opens the service's own page, instead of connect_fields. */
+  has_page: boolean;
+  /** A workspace may have several connections. */
+  many: boolean;
+  connections: C[];
+}
+
+export interface ConnectionDetail extends Connection {
+  /** What the owner copies into the service. */
+  shown: { label: string; value: string; secret: boolean; help: string }[];
+}
+
+export interface IntegrationDetail extends Integration<ConnectionDetail> {
+  connect_fields: PluginField[];
+  settings_fields: PluginField[];
+  save_label: string;
+  /** Owners see what was sent lately. */
+  keeps_log: boolean;
+}
+
+/** An event sent to a connection, or on its way. */
+export interface Delivery {
+  id: number;
+  event: string;
+  status: "pending" | "sent" | "failed";
+  attempts: number;
+  detail: string;
+  created_at: string;
+  conversation_id: number;
+}
+
 export interface Rule {
   id: number;
   name: string;

@@ -4,7 +4,8 @@ import { type Editor, EditorContent, useEditor, useEditorState } from "@tiptap/r
 import clsx from "clsx";
 import { Bold, Heading2, ImagePlus, Link2, List, ListOrdered } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Button, ErrorText, inputClass } from "@/components/ui";
+import { LinkRow } from "@/components/link-row";
+import { ErrorText, inputClass } from "@/components/ui";
 import { articleExtensions, fromDoc, toDoc } from "@/lib/article-doc";
 import { altFromName, IMAGE_TYPES, imageProblem } from "@/lib/image-file";
 
@@ -189,58 +190,6 @@ function Toolbar({
   );
 }
 
-function LinkRow({ editor, close }: { editor: Editor; close: () => void }) {
-  const [href, setHref] = useState<string>(() => editor.getAttributes("link").href ?? "");
-  const [problem, setProblem] = useState("");
-
-  function apply() {
-    const target = withProtocol(href);
-    if (!target) return remove();
-    const chain = editor.chain().focus().extendMarkRange("link");
-    // With nothing selected there is no text to link, so the address is the text.
-    const done =
-      editor.state.selection.empty && !editor.isActive("link")
-        ? chain.insertContent({ type: "text", text: target, marks: [{ type: "link", attrs: { href: target } }] }).run()
-        : chain.setLink({ href: target }).run();
-    if (done) close();
-    else setProblem("That address can't be linked.");
-  }
-
-  function remove() {
-    editor.chain().focus().extendMarkRange("link").unsetLink().run();
-    close();
-  }
-
-  return (
-    <div className="flex items-center gap-2 border-b p-2">
-      <input
-        autoFocus
-        className={clsx(inputClass, "py-1.5 text-sm")}
-        placeholder="https://example.com or /page"
-        aria-label="Link address"
-        value={href}
-        onChange={(e) => setHref(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            apply();
-          }
-          if (e.key === "Escape") close();
-        }}
-      />
-      {problem && <span className="text-xs whitespace-nowrap text-danger">{problem}</span>}
-      <Button type="button" size="sm" onClick={apply}>
-        Apply
-      </Button>
-      {editor.isActive("link") && (
-        <Button type="button" size="sm" variant="secondary" onClick={remove}>
-          Remove
-        </Button>
-      )}
-    </div>
-  );
-}
-
 /** Shown while an image is selected. */
 function AltRow({ editor }: { editor: Editor }) {
   const image = useEditorState({
@@ -259,11 +208,4 @@ function AltRow({ editor }: { editor: Editor }) {
       />
     </div>
   );
-}
-
-/** "example.com" means https://example.com; "/page" stays a path on the workspace's website. */
-export function withProtocol(href: string): string {
-  const trimmed = href.trim();
-  if (!trimmed || trimmed.startsWith("/") || /^https?:\/\//i.test(trimmed)) return trimmed;
-  return /^[a-z][a-z0-9+.-]*:(?!\d)/i.test(trimmed) ? "" : `https://${trimmed}`;
 }

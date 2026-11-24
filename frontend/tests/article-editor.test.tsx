@@ -3,7 +3,8 @@ import { Editor } from "@tiptap/react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ArticleEditor, withProtocol } from "@/components/article-editor";
+import { ArticleEditor } from "@/components/article-editor";
+import { withProtocol } from "@/components/link-row";
 import { parse, serialize } from "@/lib/article";
 import { articleExtensions, fromDoc, toDoc } from "@/lib/article-doc";
 

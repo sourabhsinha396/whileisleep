@@ -74,9 +74,10 @@ button { font: inherit; }
 .msg.me { justify-content: flex-end; }
 .msg-main { display: flex; flex-direction: column; max-width: 80%; min-width: 0; }
 .me .msg-main { align-items: flex-end; }
-.av { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700;
+.av { position: relative; flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700;
   background: var(--od-soft); color: var(--od-ink); }
 .av svg { width: 15px; height: 15px; }
+.pic { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: #fff; }
 .who { font-size: 11.5px; color: var(--od-muted); margin: 0 4px 4px; display: flex; gap: 6px; align-items: center; font-weight: 500; }
 .ai-tag { background: var(--od-soft); color: var(--od-ink); font-weight: 700; font-size: 10px; padding: 1px 7px; border-radius: 999px; letter-spacing: .03em; }
 .bubble { background: var(--od-surface); padding: 10px 14px; border-radius: 18px; border-bottom-left-radius: 6px; word-wrap: break-word;

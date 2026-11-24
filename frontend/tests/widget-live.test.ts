@@ -6,7 +6,7 @@ import { Widget } from "@/widget/widget";
 const BASE = "https://chat.example.com/api/v1/widget/ws_1";
 
 /** The widget's API, with a live stream the test writes to. */
-function fakeServer({ streamStatus = 200 } = {}) {
+function fakeServer({ streamStatus = 200, logo = "" } = {}) {
   const calls: { method: string; path: string; headers: Record<string, string> }[] = [];
   const encoder = new TextEncoder();
   let stream: ReadableStreamDefaultController<Uint8Array> | null = null;
@@ -16,7 +16,7 @@ function fakeServer({ streamStatus = 200 } = {}) {
     vi.fn(async (url: string, init: RequestInit = {}) => {
       const path = url.replace(BASE, "").split("?")[0];
       calls.push({ method: init.method ?? "GET", path, headers: (init.headers ?? {}) as Record<string, string> });
-      if (path === "/config") return json({ name: "Acme", website: "", color: "#2563eb", greeting: "Hi!", ai_enabled: true, max_message_length: 500 });
+      if (path === "/config") return json({ name: "Acme", website: "", color: "#2563eb", logo_url: logo, greeting: "Hi!", ai_enabled: true, max_message_length: 500 });
       if (path === "/session") return json({ token: "vt_1", visitor_id: 1, conversation_id: 5, last_message_id: 10 });
       if (path === "/messages") {
         return json({ conversation_id: 5, human_requested: false, messages: [message(10, "visitor", "Where is my order?")] });

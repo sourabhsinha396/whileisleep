@@ -6,6 +6,8 @@ export interface WidgetConfig {
   website: string;
   max_message_length: number;
   color: string;
+  /** Empty without one; initials show instead. */
+  logo_url: string;
   greeting: string;
   ai_enabled: boolean;
 }
@@ -14,6 +16,7 @@ export interface ChatMessage {
   id: number;
   sender: "visitor" | "agent" | "bot" | "system";
   author_name: string;
+  author_photo?: string;
   body: string;
   a2ui: A2uiMessage[] | null;
   /** Its form was sent; show it disabled. */
@@ -26,7 +29,7 @@ export type StreamEvent =
   | { event: "message"; data: { conversation_id: number; message: ChatMessage } }
   | { event: "conversation"; data: { id: number; human_requested: boolean } }
   | { event: "status"; data: { conversation_id: number; text: string } }
-  | { event: "typing"; data: { conversation_id: number; sender: "agent" | "visitor"; name: string } };
+  | { event: "typing"; data: { conversation_id: number; sender: "agent" | "visitor"; name: string; photo?: string } };
 
 export interface MessagesResponse {
   conversation_id: number | null;

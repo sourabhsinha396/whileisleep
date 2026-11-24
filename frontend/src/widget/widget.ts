@@ -58,7 +58,7 @@ export class Widget {
   private live = false;
   // What the AI is doing ("Searching the help center"), and a teammate typing.
   private botStatus = "";
-  private agentTyping: { name: string; until: number } | null = null;
+  private agentTyping: { name: string; photo?: string; until: number } | null = null;
   private agentTypingTimer?: ReturnType<typeof setTimeout>;
   private sendTyping = throttle(() => this.api.typing().catch(() => {}), TYPING_SEND_MS);
   // Label from open(message, intent), sent with the next message unless the visitor clears the box.
@@ -126,7 +126,7 @@ export class Widget {
       // A reply is on its way, even if this page didn't send the question.
       if (data.text && !this.waitingForReply) this.waitingForReply = Date.now();
     } else if (event === "typing" && data.sender === "agent") {
-      this.agentTyping = { name: data.name, until: Date.now() + AGENT_TYPING_MS };
+      this.agentTyping = { name: data.name, photo: data.photo, until: Date.now() + AGENT_TYPING_MS };
       clearTimeout(this.agentTypingTimer);
       this.agentTypingTimer = setTimeout(() => this.tab === "chat" && this.renderBody(), AGENT_TYPING_MS + 50);
     } else {
@@ -258,6 +258,7 @@ export class Widget {
     const team = div("team");
     team.textContent = initialsOf(this.config.name);
     team.setAttribute("aria-hidden", "true");
+    if (this.config.logo_url) team.appendChild(picture(this.config.logo_url));
     const dot = document.createElement("span");
     dot.className = "dot";
     team.appendChild(dot);
@@ -477,12 +478,12 @@ export class Widget {
       line.textContent = label;
       main.appendChild(line);
     }
-    row.append(teammate && !this.botStatus ? this.avatar("agent", teammate.name) : this.avatar("bot"), main);
+    row.append(teammate && !this.botStatus ? this.avatar("agent", teammate.name, teammate.photo) : this.avatar("bot"), main);
     return row;
   }
 
   private renderMessage(
-    message: Pick<ChatMessage, "sender" | "body" | "author_name" | "a2ui" | "form_submitted">,
+    message: Pick<ChatMessage, "sender" | "body" | "author_name" | "author_photo" | "a2ui" | "form_submitted">,
   ): HTMLElement {
     if (message.sender === "system") {
       const node = div("system");
@@ -494,7 +495,7 @@ export class Widget {
     const mine = message.sender === "visitor";
     const row = div(`msg${mine ? " me" : ""}`);
     const node = div("msg-main");
-    if (!mine) row.appendChild(this.avatar(message.sender, message.author_name));
+    if (!mine) row.appendChild(this.avatar(message.sender, message.author_name, message.author_photo));
     row.appendChild(node);
     if (!mine) {
       const who = div("who");
@@ -526,12 +527,15 @@ export class Widget {
     return row;
   }
 
-  /** A sparkle for the AI agent, initials for a teammate. */
-  private avatar(sender: ChatMessage["sender"], author = ""): HTMLElement {
+  /** A sparkle for the AI agent, a photo or initials for a teammate. */
+  private avatar(sender: ChatMessage["sender"], author = "", photo = ""): HTMLElement {
     const av = div("av");
     av.setAttribute("aria-hidden", "true");
     if (sender === "bot") av.innerHTML = ICONS.sparkle;
-    else av.textContent = initialsOf(author || this.config.name);
+    else {
+      av.textContent = initialsOf(author || this.config.name);
+      if (photo) av.appendChild(picture(photo));
+    }
     return av;
   }
 
@@ -589,6 +593,17 @@ export class Widget {
     body.append(back, wrap);
     body.scrollTop = 0;
   }
+}
+
+/** Covers the initials under it, which show again if it can't load (a site's own rules may
+ * block images from elsewhere). */
+function picture(src: string): HTMLImageElement {
+  const img = document.createElement("img");
+  img.className = "pic";
+  img.alt = "";
+  img.addEventListener("error", () => img.remove());
+  img.src = src;
+  return img;
 }
 
 function div(className: string): HTMLDivElement {

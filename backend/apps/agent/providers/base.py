@@ -107,6 +107,19 @@ def call(name: str, method: str, url: str, headers: dict, timeout: float = TIMEO
     return data
 
 
+def shortlist(models: list[dict], recommended: dict[str, str]) -> list[dict]:
+    """Marks the models the picker offers (`recommended`: id to tier, cheapest first) and puts
+    them first. The others stay listed, so a typed id can be recognized. An account that has
+    none of the recommended ones is offered everything it has."""
+    rank = {model: position for position, model in enumerate(recommended)}
+    none = not any(model["id"] in rank for model in models)
+    marked = [
+        {**model, "recommended": none or model["id"] in rank, "tier": recommended.get(model["id"], "")}
+        for model in models
+    ]
+    return sorted(marked, key=lambda m: rank.get(m["id"], len(rank)))
+
+
 def split_system(messages: list[dict]) -> tuple[dict, list[dict]]:
     """The system message (empty when there is none) and the rest of the conversation."""
     if messages and messages[0]["role"] == "system":

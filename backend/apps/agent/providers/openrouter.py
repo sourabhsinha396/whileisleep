@@ -118,14 +118,5 @@ def list_models(api_key: str = "") -> list[dict]:
         # Skip models known not to take tools; keep those that don't say.
         if isinstance(params, list) and "tools" not in params:
             continue
-        name = row.get("name") or row.get("display_name") or row["id"]
-        models.append(
-            {
-                "id": row["id"],
-                "name": name,
-                "recommended": row["id"] in RECOMMENDED,
-                "tier": RECOMMENDED.get(row["id"], ""),
-            }
-        )
-    rank = {model: position for position, model in enumerate(RECOMMENDED)}
-    return sorted(models, key=lambda m: (rank.get(m["id"], len(rank)), m["id"]))
+        models.append({"id": row["id"], "name": row.get("name") or row.get("display_name") or row["id"]})
+    return base.shortlist(sorted(models, key=lambda m: m["id"]), RECOMMENDED)

@@ -19,7 +19,7 @@ The cheapest way to answer goes first. Each step only runs if the one before it 
 
 1. **Rules.** If one matches and has an exact reply, that reply is sent. The AI isn't used, so it costs nothing.
 2. **Is it the AI's turn?** If the AI is off, or a person has the chat, it waits for your team.
-3. **Daily limits.** Past the limit of AI replies for the day, the chat goes to your team.
+3. **Daily limits.** Past the limit of AI replies for the day, the chat goes to your team. You [set the limits](connect-ai.md#limit-what-it-costs).
 4. **The AI answers.** It reads the best passages of your articles, looks things up with your tools, and follows a playbook when one fits.
 5. **A person.** When the AI can't answer, or the visitor asks for a person, the chat is marked **Needs a person**.
 

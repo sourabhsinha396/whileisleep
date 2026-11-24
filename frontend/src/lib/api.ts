@@ -100,6 +100,9 @@ export interface Workspace {
   timezone: string;
   ai_enabled: boolean;
   ai_instructions: string;
+  /** AI replies a day: to one visitor, and to all of them together. Past either, the chat goes to the team. */
+  ai_replies_per_visitor: number;
+  ai_replies_per_day: number;
   role: "owner" | "agent";
   open_count: number;
   /** The organization has a model and its provider's key. */
@@ -149,6 +152,8 @@ export interface Organization {
   /** "" when there is no fallback. */
   fallback_provider: ProviderId | "";
   fallback_model: string;
+  /** AI replies a day in all workspaces together. null: no limit. */
+  ai_replies_per_day: number | null;
   llm_ready: boolean;
   workspace_count: number;
 }

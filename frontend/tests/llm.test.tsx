@@ -32,6 +32,7 @@ function organization(keys: ProviderId[], rest: Partial<Organization> = {}): Org
     llm_model: "gpt-x",
     fallback_provider: "",
     fallback_model: "",
+    ai_replies_per_day: null,
     llm_ready: true,
     workspace_count: 1,
     ...rest,

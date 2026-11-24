@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import { CheckCircle2, KeyRound, XCircle } from "lucide-react";
 import { useCallback, useState } from "react";
+import { LimitInput } from "@/components/limit-input";
 import { ModelPicker } from "@/components/model-picker";
 import { Select } from "@/components/select";
 import { Badge, Button, Card, ErrorText, inputClass } from "@/components/ui";
@@ -77,7 +78,38 @@ export function LlmSettings({ org, onSaved }: { org: Organization; onSaved: (org
           }
         />
       </Card>
+
+      <Card
+        title="Daily limit"
+        description="How many replies the AI may write a day in all your workspaces together. Past that, chats go to your teams. Each workspace also has limits of its own, in AI agent › Behavior."
+      >
+        <LimitForm limit={org.ai_replies_per_day} onSave={(limit) => save({ path: "/organization", method: "PATCH", body: { ai_replies_per_day: limit } })} />
+      </Card>
     </div>
+  );
+}
+
+function LimitForm({ limit, onSave }: { limit: number | null; onSave: (limit: number | null) => Promise<void> }) {
+  const [value, setValue] = useState(limit === null ? "" : String(limit));
+  const { busy, message, error, run } = useAction();
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    run(async () => {
+      await onSave(value ? Number(value) : null);
+      return value ? "Saved." : "Saved. There is no limit.";
+    });
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <div className="flex gap-2">
+        <LimitInput aria-label="AI replies a day" placeholder="No limit" value={value} onChange={setValue} />
+        <Button disabled={busy}>Save</Button>
+      </div>
+      {message && <p className="text-sm text-success">{message}</p>}
+      <ErrorText>{error}</ErrorText>
+    </form>
   );
 }
 

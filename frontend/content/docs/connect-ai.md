@@ -25,6 +25,20 @@ The fallback is a second model that takes over a reply when the first one fails.
 
 If both fail, they are tried again after a few seconds. After that the visitor gets the best matches from your articles.
 
+## Limit what it costs
+
+Every AI reply is charged to your key. Three daily limits keep that in hand. Past any of them, the chat goes to your team. The counts start again at midnight UTC.
+
+| Limit | Where | To begin with |
+|---|---|---|
+| Per visitor | **AI agent › Behavior** | 50 replies |
+| All visitors of a workspace | **AI agent › Behavior** | 2,000 replies |
+| All workspaces together | **Settings › AI model** | No limit |
+
+Workspace owners set the first two. Only the organization's owner can set the last one.
+
+Exact replies from [rules](rules.md) don't count.
+
 ## Tell it how to behave
 
 Open **AI agent › Behavior**, turn the agent on, and write its instructions: tone, what it may talk about, and facts too small for an article. For example:

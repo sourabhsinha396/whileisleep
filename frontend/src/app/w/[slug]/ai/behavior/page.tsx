@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useState } from "react";
+import { LimitInput } from "@/components/limit-input";
 import { Button, ErrorText, Field, inputClass, PageHeader, Switch } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { useSaveWorkspace } from "@/lib/use-save-workspace";
@@ -23,10 +24,17 @@ function AgentSettings({ canEdit }: { canEdit: boolean }) {
   const { workspace } = useWorkspace();
   const [enabled, setEnabled] = useState(workspace.ai_enabled);
   const [instructions, setInstructions] = useState(workspace.ai_instructions);
+  const [perVisitor, setPerVisitor] = useState(String(workspace.ai_replies_per_visitor));
+  const [perDay, setPerDay] = useState(String(workspace.ai_replies_per_day));
   const { save, message, error } = useSaveWorkspace();
 
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    save({ ai_enabled: enabled, ai_instructions: instructions, ai_replies_per_visitor: Number(perVisitor), ai_replies_per_day: Number(perDay) });
+  }
+
   return (
-    <section className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
+    <form onSubmit={submit} className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
       {!workspace.llm_ready && (
         <p className="rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning">
           No LLM yet, so the agent only matches help articles by keyword and can&apos;t use tools.{" "}
@@ -52,13 +60,25 @@ function AgentSettings({ canEdit }: { canEdit: boolean }) {
           onChange={(e) => setInstructions(e.target.value)}
         />
       </Field>
+      <fieldset>
+        <legend className="mb-1.5 text-sm font-medium">Daily limits</legend>
+        <p className="mb-3 text-xs text-muted-foreground">How many replies the AI may write a day. Past that, chats go to your team. The count starts again at midnight UTC.</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Per visitor">
+            <LimitInput value={perVisitor} onChange={setPerVisitor} disabled={!canEdit} required />
+          </Field>
+          <Field label="All visitors of this workspace">
+            <LimitInput value={perDay} onChange={setPerDay} disabled={!canEdit} required />
+          </Field>
+        </div>
+      </fieldset>
       <ErrorText>{error}</ErrorText>
       {canEdit && (
         <div className="flex items-center gap-3">
-          <Button onClick={() => save({ ai_enabled: enabled, ai_instructions: instructions })}>Save</Button>
+          <Button>Save</Button>
           <span className="text-sm text-success">{message}</span>
         </div>
       )}
-    </section>
+    </form>
   );
 }

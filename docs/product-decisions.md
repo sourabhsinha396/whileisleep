@@ -4,6 +4,11 @@ Product decisions made by the project owner, newest first. Each says what was de
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Technical decisions are in [tech-decisions.md](tech-decisions.md).
 
+## 2026-11-24: Workspaces and organizations set their own AI limits
+
+**Decision.** The daily limits of AI replies, per visitor and for all visitors together, are settings of the workspace
+in the dashboard, so people can decide for themselves. An organization can also limit all its workspaces together.
+
 ## 2026-11-24: The docs are easy to give to an LLM
 
 **Decision.** Each page of the docs has a "Copy page" button, and the site has `llms.txt` and the basics of SEO.

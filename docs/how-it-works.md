@@ -140,8 +140,8 @@ claims become verified attributes.
 ## Limits and context (`backend/whileisleep/settings/base.py`)
 
 - Visitor messages: 500 characters (`VISITOR_MESSAGE_MAX_CHARS`), enforced in the widget and the API.
-- `RATE_LIMITS`: messages per visitor and per IP per minute, new visitors per IP per hour, and daily
-  AI replies per visitor and per workspace. Counters live in Django's cache, which is Redis whenever
+- `RATE_LIMITS`: messages per visitor and per IP per minute, new visitors per IP per hour. Daily
+  AI replies are limited by the workspace (per visitor, and in all) and, optionally, by the organization. Counters live in Django's cache, which is Redis whenever
   `REDIS_URL` is set (Docker Compose sets it, in development and production).
 - What the AI sees: recent messages up to `HISTORY_BUDGET_CHARS`, an "About this conversation" block
   built from stored data (name, attributes, current page, tags), and up to `KNOWLEDGE_BUDGET_CHARS` of

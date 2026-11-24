@@ -3,6 +3,11 @@
 Technical decisions made by the project owner, newest first. Each says what was decided and, when
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 
+## 2026-11-24: The AI pauses after a 14-day trial
+
+**Decision.** On the hosted version the AI pauses after 14 days if the customer doesn't pay. Customers bring their
+own AI API keys. Payments go through Dodo Payments.
+
 ## 2026-11-24: Help articles are written in a small visual editor
 
 **Decision.** A minimal what-you-see-is-what-you-get editor, from a popular toolkit, with only 5 or 6 controls.

@@ -71,6 +71,28 @@ Open `https://YOUR_DOMAIN`, sign up (the first account owns its organization), t
 3. Set `SIGNUP_ENABLED=false` in `.env` and run `docker compose up -d` so nobody else can
    create accounts on your server.
 
+## Selling plans (optional)
+
+Skip this on your own server: without it nothing is limited. With it, the AI pauses 14 days after
+someone starts unless they subscribe, and **Settings › Billing** appears for the organization's owner.
+
+1. Make an API key in Dodo Payments that can read and write products, checkouts, customers,
+   subscriptions and webhooks.
+2. Make the two plans and the webhook, and print the settings (`PAYMENT_PROVIDER` stays empty until
+   the end: the server refuses to start half-configured). Set `DODO_BASE_URL`
+   (`https://live.dodopayments.com`) and `DODO_API_KEY` in `.env`, then:
+
+```sh
+docker compose up -d
+docker compose exec web python manage.py billing_setup            # shows what is missing
+docker compose exec web python manage.py billing_setup --create   # makes it
+```
+
+3. Put the three printed lines in `.env`, set `PAYMENT_PROVIDER=dodo`, and run `docker compose up -d`.
+
+Organizations that already exist get a full 14 days from that moment. Try it first with a test key and
+`https://test.dodopayments.com`.
+
 ## Updating
 
 ```sh

@@ -122,6 +122,8 @@ claims become verified attributes.
 - LLM keys and tool headers are encrypted at rest with `ENCRYPTION_KEYS`.
 - Rate limits read the client address only from proxies you declare (`TRUSTED_PROXY_COUNT`).
 - `SIGNUP_ENABLED=false` closes account creation on a private installation.
+- Plans (only where they are sold) are paid on Dodo Payments' own pages; no card detail reaches this server. A
+  signed webhook only says which subscription changed, and its state is then read from Dodo.
 
 ## Layout
 

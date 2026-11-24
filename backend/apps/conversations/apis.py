@@ -9,6 +9,7 @@ from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
 
+from apps.accounts.models import photo_url
 from apps.accounts.security import token_auth
 from apps.realtime import events, presence
 from apps.workspaces.models import Membership
@@ -70,7 +71,7 @@ def get(request, workspace_id: int, conversation_id: int):
         conversation.save(update_fields=["unread"])
         # Teammates' inbox lists drop the unread dot too.
         events.conversation_changed(conversation)
-    messages = list(conversation.messages.select_related("author"))
+    messages = list(conversation.messages.select_related("author__profile"))
     return {
         **conversation_row(conversation, next((m for m in reversed(messages) if not m.is_note), None)),
         "messages": [message_out(m) for m in messages],
@@ -94,7 +95,7 @@ def typing(request, workspace_id: int, conversation_id: int):
     """A teammate is typing a reply (not a note). The visitor's widget shows it."""
     conversation = get_conversation(request, workspace_id, conversation_id)
     user = request.auth
-    events.typing(conversation, Message.Sender.AGENT, user.first_name or "", who=str(user.pk))
+    events.typing(conversation, Message.Sender.AGENT, user.first_name or "", who=str(user.pk), photo=photo_url(user))
     return {"ok": True}
 
 

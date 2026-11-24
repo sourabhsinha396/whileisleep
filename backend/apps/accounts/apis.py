@@ -1,11 +1,12 @@
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
-from ninja import Router
+from ninja import File, Router, UploadedFile
 from ninja.errors import HttpError
 
 from apps.workspaces.services import organization_for
+from whileisleep import images
 
-from .models import AuthToken
+from .models import AuthToken, Profile, photo_url
 from .schemas import LoginIn, SessionOut, SignupIn, UserOut
 from .security import token_auth
 
@@ -14,7 +15,7 @@ User = get_user_model()
 
 
 def user_out(user) -> dict:
-    return {"id": user.id, "name": user.first_name or user.email, "email": user.email}
+    return {"id": user.id, "name": user.first_name or user.email, "email": user.email, "photo_url": photo_url(user)}
 
 
 def session_for(user) -> dict:
@@ -50,4 +51,22 @@ def logout(request):
 
 @router.get("/me", response=UserOut, auth=token_auth)
 def me(request):
+    return user_out(request.auth)
+
+
+@router.post("/me/photo", response=UserOut, auth=token_auth)
+def upload_photo(request, file: UploadedFile = File(...)):  # noqa: B008
+    images.require_storage()
+    content = images.clean_image(file, images.AVATAR_SIDE, square=True)
+    profile, _ = Profile.objects.get_or_create(user=request.auth)
+    images.replace(profile, "photo", content)
+    request.auth.profile = profile
+    return user_out(request.auth)
+
+
+@router.delete("/me/photo", response=UserOut, auth=token_auth)
+def remove_photo(request):
+    profile, _ = Profile.objects.get_or_create(user=request.auth)
+    images.replace(profile, "photo", None)
+    request.auth.profile = profile
     return user_out(request.auth)

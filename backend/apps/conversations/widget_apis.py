@@ -112,7 +112,7 @@ def messages(request, key: str, after: int = 0):
     return {
         "conversation_id": conversation.id,
         "human_requested": conversation.human_requested,
-        "messages": [message_out(m) for m in rows.select_related("author")],
+        "messages": [message_out(m) for m in rows.select_related("author__profile")],
     }
 
 

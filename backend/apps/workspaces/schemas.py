@@ -54,6 +54,7 @@ class MemberOut(Schema):
     name: str
     email: str
     role: str
+    photo_url: str
 
 
 class OrganizationOut(Schema):

@@ -1,5 +1,7 @@
 """Model → response dicts shared by the dashboard and widget APIs."""
 
+from apps.accounts.models import photo_url
+
 from . import attributes
 from .models import Conversation, Message, Visitor
 
@@ -29,6 +31,7 @@ def message_out(message: Message) -> dict:
         "id": message.id,
         "sender": message.sender,
         "author_name": (author.first_name or author.email) if author else "",
+        "author_photo": photo_url(author) if author else "",
         "body": message.body,
         "a2ui": message.a2ui,
         "is_note": message.is_note,

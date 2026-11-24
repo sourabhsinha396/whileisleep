@@ -27,7 +27,7 @@ def test_the_visitor_typing_reaches_the_inbox_once_per_burst(conversation, anon,
     assert anon.post(path).status_code == 200
     assert anon.post(path).status_code == 200  # within the throttle window: not sent again
 
-    assert typing_events(inbox) == [{"conversation_id": conversation.id, "sender": "visitor", "name": ""}]
+    assert typing_events(inbox) == [{"conversation_id": conversation.id, "sender": "visitor", "name": "", "photo": ""}]
 
 
 def test_a_visitor_without_a_conversation_types_into_nothing(workspace, anon, listen):
@@ -50,7 +50,9 @@ def test_a_teammate_typing_reaches_the_widget_with_their_first_name(conversation
     response = api.post(f"/workspaces/{conversation.workspace_id}/conversations/{conversation.id}/typing")
 
     assert response.status_code == 200
-    assert typing_events(widget) == [{"conversation_id": conversation.id, "sender": "agent", "name": "Priya"}]
+    assert typing_events(widget) == [
+        {"conversation_id": conversation.id, "sender": "agent", "name": "Priya", "photo": ""}
+    ]
 
 
 def test_two_teammates_are_throttled_separately(conversation, api, listen):

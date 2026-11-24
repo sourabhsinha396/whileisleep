@@ -6,6 +6,7 @@ from django.db.models import Count, Q
 from ninja import File, Router, UploadedFile
 from ninja.errors import HttpError
 
+from apps.accounts.models import photo_url
 from apps.accounts.security import token_auth
 from whileisleep import images
 
@@ -108,13 +109,21 @@ def rotate_identity_secret(request, workspace_id: int):
     return {"secret": workspace.identity_secret}
 
 
+def member_out(membership: Membership) -> dict:
+    user = membership.user
+    return {
+        "user_id": user.id,
+        "name": user.first_name or user.email,
+        "email": user.email,
+        "role": membership.role,
+        "photo_url": photo_url(user),
+    }
+
+
 @router.get("/workspaces/{workspace_id}/members", response=list[MemberOut])
 def members(request, workspace_id: int):
     workspace = member_workspace(request.auth, workspace_id)
-    return [
-        {"user_id": m.user_id, "name": m.user.first_name or m.user.email, "email": m.user.email, "role": m.role}
-        for m in workspace.memberships.select_related("user").order_by("user__email")
-    ]
+    return [member_out(m) for m in workspace.memberships.select_related("user__profile").order_by("user__email")]
 
 
 @router.post("/workspaces/{workspace_id}/members", response=MemberOut)
@@ -127,4 +136,4 @@ def add_member(request, workspace_id: int, payload: MemberIn):
     if user is None:
         raise HttpError(404, "No account with that email. Ask them to sign up first.")
     membership, _ = Membership.objects.update_or_create(user=user, workspace=workspace, defaults={"role": payload.role})
-    return {"user_id": user.id, "name": user.first_name or user.email, "email": user.email, "role": membership.role}
+    return member_out(membership)

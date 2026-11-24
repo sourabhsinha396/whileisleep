@@ -18,6 +18,7 @@ class UserOut(Schema):
     id: int
     name: str
     email: str
+    photo_url: str
 
 
 class SessionOut(Schema):

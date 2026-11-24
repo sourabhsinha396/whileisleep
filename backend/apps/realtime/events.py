@@ -73,12 +73,12 @@ def bot_status(conversation: Conversation, text: str) -> None:
 TYPING_EVERY_SECONDS = 2
 
 
-def typing(conversation: Conversation, sender: str, name: str = "", who: str = "") -> bool:
+def typing(conversation: Conversation, sender: str, name: str = "", who: str = "", photo: str = "") -> bool:
     """`sender` is "visitor" or "agent"; each side hears only the other. `who` tells apart
     teammates typing in the same conversation. Returns False when throttled."""
     if not cache.add(f"typing:{conversation.id}:{sender}:{who}", 1, timeout=TYPING_EVERY_SECONDS):
         return False
-    data = {"conversation_id": conversation.id, "sender": sender, "name": name}
+    data = {"conversation_id": conversation.id, "sender": sender, "name": name, "photo": photo}
     channel = (
         bus.workspace_channel(conversation.workspace_id)
         if sender == Message.Sender.VISITOR

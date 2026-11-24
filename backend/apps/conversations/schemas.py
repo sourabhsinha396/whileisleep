@@ -38,6 +38,7 @@ class MessageOut(Schema):
     id: int
     sender: str
     author_name: str = ""
+    author_photo: str = ""
     body: str
     a2ui: list[dict[str, Any]] | None = None
     is_note: bool

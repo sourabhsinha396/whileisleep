@@ -78,7 +78,7 @@ def test_typing_goes_to_the_other_side(conversation, listen):
     events.typing(conversation, "visitor")
     assert visitor_side.events() == []
     assert team_side.events() == [
-        {"event": "typing", "data": {"conversation_id": conversation.id, "sender": "visitor", "name": ""}}
+        {"event": "typing", "data": {"conversation_id": conversation.id, "sender": "visitor", "name": "", "photo": ""}}
     ]
 
     events.typing(conversation, "agent", "Priya")

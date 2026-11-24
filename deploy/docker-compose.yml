@@ -1,9 +1,9 @@
-# whileisleep in production on one server (a Hetzner Cloud VM, or any Docker host).
+# whileisleep in production on one server (a VM, or any Docker host).
 #
 #   cd deploy && cp .env.example .env    # fill it in
 #   docker compose up -d --build
 #
-# docs/deploy-hetzner.md walks through it. Only Caddy is reachable from outside; it gets and
+# docs/deploy-vm.md walks through it. Only Caddy is reachable from outside; it gets and
 # renews the TLS certificate for SITE_DOMAIN by itself.
 #
 #   caddy ─┬─ web (Django API, WSGI) ───┬─ db (Postgres: everything that must survive)

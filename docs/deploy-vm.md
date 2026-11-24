@@ -1,22 +1,20 @@
-# Deploying whileisleep on a Hetzner server
+# Deploy whileisleep on a VM (before your Maggi is ready 🍜)
 
-One small server runs everything with Docker Compose: Caddy (HTTPS), the Django API, the
+One small virtual machine, from any provider, runs everything with Docker Compose: Caddy (HTTPS), the Django API, the
 stream process that sends live updates to the widget and the inbox, a Celery worker that
-writes the AI's replies, the Next.js dashboard, Postgres and Redis. The same steps work on
-any Linux host with Docker.
+writes the AI's replies, the Next.js dashboard, Postgres and Redis.
 
 ## What you need
 
-- A Hetzner Cloud server. A **CX22** (2 vCPU, 4 GB RAM) with **Ubuntu 24.04** is enough to
-  start; the AI calls happen at your LLM provider, not on this machine.
+- A VM with 2 vCPU, 4 GB RAM and **Ubuntu 24.04** is enough to start; the AI calls happen at your LLM provider, not on this machine.
 - A domain or subdomain, for example `chat.example.com`.
 - An OpenRouter API key (you enter it in the dashboard after the first login, not here).
 
-## 1. Create the server
+## 1. Create the VM
 
-In the Hetzner Cloud console:
+In your provider's console:
 
-1. Create the server with your SSH key.
+1. Create the VM with your SSH key.
 2. Add a **firewall** that allows inbound TCP 22 (SSH), TCP 80 and 443 (web) and UDP 443
    (HTTP/3), and nothing else. Postgres and Redis are never exposed.
 3. Add a DNS **A record** for your domain pointing at the server's IPv4 address (and an
@@ -93,8 +91,8 @@ EOF
 chmod +x /etc/cron.daily/whileisleep-backup
 ```
 
-Copy the dumps off the server too (a Hetzner Storage Box works), and turn on Hetzner's
-server backups for a second line of defence. To restore:
+Copy the dumps off the server too (to object storage, for example), and turn on your
+provider's VM backups for a second line of defence. To restore:
 
 ```sh
 gunzip -c 2026-01-31.sql.gz | docker compose exec -T db psql -U whileisleep whileisleep

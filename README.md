@@ -19,7 +19,7 @@ A visitor asks. The agent checks your rules, looks up real data, and replies.
 
 **Not just text:** with [A2UI](https://a2ui.org), the agent can put forms and buttons right in the chat, so visitors fill in and click instead of typing it all out.
 
-![A visitor asks about an order and about shipping; the agent calls an API, searches the help center and replies](docs/images/demo.gif)
+![A visitor asks about an order, then for a refund; the agent calls an API, opens a playbook, shows a form and hands over to a teammate](docs/images/demo.gif)
 
 ## The inbox
 
@@ -27,7 +27,7 @@ Every conversation in one place. Read what the AI said, take over any chat, or a
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/inbox-dark.png">
-  <img src="docs/images/inbox-light.png" alt="The inbox: conversations on the left, the chat in the middle, visitor details on the right">
+  <img src="docs/images/inbox-light.png" alt="The inbox: conversations with country flags on the left, a chat with a photo and a team note in the middle, visitor details on the right">
 </picture>
 
 ## The AI agent
@@ -112,7 +112,7 @@ You need Docker, Node.js and pnpm. From a clone of this repo:
 
 ```sh
 cp backend/.env.example backend/.env
-docker compose -f backend/docker-compose.yaml up -d --build
+docker compose up -d --build
 cp frontend/.env.example frontend/.env
 pnpm --dir frontend install
 pnpm --dir frontend dev

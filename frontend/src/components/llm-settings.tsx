@@ -3,10 +3,12 @@
 import clsx from "clsx";
 import { CheckCircle2, KeyRound, XCircle } from "lucide-react";
 import { useCallback, useState } from "react";
+import { ModelPicker } from "@/components/model-picker";
+import { Select } from "@/components/select";
 import { Badge, Button, Card, ErrorText, inputClass } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, type KeyCheck, type LlmModel, type LlmProvider, type Organization, type ProviderId } from "@/lib/api";
-import { KEY_EXAMPLES, keyRemovalWarning, llmStatus, MODEL_EXAMPLES, providerOf } from "@/lib/llm";
+import { KEY_EXAMPLES, keyRemovalWarning, llmStatus, matchingModels, MODEL_EXAMPLES, providerOf } from "@/lib/llm";
 import { usePoll } from "@/lib/use-poll";
 
 type Request = { path: string; method: string; body?: unknown };
@@ -223,20 +225,16 @@ function ModelForm({ org, label, optional = false, ...saved }: ModelFormProps) {
       }}
     >
       <div className="flex flex-wrap items-start gap-2 sm:flex-nowrap">
-        <select
-          aria-label={`Provider of the ${label}`}
-          className={clsx(inputClass, "sm:w-48")}
+        <Select<ProviderId | "">
+          label={`Provider of the ${label}`}
+          className="w-full sm:w-48"
           value={provider}
-          onChange={(e) => changeProvider(e.target.value as ProviderId | "")}
-        >
-          {optional && <option value="">None</option>}
-          {org.providers.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-              {p.has_key ? "" : " (no key)"}
-            </option>
-          ))}
-        </select>
+          options={[
+            ...(optional ? [{ value: "" as const, label: "None" }] : []),
+            ...org.providers.map((p) => ({ value: p.id, label: p.name, note: p.has_key ? undefined : "no key" })),
+          ]}
+          onChange={changeProvider}
+        />
         {chosen && <ModelInput key={`${chosen.id} ${chosen.key_hint}`} provider={chosen} label={label} value={model} onChange={setModel} />}
         <Button disabled={busy || unchanged || Boolean(provider && !model.trim())}>Save</Button>
       </div>
@@ -247,32 +245,26 @@ function ModelForm({ org, label, optional = false, ...saved }: ModelFormProps) {
   );
 }
 
-/** A model id, with the provider's own list to pick from. Ids can also be typed. */
+/** A model id, with the recommended ones to pick from. Any other can be typed. */
 function ModelInput({ provider, label, value, onChange }: { provider: LlmProvider; label: string; value: string; onChange: (model: string) => void }) {
   // Only OpenRouter shows its models to anyone.
   const listed = provider.has_key || provider.id === "openrouter";
   const load = useCallback(async () => (listed ? api<LlmModel[]>(`/organization/models/${provider.id}`) : []), [listed, provider.id]);
   const models = usePoll(load, 3600000);
-  const list = `${label}-models`;
-  const unknown = listed && value.trim() && models.data && !models.data.some((m) => m.id === value.trim());
+  const offered = (models.data ?? []).filter((m) => m.recommended);
+  // Not while what is typed still leads to one of them.
+  const unknown =
+    listed && value.trim() && models.data && !models.data.some((m) => m.id === value.trim()) && !matchingModels(offered, value).length;
 
   return (
     <div className="min-w-0 flex-1">
-      <input
-        aria-label={`The ${label}'s id`}
-        className={clsx(inputClass, "font-mono")}
-        list={list}
+      <ModelPicker
+        label={`The ${label}'s id`}
+        models={offered}
         placeholder={MODEL_EXAMPLES[provider.id]}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={onChange}
       />
-      <datalist id={list}>
-        {(models.data ?? []).map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.name}
-          </option>
-        ))}
-      </datalist>
       {models.error && <p className="mt-1.5 text-xs text-muted-foreground">Couldn&apos;t load the model list. {models.error} You can still type an id.</p>}
       {unknown && <p className="mt-1.5 text-xs text-warning">Not in {provider.name}&apos;s list of models that fit.</p>}
     </div>

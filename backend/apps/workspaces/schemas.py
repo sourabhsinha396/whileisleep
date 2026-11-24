@@ -110,6 +110,10 @@ class ProviderKeyIn(Schema):
 class ModelOut(Schema):
     id: str
     name: str
+    # Whether the picker offers it. The others are listed so a typed id can be recognized.
+    recommended: bool = True
+    # How it is priced next to the others the picker offers: "low", "mid", "high", or "".
+    tier: str = ""
 
 
 class StorageIn(Schema):

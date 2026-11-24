@@ -11,6 +11,13 @@ const api = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/api", () => ({ api }));
 vi.mock("@/components/workspace-context", () => ({ useWorkspace: () => ({ reload: async () => {} }) }));
 
+const MODELS = [
+  { id: "gpt-x", name: "GPT X", recommended: true, tier: "low" },
+  { id: "gpt-y", name: "GPT Y", recommended: true, tier: "low" },
+  { id: "gpt-z", name: "Big Z", recommended: true, tier: "high" },
+  { id: "gpt-old", name: "GPT Old", recommended: false, tier: "" },
+];
+
 const NAMES: Record<ProviderId, string> = { openai: "OpenAI", anthropic: "Anthropic", google: "Google Gemini", openrouter: "OpenRouter" };
 
 function organization(keys: ProviderId[], rest: Partial<Organization> = {}): Organization {
@@ -85,7 +92,7 @@ describe("the settings page", () => {
     root = createRoot(box);
     onSaved = vi.fn();
     api.mockReset();
-    api.mockImplementation(async (path: string) => (path.includes("/models/") ? [{ id: "gpt-x", name: "GPT X" }] : organization([])));
+    api.mockImplementation(async (path: string) => (path.includes("/models/") ? MODELS : organization([])));
   });
 
   afterEach(() => {
@@ -97,20 +104,28 @@ describe("the settings page", () => {
   const button = (text: string, within: Element = box) => [...within.querySelectorAll("button")].find((b) => b.textContent?.trim() === text)!;
   const labelled = <T extends Element>(label: string) => box.querySelector<T>(`[aria-label="${label}"]`)!;
 
-  async function fill(field: HTMLInputElement | HTMLSelectElement, value: string) {
-    const proto = field instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+  async function fill(field: HTMLInputElement, value: string) {
     await act(async () => {
-      Object.getOwnPropertyDescriptor(proto, "value")!.set!.call(field, value);
-      field.dispatchEvent(new Event(field instanceof HTMLSelectElement ? "change" : "input", { bubbles: true }));
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(field, value);
+      field.dispatchEvent(new Event("input", { bubbles: true }));
     });
   }
 
+  const provider = (label: string) => box.querySelector<HTMLElement>(`button[aria-label^="Provider of the ${label}"]`)!;
+
+  async function choose(label: string, name: string) {
+    await act(async () => provider(label).click());
+    const option = [...provider(label).parentElement!.querySelectorAll<HTMLElement>("li")].find((li) => li.textContent!.startsWith(name))!;
+    await act(async () => option.click());
+  }
+
   const submit = (field: Element) => act(async () => void field.closest("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  const offered = () => [...box.querySelectorAll('[role="option"] span span:first-child')].map((o) => o.textContent);
   const sent = (method: string) => api.mock.calls.filter(([, options]) => options?.method === method);
 
   it("lists every provider and whether it has a key", async () => {
     await show(organization(["anthropic"]));
-    const rows = [...box.querySelectorAll("li")].map((li) => li.textContent);
+    const rows = [...box.querySelectorAll("ul.divide-y > li")].map((li) => li.textContent);
     expect(rows).toHaveLength(4);
     expect(rows[0]).toContain("OpenAINo key");
     expect(rows[1]).toContain("AnthropicKey …1234");
@@ -130,9 +145,9 @@ describe("the settings page", () => {
   it("picks a fallback, and drops a model id that belongs to another provider", async () => {
     await show(organization(["openai", "anthropic"]));
     expect(labelled("The fallback's id")).toBeNull();
-    await fill(labelled<HTMLSelectElement>("Provider of the fallback"), "openai");
+    await choose("fallback", "OpenAI");
     await fill(labelled<HTMLInputElement>("The fallback's id"), "gpt-z");
-    await fill(labelled<HTMLSelectElement>("Provider of the fallback"), "anthropic");
+    await choose("fallback", "Anthropic");
     const id = labelled<HTMLInputElement>("The fallback's id");
     expect(id.value).toBe("");
     await fill(id, "claude-y");
@@ -144,9 +159,8 @@ describe("the settings page", () => {
 
   it("removes the fallback", async () => {
     await show(organization(["openai", "anthropic"], { fallback_provider: "anthropic", fallback_model: "claude-y" }));
-    const provider = labelled<HTMLSelectElement>("Provider of the fallback");
-    await fill(provider, "");
-    await submit(provider);
+    await choose("fallback", "None");
+    await submit(provider("fallback"));
     expect(sent("PATCH")[0][1].body).toEqual({ fallback_provider: "", fallback_model: "" });
   });
 
@@ -157,6 +171,54 @@ describe("the settings page", () => {
     await fill(id, "gpt-new");
     await submit(id);
     expect(box.querySelector('[role="alert"]')?.textContent).toBe("Pick a different model.");
+  });
+
+  it("offers only the recommended models, and knows the others when typed", async () => {
+    await show(organization(["openai"]));
+    const id = labelled<HTMLInputElement>("The model's id");
+    await act(async () => id.click());
+    expect(offered()).toEqual(["GPT X", "GPT Y", "Big Z"]);
+    await fill(id, "gpt-old");
+    expect(box.textContent).not.toContain("Not in OpenAI's list");
+    await fill(id, "gpt-typo");
+    expect(box.textContent).toContain("Not in OpenAI's list");
+  });
+
+  it("groups the models by tier and picks one with a click", async () => {
+    await show(organization(["openai"]));
+    const id = labelled<HTMLInputElement>("The model's id");
+    await act(async () => id.click());
+    expect([...box.querySelectorAll('[role="presentation"]')].map((p) => p.textContent)).toEqual(["Low cost", "High end"]);
+    await act(async () => box.querySelectorAll<HTMLElement>('[role="option"]')[2].click());
+    expect(id.value).toBe("gpt-z");
+    expect(offered()).toEqual([]);
+    expect(sent("PATCH")).toEqual([]);
+  });
+
+  it("narrows as you type, and arrows and Enter pick", async () => {
+    await show(organization(["openai"]));
+    const id = labelled<HTMLInputElement>("The model's id");
+    const press = (key: string) => act(async () => void id.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true })));
+    await fill(id, "gpt y");
+    expect(offered()).toEqual(["GPT Y"]);
+    await press("ArrowDown");
+    await press("Enter");
+    expect(id.value).toBe("gpt-y");
+    // Opened again, it offers everything, not only what matches the pick.
+    await press("ArrowDown");
+    expect(offered()).toHaveLength(3);
+    await press("Escape");
+    expect(offered()).toEqual([]);
+    expect(id.value).toBe("gpt-y");
+  });
+
+  it("shows no list when nothing matches, so any id can be typed and saved", async () => {
+    await show(organization(["openai"]));
+    const id = labelled<HTMLInputElement>("The model's id");
+    await fill(id, "something-else");
+    expect(offered()).toEqual([]);
+    await submit(id);
+    expect(sent("PATCH")[0][1].body).toEqual({ llm_provider: "openai", llm_model: "something-else" });
   });
 
   it("asks for a model list only where there is a key to read it with", async () => {

@@ -28,7 +28,7 @@ from django.db import transaction
 from apps.billing import services as billing
 from apps.conversations import limits
 from apps.conversations.models import Conversation, Message
-from apps.conversations.services import add_message
+from apps.conversations.services import add_message, request_human
 
 from . import bot, rules, tasks
 from .models import Rule, Turn
@@ -60,7 +60,7 @@ def handle(conversation: Conversation, message: Message, instruction: str = "", 
 
     if blocked := why_blocked(conversation):
         # A person takes it from here.
-        bot.request_human(conversation, blocked)
+        request_human(conversation, blocked)
         sent = add_message(conversation, Message.Sender.BOT, "Thanks! A teammate will reply here soon.")
         recorder.finish(Turn.Stage.GUARD, reply=sent, rule=rule)
         return

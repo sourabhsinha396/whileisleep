@@ -26,7 +26,7 @@ from django.db.models import Exists, OuterRef, Q
 
 from apps.conversations import attachments, attributes
 from apps.conversations.models import Attachment, Conversation, Message
-from apps.conversations.services import add_message
+from apps.conversations.services import add_message, request_human
 from apps.knowledge.models import Article
 from apps.knowledge.search import passages, search
 
@@ -514,16 +514,6 @@ def call_tool(conversation: Conversation, tools: dict[str, Tool], name: str, inp
     if tool.mcp_server_id:
         return mcp_tools.run(tool, inputs)
     return http_tools.run(tool, inputs, conversation.visitor)
-
-
-def request_human(conversation: Conversation, reason: str = "") -> None:
-    if conversation.human_requested:
-        return
-    conversation.human_requested = True
-    conversation.unread = True
-    conversation.save(update_fields=["human_requested", "unread"])
-    note = "Visitor asked for a person." + (f" Reason: {reason}" if reason else "")
-    add_message(conversation, Message.Sender.SYSTEM, note, is_note=True)
 
 
 def keyword_answer(conversation: Conversation, question: str) -> dict:

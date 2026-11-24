@@ -1,11 +1,11 @@
 """Handles A2UI action events the widget sends back when a visitor presses a button."""
 
 from apps.conversations.models import Conversation, Message
-from apps.conversations.services import add_message
+from apps.conversations.services import add_message, request_human
 from apps.knowledge.models import Article
 
 from . import a2ui, forms, pipeline
-from .bot import request_human, will_reply
+from .bot import will_reply
 
 
 class ActionError(Exception):

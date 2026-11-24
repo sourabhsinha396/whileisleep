@@ -30,7 +30,7 @@ from .schemas import (
     VisitorOut,
 )
 from .serializers import attachment_out, conversation_row, message_out, visitor_out
-from .services import add_message
+from .services import add_message, reply_as, set_human_requested, set_status
 
 router = Router(tags=["inbox"], auth=token_auth)
 
@@ -91,18 +91,9 @@ def get(request, workspace_id: int, conversation_id: int):
 @router.post("/workspaces/{workspace_id}/conversations/{conversation_id}/messages", response=MessageOut)
 def reply(request, workspace_id: int, conversation_id: int, payload: ReplyIn):
     conversation = get_conversation(request, workspace_id, conversation_id)
-    message = add_message(
-        conversation,
-        Message.Sender.AGENT,
-        payload.body.strip(),
-        author=request.auth,
-        is_note=payload.is_note,
-        attachments=attachments.unsent(conversation.workspace, payload.attachments, user=request.auth),
-    )
-    if not payload.is_note and conversation.assignee_id is None:
-        conversation.assignee = request.auth
-        conversation.save(update_fields=["assignee"])
-    return message_out(message)
+    files = attachments.unsent(conversation.workspace, payload.attachments, user=request.auth)
+    body = payload.body.strip()
+    return message_out(reply_as(request.auth, conversation, body, is_note=payload.is_note, attachments=files))
 
 
 @router.post("/workspaces/{workspace_id}/attachments", response=AttachmentOut)
@@ -125,10 +116,8 @@ def typing(request, workspace_id: int, conversation_id: int):
 def update(request, workspace_id: int, conversation_id: int, payload: ConversationPatch):
     conversation = get_conversation(request, workspace_id, conversation_id)
     data = payload.dict(exclude_unset=True)
-    if "status" in data:
-        if data["status"] not in Conversation.Status.values:
-            raise HttpError(400, "status must be open or resolved.")
-        conversation.status = data["status"]
+    if "status" in data and data["status"] not in Conversation.Status.values:
+        raise HttpError(400, "status must be open or resolved.")
     if "assignee_id" in data:
         assignee_id = data["assignee_id"]
         if (
@@ -137,10 +126,12 @@ def update(request, workspace_id: int, conversation_id: int, payload: Conversati
         ):
             raise HttpError(400, "That person isn't in this workspace.")
         conversation.assignee_id = assignee_id
+        conversation.save(update_fields=["assignee"])
+        events.conversation_changed(conversation)
     if "human_requested" in data:
-        conversation.human_requested = data["human_requested"]
-    conversation.save()
-    events.conversation_changed(conversation)
+        set_human_requested(conversation, data["human_requested"], by=request.auth)
+    if "status" in data:
+        set_status(conversation, data["status"], by=request.auth)
     return conversation_row(conversation, conversation.messages.filter(is_note=False).last())
 
 

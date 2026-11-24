@@ -23,10 +23,9 @@ from django.utils import timezone
 
 from apps.conversations import attributes
 from apps.conversations.models import Conversation, Message
-from apps.conversations.services import add_message
+from apps.conversations.services import add_message, request_human
 
 from . import conditions
-from .bot import request_human
 from .models import Rule
 
 # What a condition may look at. `message.data.KEY`, `contact.KEY` and `conversation.KEY`

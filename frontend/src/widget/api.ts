@@ -1,4 +1,5 @@
 import type { A2uiMessage, ActionEvent } from "@/lib/a2ui/surface";
+import type { ChatFile } from "@/lib/chat-file";
 import { errorMessage } from "./limits";
 
 export interface WidgetConfig {
@@ -10,6 +11,10 @@ export interface WidgetConfig {
   logo_url: string;
   greeting: string;
   ai_enabled: boolean;
+  /** Visitors can send files. */
+  uploads_enabled?: boolean;
+  /** A few teammates with photos. */
+  team?: { name: string; photo_url: string }[];
 }
 
 export interface ChatMessage {
@@ -21,6 +26,7 @@ export interface ChatMessage {
   a2ui: A2uiMessage[] | null;
   /** Its form was sent; show it disabled. */
   form_submitted?: boolean;
+  attachments?: ChatFile[];
   created_at: string;
 }
 
@@ -75,7 +81,8 @@ export class WidgetApi {
     const response = await fetch(this.base + path, {
       ...init,
       headers: {
-        "Content-Type": "application/json",
+        // A form (a file upload) is sent as it is: the browser writes its content type.
+        ...(init.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
         ...(this.token ? { "X-Visitor-Token": this.token } : {}),
       },
     });
@@ -143,11 +150,18 @@ export class WidgetApi {
     return this.call<{ ok: boolean }>("/typing", { method: "POST" });
   }
 
-  send(body: string, intent?: Intent) {
+  send(body: string, intent?: Intent, attachments: number[] = []) {
     return this.call<MessagesResponse>("/messages", {
       method: "POST",
-      body: JSON.stringify({ body, ...(intent ? { intent: intent.intent, data: intent.data ?? {} } : {}) }),
+      body: JSON.stringify({ body, ...(attachments.length ? { attachments } : {}), ...(intent ? { intent: intent.intent, data: intent.data ?? {} } : {}) }),
     });
+  }
+
+  /** Stores a file the visitor is about to send; `send` with its id attaches it. */
+  upload(file: File) {
+    const body = new FormData();
+    body.append("file", file);
+    return this.call<ChatFile>("/attachments", { method: "POST", body });
   }
 
   action(event: ActionEvent) {

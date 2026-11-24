@@ -1,11 +1,15 @@
 import { renderSurface } from "@/lib/a2ui/render";
 import { applyMessages, type ActionEvent } from "@/lib/a2ui/surface";
+import { type ChatFile, fitted, isPicture } from "@/lib/chat-file";
 import { inkOf, isBright, textOn } from "@/lib/contrast";
 import { openLiveStream, throttle, type LiveStream } from "@/lib/live-stream";
+import { isAtEnd, stayAtEnd } from "@/lib/stay-at-end";
 import { formatArticle } from "./article";
 import { WidgetApi, type ChatMessage, type Identity, type Intent, type StreamEvent, type WidgetConfig } from "./api";
 import { styles } from "./styles";
-import { counterText } from "./limits";
+import { Composer, fileCard } from "./composer";
+import { button, div } from "./dom";
+import { continues, timeOf } from "./groups";
 import { formatText } from "./text";
 import { chimeFor, playChime, unlockAudio } from "./sound";
 
@@ -38,6 +42,8 @@ const TYPING_SEND_MS = 3000;
 const AGENT_TYPING_MS = 6000;
 
 type Tab = "chat" | "help";
+/** The greeting is shown like a message, but was never sent. */
+type Shown = Omit<ChatMessage, "id" | "created_at"> & { created_at?: string };
 
 /** The chat bubble and panel. All DOM lives in a shadow root on `host`. */
 export class Widget {
@@ -64,6 +70,9 @@ export class Widget {
   // Label from open(message, intent), sent with the next message unless the visitor clears the box.
   private pendingIntent?: Intent;
   private el: { [name: string]: HTMLElement } = {};
+  private composer!: Composer;
+  // The newest message already on screen; only later ones slide in.
+  private shownId = 0;
 
   // Resolves once the panel is built; calls made before then wait for it.
   private ready: Promise<void>;
@@ -143,9 +152,7 @@ export class Widget {
     await this.ready;
     this.switchTab("chat");
     this.toggle(true);
-    const input = this.el.input as HTMLTextAreaElement;
-    // A host page's message can't skip the limit either.
-    if (message) input.value = message.slice(0, input.maxLength > 0 ? input.maxLength : undefined);
+    if (message) this.composer.text = message;
     this.pendingIntent = message && intent?.intent ? intent : undefined;
   }
 
@@ -180,6 +187,7 @@ export class Widget {
     await this.ready;
     this.api.forget();
     this.clearLocal();
+    this.composer.clear();
     await this.api.session();
     this.renderBody();
     this.renderBadge();
@@ -198,8 +206,7 @@ export class Widget {
       return;
     }
     this.clearLocal();
-    (this.el.input as HTMLTextAreaElement).value = "";
-    this.el.counter.textContent = "";
+    this.composer.clear();
     this.pendingIntent = undefined;
     this.switchTab("chat");
     this.renderBadge();
@@ -208,7 +215,7 @@ export class Widget {
   private clearLocal() {
     writeStored(this.api.key, "seen", "");
     this.messages = [];
-    this.lastId = this.seenId = 0;
+    this.lastId = this.seenId = this.shownId = 0;
     this.humanRequested = false;
     this.waitingForReply = 0;
     this.botStatus = "";
@@ -223,9 +230,10 @@ export class Widget {
     this.el.launcher.setAttribute("aria-label", this.open ? "Close chat" : "Open chat");
     if (this.open) {
       this.markSeen();
-      this.renderBody();
+      this.renderBody(true);
       if (!this.live) this.poll(true);
-      (this.el.input as HTMLTextAreaElement).focus();
+      this.composer.refresh();
+      this.composer.focus();
     }
     this.renderBadge();
   }
@@ -255,19 +263,7 @@ export class Widget {
 
     const head = div("head");
     const headRow = div("head-row");
-    const team = div("team");
-    team.textContent = initialsOf(this.config.name);
-    team.setAttribute("aria-hidden", "true");
-    if (this.config.logo_url) team.appendChild(picture(this.config.logo_url));
-    const dot = document.createElement("span");
-    dot.className = "dot";
-    team.appendChild(dot);
-    const title = document.createElement("h2");
-    title.textContent = this.config.name;
-    const sub = document.createElement("span");
-    sub.className = "sub";
-    sub.textContent = this.config.ai_enabled ? "AI assistant · a person can step in anytime" : "We usually reply in a few minutes";
-    title.appendChild(sub);
+    const faces = this.faces();
     const restart = button("icon-btn", "", () => {
       if (confirm("Start a new chat? This conversation will be cleared from this window.")) this.restart();
     });
@@ -277,7 +273,7 @@ export class Widget {
     const close = button("icon-btn", "", () => this.toggle(false));
     close.innerHTML = ICONS.close;
     close.setAttribute("aria-label", "Close chat");
-    headRow.append(team, title, restart, close);
+    headRow.append(restart, faces, close);
 
     const tabs = div("tabs");
     tabs.setAttribute("role", "tablist");
@@ -294,32 +290,18 @@ export class Widget {
     const body = div("body");
     body.setAttribute("aria-live", "polite");
     const error = div("error");
-    const compose = div("compose");
-    const input = document.createElement("textarea");
-    input.rows = 1;
-    input.placeholder = "Write a message…";
-    input.setAttribute("aria-label", "Message");
-    // Same limit the server enforces; pasting past it is cut off here instead of failing on send.
-    const max = this.config.max_message_length || 500;
-    input.maxLength = max;
-    const counter = div("counter");
-    counter.setAttribute("aria-live", "polite");
-    const send = button("send", "", () => this.send());
-    send.innerHTML = ICONS.send;
-    send.setAttribute("aria-label", "Send");
-    input.addEventListener("input", () => {
-      if (!input.value.trim()) this.pendingIntent = undefined;
-      else this.sendTyping();
-      counter.textContent = counterText(input.value.length, max);
-      counter.classList.toggle("full", input.value.length >= max);
+    this.composer = new Composer({
+      maxLength: this.config.max_message_length || 500,
+      uploads: !!this.config.uploads_enabled,
+      upload: (file) => this.api.upload(file),
+      onSend: () => this.send(),
+      onInput: (text) => {
+        if (!text.trim()) this.pendingIntent = undefined;
+        else this.sendTyping();
+      },
+      onError: (message) => (this.el.error.textContent = message),
     });
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        this.send();
-      }
-    });
-    compose.append(input, send);
+    const compose = this.composer.el;
     const powered = div("powered");
     powered.append("Powered by ");
     const poweredLink = document.createElement("a");
@@ -329,11 +311,59 @@ export class Widget {
     poweredLink.textContent = "whileisleep";
     powered.append(poweredLink);
 
-    panel.append(head, body, error, counter, compose, powered);
+    const drop = div("drop");
+    drop.textContent = "Drop files to send";
+    drop.hidden = true;
+    panel.append(head, body, error, compose, powered, drop);
+    if (this.config.uploads_enabled) this.takeDrops(panel, drop);
     wrap.append(launcher, panel);
     this.root.append(style, wrap);
-    this.el = { launcher, panel, tabs, body, error, counter, compose, input, send, restart };
+    this.el = { launcher, panel, tabs, body, error, compose, restart };
+    stayAtEnd(body);
     this.switchTab("chat");
+  }
+
+  /** The workspace's logo, with the photos of a few teammates tucked behind it. */
+  private faces(): HTMLElement {
+    const faces = div("faces");
+    faces.setAttribute("aria-hidden", "true");
+    const team = div("team");
+    team.textContent = initialsOf(this.config.name);
+    if (this.config.logo_url) team.appendChild(picture(this.config.logo_url));
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    team.appendChild(dot);
+    faces.appendChild(team);
+    for (const { name, photo_url } of this.config.team ?? []) {
+      const face = div("face");
+      face.title = name;
+      const photo = picture(photo_url);
+      // No initials under this one: without its photo there is nothing to show.
+      photo.addEventListener("error", () => face.remove());
+      face.appendChild(photo);
+      faces.appendChild(face);
+    }
+    return faces;
+  }
+
+  /** Files dragged over the panel are sent from the chat. */
+  private takeDrops(panel: HTMLElement, drop: HTMLElement) {
+    panel.addEventListener("dragover", (e) => {
+      if (!e.dataTransfer?.types.includes("Files")) return;
+      e.preventDefault();
+      drop.hidden = false;
+    });
+    panel.addEventListener("dragleave", (e) => {
+      if (!panel.contains(e.relatedTarget as Node)) drop.hidden = true;
+    });
+    panel.addEventListener("drop", (e) => {
+      drop.hidden = true;
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      if (!files.length) return;
+      e.preventDefault();
+      this.switchTab("chat");
+      this.composer.add(files);
+    });
   }
 
   private switchTab(tab: Tab) {
@@ -342,34 +372,32 @@ export class Widget {
       node.setAttribute("aria-selected", String(node.dataset.tab === tab));
     }
     this.el.compose.hidden = tab !== "chat";
-    this.renderBody();
+    if (tab === "chat") this.composer.refresh();
+    this.renderBody(true);
   }
 
   // --- chat ---
 
   private async send() {
-    const input = this.el.input as HTMLTextAreaElement;
-    const body = input.value.trim();
-    if (!body) return;
-    input.value = "";
-    this.el.counter.textContent = "";
+    const { composer } = this;
+    const { text, files, restore } = composer.take();
     this.el.error.textContent = "";
-    (this.el.send as HTMLButtonElement).disabled = true;
+    composer.setBusy(true);
     try {
-      const data = await this.api.send(body, this.pendingIntent);
+      const data = await this.api.send(text, this.pendingIntent, files.map((file) => file.id));
       this.pendingIntent = undefined;
       this.humanRequested = data.human_requested;
       this.merge(data.messages);
       if (this.config.ai_enabled && !this.humanRequested && !data.messages.some((m) => m.sender !== "visitor")) {
         this.waitingForReply = Date.now();
       }
-      this.renderBody();
+      this.renderBody(true);
       if (!this.live) this.poll(true);
     } catch (error) {
-      input.value = body;
+      restore();
       this.el.error.textContent = `Couldn't send: ${(error as Error).message}`;
     } finally {
-      (this.el.send as HTMLButtonElement).disabled = false;
+      composer.setBusy(false);
     }
   }
 
@@ -455,16 +483,24 @@ export class Widget {
     }
   }
 
-  private renderBody() {
+  /** `down` goes to the newest message. Otherwise someone reading further up stays there. */
+  private renderBody(down = false) {
     this.el.restart.hidden = this.messages.length === 0;
     if (this.tab === "help") return this.renderHelp();
     const body = this.el.body;
+    const at = body.scrollTop;
+    const atEnd = isAtEnd(body);
     body.replaceChildren();
     body.appendChild(this.renderMessage({ sender: "bot", body: this.config.greeting, author_name: "", a2ui: null }));
-    for (const message of this.messages) body.appendChild(this.renderMessage(message));
+    this.messages.forEach((message, i) => {
+      const row = this.renderMessage(message, this.messages[i - 1], this.messages[i + 1]);
+      if (message.id > this.shownId) row.classList.add("new");
+      body.appendChild(row);
+    });
+    this.shownId = this.lastId;
     const activity = this.activity();
     if (activity) body.appendChild(activity);
-    body.scrollTop = body.scrollHeight;
+    body.scrollTop = down || atEnd ? body.scrollHeight : at;
   }
 
   /** Dots while a reply is coming: the AI's current step, or a teammate typing. */
@@ -488,9 +524,7 @@ export class Widget {
     return row;
   }
 
-  private renderMessage(
-    message: Pick<ChatMessage, "sender" | "body" | "author_name" | "author_photo" | "a2ui" | "form_submitted">,
-  ): HTMLElement {
+  private renderMessage(message: Shown, previous?: ChatMessage, next?: ChatMessage): HTMLElement {
     if (message.sender === "system") {
       const node = div("system");
       const pill = document.createElement("span");
@@ -499,29 +533,34 @@ export class Widget {
       return node;
     }
     const mine = message.sender === "visitor";
-    const row = div(`msg${mine ? " me" : ""}`);
+    const first = !continues(previous, message);
+    const last = !next || !continues(message, next);
+    const row = div(`msg${mine ? " me" : ""}${first ? " first" : ""}${last ? " last" : ""}`);
     const node = div("msg-main");
-    if (!mine) row.appendChild(this.avatar(message.sender, message.author_name, message.author_photo));
+    // One avatar for what one person said in a row.
+    if (!mine) row.appendChild(last ? this.avatar(message.sender, message.author_name, message.author_photo) : div("av none"));
     row.appendChild(node);
-    {
+    if (first) {
       const who = div("who");
       if (mine) {
         who.textContent = "You";
-      } else if (message.sender === "bot") {
-        const tag = document.createElement("span");
-        tag.className = "ai-tag";
-        tag.textContent = "AI";
-        who.append(tag, document.createTextNode(this.config.name));
       } else {
         who.textContent = message.author_name || this.config.name;
+      }
+      if (message.created_at) {
+        const time = document.createElement("time");
+        time.dateTime = message.created_at;
+        time.textContent = timeOf(message.created_at);
+        who.append(time);
       }
       node.appendChild(who);
     }
     if (message.body) {
       const bubble = div("bubble");
-      bubble.append(...formatText(message.body, this.config.website || undefined));
+      bubble.append(...formatText(message.body, this.config.website || undefined, mine));
       node.appendChild(bubble);
     }
+    for (const file of message.attachments ?? []) node.appendChild(isPicture(file) ? this.photo(file) : fileCard(file));
     if (message.a2ui?.length) {
       for (const surface of applyMessages(message.a2ui).values()) {
         node.appendChild(
@@ -535,12 +574,34 @@ export class Widget {
     return row;
   }
 
+  /** A picture someone sent; opens full size. A site's own rules may block images from
+   * elsewhere, and then it shows as a file. */
+  private photo(file: ChatFile): HTMLElement {
+    const a = document.createElement("a");
+    a.className = "photo";
+    a.href = file.url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    const img = document.createElement("img");
+    img.alt = file.name;
+    img.referrerPolicy = "no-referrer";
+    Object.assign(img, fitted(file.width!, file.height!, 220, 220));
+    img.addEventListener("error", () => a.replaceWith(fileCard(file)));
+    img.src = file.url;
+    a.appendChild(img);
+    return a;
+  }
+
   /** A bot icon for the AI agent, a photo or initials for a teammate. */
   private avatar(sender: ChatMessage["sender"], author = "", photo = ""): HTMLElement {
     const av = div("av");
-    av.setAttribute("aria-hidden", "true");
-    if (sender === "bot") av.innerHTML = ICONS.bot;
-    else {
+    if (sender === "bot") {
+      // The icon alone says this is the AI, so it has a name for screen readers.
+      av.innerHTML = ICONS.bot;
+      av.setAttribute("role", "img");
+      av.setAttribute("aria-label", "AI assistant");
+    } else {
+      av.setAttribute("aria-hidden", "true");
       av.textContent = initialsOf(author || this.config.name);
       if (photo) av.appendChild(picture(photo));
     }
@@ -612,21 +673,6 @@ function picture(src: string): HTMLImageElement {
   img.addEventListener("error", () => img.remove());
   img.src = src;
   return img;
-}
-
-function div(className: string): HTMLDivElement {
-  const node = document.createElement("div");
-  node.className = className;
-  return node;
-}
-
-function button(className: string, label: string, onClick: () => void): HTMLButtonElement {
-  const node = document.createElement("button");
-  node.type = "button";
-  node.className = className;
-  node.textContent = label;
-  node.addEventListener("click", onClick);
-  return node;
 }
 
 function readStored(key: string, name: string): string {

@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { Plug, Plus, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { McpServers } from "@/components/mcp-servers";
+import { Select } from "@/components/select";
 import { Badge, Button, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, type Tool } from "@/lib/api";
@@ -11,6 +12,9 @@ import { rowsToSchema, schemaToRows, urlPlaceholders, type InputRow, type InputT
 import { usePoll } from "@/lib/use-poll";
 
 const EMPTY: ToolDraft = { name: "", description: "", method: "GET", url: "", inputs: [], headers: [], enabled: true };
+
+const METHODS = (["GET", "POST"] as const).map((value) => ({ value, label: value }));
+const INPUT_TYPES = (["string", "integer", "number", "boolean"] satisfies InputType[]).map((value) => ({ value, label: value }));
 
 interface ToolDraft {
   id?: number;
@@ -209,10 +213,7 @@ function ToolEditor({ initial, base, onClose, onSaved }: { initial: ToolDraft; b
       </Field>
       <div className="grid grid-cols-[110px_1fr] gap-3">
         <Field label="Method">
-          <select className={inputClass} value={d.method} onChange={(e) => setD({ ...d, method: e.target.value as "GET" | "POST" })}>
-            <option>GET</option>
-            <option>POST</option>
-          </select>
+          <Select value={d.method} options={METHODS} onChange={(method) => setD({ ...d, method })} />
         </Field>
         <Field label="URL" hint="{input} fills an input. {visitor.email}, {visitor.name} and {visitor.id} come from the visitor, never from the AI.">
           <input className={clsx(inputClass, "font-mono")} placeholder="https://api.example.com/products" value={d.url} onChange={(e) => setD({ ...d, url: e.target.value })} />
@@ -226,12 +227,7 @@ function ToolEditor({ initial, base, onClose, onSaved }: { initial: ToolDraft; b
         {d.inputs.map((row, i) => (
           <div key={i} className="mb-2 grid grid-cols-[140px_110px_1fr_auto_auto] items-center gap-2">
             <input aria-label="Input name" className={clsx(inputClass, "font-mono")} placeholder="q" value={row.name} onChange={(e) => setInput(i, { name: e.target.value })} />
-            <select aria-label="Input type" className={inputClass} value={row.type} onChange={(e) => setInput(i, { type: e.target.value as InputType })}>
-              <option>string</option>
-              <option>integer</option>
-              <option>number</option>
-              <option>boolean</option>
-            </select>
+            <Select label="Input type" value={row.type} options={INPUT_TYPES} onChange={(type) => setInput(i, { type })} />
             <input aria-label="Input description" className={inputClass} placeholder="What to put here" value={row.description} onChange={(e) => setInput(i, { description: e.target.value })} />
             <label className="flex items-center gap-1 text-xs">
               <input type="checkbox" checked={row.required} onChange={(e) => setInput(i, { required: e.target.checked })} /> required

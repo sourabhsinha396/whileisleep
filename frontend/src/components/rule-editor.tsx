@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import { FlaskConical, Plus, X } from "lucide-react";
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { Button, ErrorText, Field, inputClass, Segmented } from "@/components/ui";
 import { api, type Rule } from "@/lib/api";
 import { ago } from "@/lib/format";
@@ -247,13 +248,7 @@ function ConditionRow({ row, onChange, onRemove }: { row: Row; onChange: (row: R
 
   return (
     <div className="flex flex-wrap items-start gap-2">
-      <select className={clsx(inputClass, "w-56")} aria-label="Field" value={option.id} onChange={(e) => changeField(e.target.value)}>
-        {FIELDS.map((field) => (
-          <option key={field.id} value={field.id}>
-            {field.label}
-          </option>
-        ))}
-      </select>
+      <Select label="Field" className="w-56" value={option.id} options={FIELDS.map((f) => ({ value: f.id, label: f.label }))} onChange={changeField} />
       {keyed && (
         <input
           className={clsx(inputClass, "w-36 font-mono")}
@@ -263,13 +258,13 @@ function ConditionRow({ row, onChange, onRemove }: { row: Row; onChange: (row: R
           onChange={(e) => onChange({ ...row, field: option.id + e.target.value.trim().toLowerCase() })}
         />
       )}
-      <select className={clsx(inputClass, "w-48")} aria-label="Operator" value={row.op} onChange={(e) => onChange({ ...row, op: e.target.value })}>
-        {opsFor(row.field).map((op) => (
-          <option key={op} value={op}>
-            {opLabel(op)}
-          </option>
-        ))}
-      </select>
+      <Select
+        label="Operator"
+        className="w-48"
+        value={row.op}
+        options={opsFor(row.field).map((op) => ({ value: op, label: opLabel(op) }))}
+        onChange={(op) => onChange({ ...row, op })}
+      />
       <ValueInput row={row} kind={option.kind} onChange={(value) => onChange({ ...row, value })} />
       {onRemove && (
         <Button variant="ghost" aria-label="Remove condition" onClick={onRemove}>
@@ -284,10 +279,16 @@ function ValueInput({ row, kind, onChange }: { row: Row; kind: string; onChange:
   if (takesNoValue(row.op)) return null;
   if (kind === "boolean") {
     return (
-      <select className={clsx(inputClass, "w-28")} aria-label="Value" value={row.value === "false" ? "false" : "true"} onChange={(e) => onChange(e.target.value)}>
-        <option value="true">yes</option>
-        <option value="false">no</option>
-      </select>
+      <Select
+        label="Value"
+        className="w-28"
+        value={row.value === "false" ? "false" : "true"}
+        options={[
+          { value: "true", label: "yes" },
+          { value: "false", label: "no" },
+        ]}
+        onChange={onChange}
+      />
     );
   }
   if (kind === "weekday") {
@@ -341,15 +342,16 @@ function AttributeRows({ attributes, onChange }: { attributes: AttributeAction[]
       <p className="text-sm font-medium">Remember something</p>
       {attributes.map((attribute, index) => (
         <div key={index} className="flex flex-wrap items-center gap-2">
-          <select
-            className={clsx(inputClass, "w-44")}
-            aria-label="Scope"
+          <Select
+            label="Scope"
+            className="w-48"
             value={attribute.scope}
-            onChange={(e) => update(index, { scope: e.target.value as AttributeAction["scope"] })}
-          >
-            <option value="conversation">On the conversation</option>
-            <option value="contact">On the visitor</option>
-          </select>
+            options={[
+              { value: "conversation", label: "On the conversation" },
+              { value: "contact", label: "On the visitor" },
+            ]}
+            onChange={(scope) => update(index, { scope })}
+          />
           <input
             className={clsx(inputClass, "w-36 font-mono")}
             aria-label="Attribute name"

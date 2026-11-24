@@ -17,6 +17,8 @@ and only wakes you for the chats that need a human.
 
 A visitor asks. The agent checks your rules, looks up real data, and replies.
 
+**Not just text:** with [A2UI](https://a2ui.org), the agent can put forms and buttons right in the chat, so visitors fill in and click instead of typing it all out.
+
 ![A visitor asks about an order and about shipping; the agent calls an API, searches the help center and replies](docs/images/demo.gif)
 
 ## The inbox

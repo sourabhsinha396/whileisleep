@@ -32,10 +32,10 @@ function AgentSettings({ canEdit }: { canEdit: boolean }) {
           No LLM yet, so the agent only matches help articles by keyword and can&apos;t use tools.{" "}
           {workspace.is_organization_owner ? (
             <Link className="font-medium underline" href={`/w/${workspace.slug}/settings/ai-model`}>
-              Add an OpenRouter key and model
+              Add a provider key and pick a model
             </Link>
           ) : (
-            "Ask the organization owner to add an OpenRouter key and model."
+            "Ask the organization owner to add a provider key and pick a model."
           )}
         </p>
       )}

@@ -6,8 +6,9 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 
-from apps.agent import bot, openrouter, pipeline
+from apps.agent import bot, pipeline, providers
 from apps.agent.models import Turn
+from apps.agent.providers import ProviderError
 from apps.agent.turns import Recorder
 from apps.conversations.models import Conversation, Message
 
@@ -219,7 +220,7 @@ def test_the_prompt_goes_from_stable_to_changing():
 def test_a_failed_model_call_falls_back_and_says_why(llm):
     workspace = workspace_with_llm()
     ArticleFactory(workspace=workspace, title="Shipping", body="We ship to Canada.")
-    llm(openrouter.OpenRouterError("OpenRouter credits or key limit ran out.", 402))
+    llm(ProviderError("OpenRouter credits or key limit ran out.", 402))
     send(VisitorFactory(workspace=workspace))
     turn = only_turn()
     assert turn.stage == Turn.Stage.FALLBACK
@@ -289,7 +290,7 @@ def test_a_message_that_arrives_while_the_model_thinks_cancels_the_answer(llm, m
         MessageFactory(conversation=conversation, body="to Canada?")
         return complete(*args)
 
-    monkeypatch.setattr(openrouter, "complete", slow_model)
+    monkeypatch.setattr(providers, "complete", slow_model)
 
     assert bot.reply(conversation.id, trigger_id=first.id) is None
 
@@ -373,7 +374,7 @@ def test_handle_runs_inline_in_tests(llm):
 
 
 def test_turns_of_a_conversation(api, workspace, llm):
-    workspace.organization.openrouter_api_key = "sk-or-test-key-1234"
+    workspace.organization.provider_keys = {"openrouter": "sk-or-test-key-1234"}
     workspace.organization.llm_model = "test/model"
     workspace.organization.save()
     rule = RuleFactory(workspace=workspace, keywords=["hours"], reply="9 to 5.")

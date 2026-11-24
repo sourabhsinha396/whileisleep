@@ -8,7 +8,7 @@ writes the AI's replies, the Next.js dashboard, Postgres and Redis.
 
 - A VM with 2 vCPU, 4 GB RAM and **Ubuntu 24.04** is enough to start; the AI calls happen at your LLM provider, not on this machine.
 - A domain or subdomain, for example `chat.example.com`.
-- An OpenRouter API key (you enter it in the dashboard after the first login, not here).
+- An API key from OpenAI, Anthropic, Google Gemini or OpenRouter (you enter it in the dashboard after the first login, not here).
 
 ## 1. Create the VM
 
@@ -49,7 +49,7 @@ The `S3_*` and `STORAGE_*` settings are where uploaded files go: an S3-compatibl
 as Cloudflare R2 or Hetzner Object Storage. Leave them empty if you have none. Everything in
 that bucket is readable by anyone with the link, so use a different, private one for backups.
 
-`ENCRYPTION_KEYS` encrypts the API keys you store in the dashboard (your OpenRouter key,
+`ENCRYPTION_KEYS` encrypts the API keys you store in the dashboard (your AI provider keys,
 tool headers). **Keep a copy of it outside the server**: a database backup is unreadable
 without it.
 
@@ -66,7 +66,7 @@ certificate.
 
 Open `https://YOUR_DOMAIN`, sign up (the first account owns its organization), then:
 
-1. Set the OpenRouter key and model under **Settings › AI model**.
+1. Add your AI provider's key and pick a model under **Settings › AI model**.
 2. Copy the widget snippet from **Settings › Install** into your site.
 3. Set `SIGNUP_ENABLED=false` in `.env` and run `docker compose up -d` so nobody else can
    create accounts on your server.

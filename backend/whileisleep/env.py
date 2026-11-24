@@ -54,7 +54,7 @@ class EnvFile(BaseModel):
     # "false" closes account creation.
     SIGNUP_ENABLED: bool | None = None
     # Only `manage.py seed_demo` reads these. The running app takes each organization's
-    # OpenRouter key from its settings page, never from here.
+    # AI provider keys from its settings page, never from here.
     # Plain pattern: reserved test domains (demo@whileisleep.test) are fine here.
     DEMO_EMAIL: str | None = Field(None, pattern=r"^[^@\s]+@[^@\s]+$")
     DEMO_PASSWORD: str | None = None

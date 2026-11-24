@@ -8,8 +8,8 @@ queue adds over running it in the web process:
 - One reply at a time per conversation: a job waits while another holds the
   conversation's lock, and by the time it runs, the older pass has stepped aside for the
   newer message (see bot.superseded).
-- A provider hiccup isn't the visitor's problem: a model call that fails in a way that
-  may pass is tried again after a few seconds before the help center fallback answers.
+- A provider hiccup isn't the visitor's problem: when every model failed (apps.agent.llm) in a
+  way that may pass, they are tried again after a few seconds before the help center answers.
 
 `sweep_unanswered` is the safety net under all of it. The queue is Redis and the message is
 Postgres, so there is a moment (the web process dying between saving a message and queueing
@@ -30,8 +30,9 @@ from django.utils import timezone
 
 from apps.conversations.models import Message
 
-from . import bot, openrouter
+from . import bot
 from .models import Turn
+from .providers import ProviderError
 
 log = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ def answer(
         try:
             bot.reply(*arguments, retry_transient=tries_left)
             return
-        except openrouter.OpenRouterError as error:
+        except ProviderError as error:
             # Only raised while tries are left (see bot.reply).
             log.warning("Model call failed on conversation %s, will try again: %s", conversation_id, error)
     # Outside the lock, so the next try (or a newer message's job) can take it.

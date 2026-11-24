@@ -24,9 +24,12 @@ def visitor_asks(workspace):
 
 @pytest.fixture
 def ready(account):
-    account.organization.openrouter_api_key = "sk-or-test-key-1234"
-    account.organization.llm_model = "test/model"
-    account.organization.save()
+    # With a fallback model too: it mustn't answer either when the AI is paused.
+    organization = account.organization
+    organization.provider_keys = {"openrouter": "sk-or-test-key-1234", "anthropic": "sk-ant-test-key-5678"}
+    organization.llm_model = "test/model"
+    organization.fallback_provider, organization.fallback_model = "anthropic", "claude-test"
+    organization.save()
     return account
 
 

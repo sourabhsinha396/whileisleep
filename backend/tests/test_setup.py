@@ -50,7 +50,7 @@ def test_the_test_page_is_not_an_installation(api, anon, workspace):
 
 
 def test_ai_needs_both_a_key_and_a_model(api, workspace):
-    api.patch("/organization", {"openrouter_api_key": "sk-or-v1-abcdefgh1234"})
+    api.put("/organization/keys/openrouter", {"api_key": "sk-or-v1-abcdefgh1234"})
     assert done(api, workspace) == []
     api.patch("/organization", {"llm_model": "x/y"})
     assert done(api, workspace) == ["ai"]

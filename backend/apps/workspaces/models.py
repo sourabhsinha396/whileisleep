@@ -1,11 +1,12 @@
 import secrets
+from dataclasses import dataclass, field
 
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 from django.utils.text import slugify
 
-from whileisleep.fields import EncryptedTextField
+from whileisleep.fields import EncryptedJSONField, EncryptedTextField
 from whileisleep.folders import workspace_logo
 
 
@@ -17,29 +18,70 @@ def new_identity_secret() -> str:
     return "is_" + secrets.token_urlsafe(32)
 
 
+class Provider(models.TextChoices):
+    """Who answers the AI's calls (apps.agent.providers has a client for each)."""
+
+    OPENAI = "openai", "OpenAI"
+    ANTHROPIC = "anthropic", "Anthropic"
+    GOOGLE = "google", "Google Gemini"
+    OPENROUTER = "openrouter", "OpenRouter"
+
+
+@dataclass(frozen=True)
+class LlmChoice:
+    """A model the organization chose, with the key to call it."""
+
+    provider: str
+    model: str
+    api_key: str = field(repr=False)
+
+    @property
+    def label(self) -> str:
+        return f"{Provider(self.provider).label} {self.model}"
+
+    @property
+    def slug(self) -> str:
+        """How a Turn records the model, the way OpenRouter names them: "openai/gpt-..."."""
+        return self.model if self.provider == Provider.OPENROUTER else f"{self.provider}/{self.model}"
+
+
 class Organization(models.Model):
-    """The account that owns workspaces and pays for the LLM. Its owner sets the OpenRouter key
-    and model in the dashboard; every workspace in the organization's bot uses them."""
+    """The account that owns workspaces and pays for the LLM. Its owner sets the provider keys,
+    the model and its fallback in the dashboard; every workspace's bot uses them."""
 
     name = models.CharField(max_length=120)
     owner = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="organization")
-    # Secret: encrypted in the database, and the API never returns it, only whether it is set
-    # and its last characters.
-    openrouter_api_key = EncryptedTextField(blank=True)
-    # An OpenRouter model id (see openrouter.ai/models) that supports tool calling.
+    # {"openai": "sk-..."}, a key per provider. Secret: encrypted in the database, and the API
+    # never returns one, only whether it is set and its last characters.
+    provider_keys = EncryptedJSONField(blank=True)
+    # The model that answers: the provider's own id for it. It must support tool calling.
+    llm_provider = models.CharField(max_length=20, choices=Provider, default=Provider.OPENROUTER)
     llm_model = models.CharField(max_length=200, blank=True)
+    # The model that takes over a reply when that one fails (apps.agent.llm). Empty: none.
+    fallback_provider = models.CharField(max_length=20, choices=Provider, blank=True)
+    fallback_model = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
 
     @property
-    def llm_ready(self) -> bool:
-        return bool(self.openrouter_api_key and self.llm_model)
+    def llm_choices(self) -> list[LlmChoice]:
+        """The models that can be called, in the order to ask them: the main one, then the
+        fallback. One without a key or a model is left out."""
+        chosen = ((self.llm_provider, self.llm_model), (self.fallback_provider, self.fallback_model))
+        return [
+            LlmChoice(provider, model, self.provider_keys[provider])
+            for provider, model in chosen
+            if model and self.provider_keys.get(provider)
+        ]
 
     @property
-    def key_hint(self) -> str:
-        key = self.openrouter_api_key
+    def llm_ready(self) -> bool:
+        return bool(self.llm_choices)
+
+    def key_hint(self, provider: str) -> str:
+        key = self.provider_keys.get(provider, "")
         return f"…{key[-4:]}" if len(key) > 8 else ""
 
     @property

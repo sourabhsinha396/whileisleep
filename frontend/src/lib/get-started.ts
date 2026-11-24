@@ -45,7 +45,7 @@ export function guide(workspace: Viewer, setup: SetupStep[]): GuideStep[] {
   if (workspace.is_organization_owner) {
     known.ai = {
       label: "Connect your AI",
-      why: "Add your OpenRouter key so the agent can write answers.",
+      why: "Add your AI provider's key and pick a model so the agent can write answers.",
       href: page("settings/ai-model"),
     };
     known.storage = {

@@ -9,6 +9,13 @@ Technical decisions are in [tech-decisions.md](tech-decisions.md).
 **Decision.** On the hosted version the AI pauses after 14 days if the customer doesn't pay. Customers bring their
 own AI API keys.
 
+## 2026-11-24: Several AI providers, and one fallback model
+
+**Decision.** Customers can use OpenAI, Anthropic, OpenRouter and one more provider (Google Gemini was chosen), not
+only OpenRouter. They can also pick a fallback model, from any provider. There is never more than one fallback.
+
+**Why.** When the chosen model is down, say OpenAI's, another one such as Anthropic's Haiku should answer.
+
 ## 2026-11-24: Images in articles are only ever in the customer's own bucket
 
 **Decision.** A help article's images go to the bucket the customer connected, never to ours. Until they connect one,

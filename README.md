@@ -56,7 +56,8 @@ One script tag on your site, in one of 16 colors. Visitors chat or search your h
 - **Help center:** write articles once; visitors read them and the AI answers from them.
 - **Your APIs:** order status, stock, product search. The agent looks facts up instead of guessing.
 - **MCP servers:** connect one and choose which of its tools the agent may use.
-- **Bring your own LLM:** your OpenRouter key and the model you pick.
+- **Bring your own LLM:** OpenAI, Anthropic, Google Gemini or OpenRouter, with your key and the model you pick.
+- **A fallback model:** when your provider is down, another one takes over the reply.
 
 </details>
 
@@ -107,7 +108,7 @@ pnpm --dir frontend install
 pnpm --dir frontend dev
 ```
 
-Open <http://localhost:3004>, create an account, and add your OpenRouter key under **Settings › AI model**.
+Open <http://localhost:3004>, create an account, and add your AI provider's key under **Settings › AI model**.
 
 ## Docs
 

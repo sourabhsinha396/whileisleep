@@ -119,7 +119,7 @@ function Plan() {
           <div>
             <h2 className="text-base font-bold tracking-tight">Cloud</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Keeps the AI answering after the trial. It runs on your own OpenRouter key, which you pay separately.
+              Keeps the AI answering after the trial. It runs on your own AI key, which you pay separately.
             </p>
           </div>
           <div role="radiogroup" aria-label="Billing period" className="grid gap-3 sm:grid-cols-2">

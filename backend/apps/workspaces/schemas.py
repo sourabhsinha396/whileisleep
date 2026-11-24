@@ -1,5 +1,9 @@
+from typing import Literal
+
 from ninja import Schema
 from pydantic import EmailStr, Field
+
+from .models import Provider
 
 
 class WorkspaceIn(Schema):
@@ -33,7 +37,7 @@ class WorkspaceOut(Schema):
     ai_instructions: str
     role: str = ""
     open_count: int = 0
-    # The organization has an OpenRouter key and model, so the AI agent can use an LLM.
+    # The organization has a model and its provider's key, so the AI agent can use an LLM.
     llm_ready: bool = False
     is_organization_owner: bool = False
     # Whether this server can store images at all.
@@ -67,21 +71,40 @@ class MemberOut(Schema):
     photo_url: str
 
 
+class ProviderOut(Schema):
+    id: str
+    name: str
+    # Where its keys are made.
+    keys_url: str
+    has_key: bool
+    key_hint: str
+
+
 class OrganizationOut(Schema):
     id: int
     name: str
-    has_openrouter_key: bool
-    key_hint: str
+    providers: list[ProviderOut]
+    llm_provider: str
     llm_model: str
+    # "" when there is no fallback.
+    fallback_provider: str
+    fallback_model: str
     llm_ready: bool
     workspace_count: int
 
 
 class OrganizationPatch(Schema):
     name: str | None = Field(None, min_length=1, max_length=120)
-    # Write-only. "" removes the key.
-    openrouter_api_key: str | None = Field(None, max_length=200)
+    llm_provider: Provider | None = None
     llm_model: str | None = Field(None, max_length=200)
+    # "" removes the fallback.
+    fallback_provider: Provider | Literal[""] | None = None
+    fallback_model: str | None = Field(None, max_length=200)
+
+
+class ProviderKeyIn(Schema):
+    # Write-only.
+    api_key: str = Field(min_length=1, max_length=400)
 
 
 class ModelOut(Schema):

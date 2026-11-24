@@ -24,10 +24,11 @@ services:
     restart: on-failure:2
 
   # The live streams (apps/realtime/views.py) on ASGI. The frontend's dev server proxies
-  # /api/v1/.../stream here (STREAM_URL); reloads when the code changes.
+  # /api/v1/.../stream here (STREAM_URL); reloads when the code changes, without waiting for open
+  # streams, which would never end by themselves.
   stream:
     build: .
-    command: uvicorn whileisleep.asgi:application --host 0.0.0.0 --port 8000 --reload --reload-dir apps --reload-dir whileisleep
+    command: uvicorn whileisleep.asgi:application --host 0.0.0.0 --port 8000 --reload --reload-dir apps --reload-dir whileisleep --timeout-graceful-shutdown 2
     volumes:
       - .:/app
     ports:

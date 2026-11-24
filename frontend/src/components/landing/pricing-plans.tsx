@@ -21,7 +21,8 @@ const CLOUD = [
 
 const cta = "inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors";
 
-export function PricingPlans() {
+/** `heading` is the level of the plan names: h3 under a section title. */
+export function PricingPlans({ heading: Heading = "h2" }: { heading?: "h2" | "h3" }) {
   const [billing, setBilling] = useState<Billing>("yearly");
   const price = cloudPrice(billing);
 
@@ -55,9 +56,9 @@ export function PricingPlans() {
           <span className="grid size-10 place-items-center rounded-xl bg-muted text-muted-foreground">
             <Server size={19} />
           </span>
-          <h2 id="plan-self-hosted" className="mt-4 text-lg font-bold">
+          <Heading id="plan-self-hosted" className="mt-4 text-lg font-bold">
             Self-hosted
-          </h2>
+          </Heading>
           <p className="mt-1 text-sm text-muted-foreground">Run it on your own server.</p>
           <p className="mt-6 flex items-baseline gap-1.5">
             <span className="text-5xl font-extrabold tracking-tight">$0</span>
@@ -79,9 +80,9 @@ export function PricingPlans() {
           <span className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary-text">
             <Cloud size={19} />
           </span>
-          <h2 id="plan-cloud" className="mt-4 text-lg font-bold">
+          <Heading id="plan-cloud" className="mt-4 text-lg font-bold">
             Cloud
-          </h2>
+          </Heading>
           <p className="mt-1 text-sm text-muted-foreground">We host it for you.</p>
           <p className="mt-6 flex items-baseline gap-1.5" aria-live="polite">
             <span className="text-5xl font-extrabold tracking-tight">{dollars(price.perMonth)}</span>

@@ -25,6 +25,8 @@ class EnvFile(BaseModel):
 
     # Optional
     WEB_PORT: int = Field(8004, gt=0, lt=65536)
+    # Where docker compose publishes the stream service. Keep STREAM_URL in frontend/.env in step.
+    STREAM_PORT: int = Field(8009, gt=0, lt=65536)
     DJANGO_SECRET_KEY: str | None = None
     DJANGO_DEBUG: bool | None = None
     ALLOWED_HOSTS: str | None = None

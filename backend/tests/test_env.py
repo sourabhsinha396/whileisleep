@@ -29,6 +29,11 @@ def test_required_keys_are_enough(tmp_path):
     env = validate_env_file(write(tmp_path, REQUIRED))
     assert env.POSTGRES_PORT == 5448
     assert env.WEB_PORT == 8004
+    assert env.STREAM_PORT == 8009
+
+
+def test_stream_port_can_be_changed(tmp_path):
+    assert validate_env_file(write(tmp_path, REQUIRED + "STREAM_PORT=8104")).STREAM_PORT == 8104
 
 
 def test_unknown_key_is_rejected(tmp_path):

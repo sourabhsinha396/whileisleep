@@ -76,6 +76,8 @@ export interface User {
   name: string;
   email: string;
   photo_url: string;
+  /** Of this installation: may edit the docs. */
+  is_superuser: boolean;
 }
 
 export type WidgetBackground = "plain" | PatternName;

@@ -7,6 +7,8 @@ const STREAM_URL = process.env.STREAM_URL ?? "http://localhost:8009";
 const nextConfig: NextConfig = {
   // A self-contained server in .next/standalone, for the Docker image.
   output: "standalone",
+  // The docs read their pages while the server runs.
+  outputFileTracingIncludes: { "/docs": ["./content/docs/*.md"], "/docs/*": ["./content/docs/*.md"] },
   // The dashboard and the widget call Django through this proxy, so one origin serves
   // both the widget script and its API.
   async rewrites() {

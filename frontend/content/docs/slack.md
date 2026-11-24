@@ -1,6 +1,7 @@
-# Slack
-
-A chat that needs a person becomes a thread in your Slack channel. What your team replies there goes to the visitor.
+---
+title: Slack
+description: Chats that need a person become threads in your channel. Replies there reach the visitor.
+---
 
 ## Connect it
 
@@ -20,9 +21,7 @@ Visitors' messages, the AI's and your teammates' from the inbox appear in the sa
 
 Good to know:
 
-- **Everyone in the channel can read these chats.** Only members of the whileisleep workspace can answer: the email in
-  Slack must be the one they sign in to whileisleep with. Others get a private message saying nothing was sent. People
-  from another company's Slack, in a shared channel, can't answer.
+- **Everyone in the channel can read these chats.** Only members of the whileisleep workspace can answer: the email in Slack must be the one they sign in to whileisleep with. Others get a private message saying nothing was sent. People from another company's Slack, in a shared channel, can't answer.
 - Files can't be sent from Slack yet; attach them in the inbox. Visitors' files show in Slack as links.
 - Editing or deleting a message in Slack doesn't change what the visitor got.
 - With **Chats that need a person**, a thread starts when the AI, a rule or the visitor asks for one, or when the AI is off.
@@ -33,18 +32,8 @@ Good to know:
 You need a Slack app of your own, once per server. The server needs a public `https://` address.
 
 1. Open [api.slack.com/apps](https://api.slack.com/apps), press **Create New App**, then **From a manifest**.
-2. Paste [`manifest.json`](../backend/plugins/slack/manifest.json) with `YOUR_DOMAIN` replaced by your server's domain, in
-   all three places. The server must be running for Slack to accept the addresses: if it doesn't, do step 3 and press
-   **Retry** under **Event Subscriptions**.
-3. From **Basic Information**, copy three values into the server's `.env`, and restart it:
-
-   ```sh
-   PLUGIN_SLACK_CLIENT_ID=
-   PLUGIN_SLACK_CLIENT_SECRET=
-   PLUGIN_SLACK_SIGNING_SECRET=
-   ```
-
+2. Paste [`manifest.json`](../../../backend/plugins/slack/manifest.json) with `YOUR_DOMAIN` replaced by your server's domain, in all three places. The server must be running for Slack to accept the addresses: if it doesn't, do step 3 and press **Retry** under **Event Subscriptions**.
+3. From **Basic Information**, copy three values into the server's `.env` as `PLUGIN_SLACK_CLIENT_ID`, `PLUGIN_SLACK_CLIENT_SECRET` and `PLUGIN_SLACK_SIGNING_SECRET`, and restart it.
 4. To connect a Slack other than the one the app was made in, turn on **Manage Distribution › Public Distribution**.
 
-On your own machine Slack can't reach `localhost`: run a tunnel with an `https://` address, use it in the manifest, and set
-`SITE_URL` to it.
+On your own machine Slack can't reach `localhost`: run a tunnel with an `https://` address, use it in the manifest, and set `SITE_URL` to it.

@@ -1,10 +1,9 @@
-# Webhooks
+---
+title: Webhooks
+description: Tell any system what happens in your chats, and let it answer. Works with your own server, Zapier, Make and n8n.
+---
 
-Tell any system what happens in your chats, and let it answer them. Works with your own server, Zapier, Make and n8n.
-
-Connect one in **Integrations › Webhooks**: enter an `https://` address, choose what to send, and save. Saving
-sends a `test` event; if your endpoint doesn't answer with a 2xx status, nothing is saved. A workspace can have five
-endpoints, each with its own events and secret.
+Connect one in **Integrations › Webhooks**: enter an `https://` address, choose what to send, and save. Saving sends a `test` event; if your endpoint doesn't answer with a 2xx status, nothing is saved. A workspace can have five endpoints, each with its own events and secret.
 
 ## What you get
 
@@ -50,8 +49,7 @@ endpoints, each with its own events and secret.
 | `note.created` | A teammate writes an internal note | `message`, `by` |
 | `test` | You save the settings | |
 
-`email_verified` is true only if your server vouched for the email (Settings › Verified identity). Anything else was typed,
-so don't act on it as proof. New fields may be added; none will change or disappear.
+`email_verified` is true only if your server vouched for the email (Settings › Verified identity). Anything else was typed, so don't act on it as proof. New fields may be added; none will change or disappear.
 
 ## Answer quickly, and expect repeats
 
@@ -63,8 +61,7 @@ so don't act on it as proof. New fields may be added; none will change or disapp
 
 ## Check that it came from us
 
-Requests are signed as [Standard Webhooks](https://www.standardwebhooks.com) describes, so its libraries work. Your
-endpoint's secret is on the settings page.
+Requests are signed as [Standard Webhooks](https://www.standardwebhooks.com) describes, so its libraries work. Your endpoint's secret is on the settings page.
 
 ```python
 from standardwebhooks import Webhook
@@ -80,8 +77,7 @@ const event = new Webhook("whsec_...").verify(rawBody, req.headers); // throws i
 
 ## Answer a chat
 
-Send a JSON object to the **Answer at** address, signed with the same secret. Add one header, `webhook-endpoint`, with
-your **Endpoint id**.
+Send a JSON object to the **Answer at** address, signed with the same secret. Add one header, `webhook-endpoint`, with your **Endpoint id**.
 
 ```python
 import datetime, json, uuid, requests
@@ -109,6 +105,4 @@ requests.post(
 | `resolve`, `reopen` | Resolves or reopens the chat | |
 | `give_to_ai` | Gives the chat back to the AI | |
 
-It is done as the person who connected the endpoint, or as the teammate in `author_email`. The answer is `{"ok": true}` once
-the request is accepted. Repeating one with the same `webhook-id` does nothing. Your endpoint isn't told about what it did
-itself; your other endpoints are.
+It is done as the person who connected the endpoint, or as the teammate in `author_email`. The answer is `{"ok": true}` once the request is accepted. Repeating one with the same `webhook-id` does nothing. Your endpoint isn't told about what it did itself; your other endpoints are.

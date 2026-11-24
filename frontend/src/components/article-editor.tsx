@@ -2,7 +2,7 @@
 
 import { type Editor, EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import clsx from "clsx";
-import { Bold, Heading2, ImagePlus, Link2, List, ListOrdered } from "lucide-react";
+import { Bold, Heading2, ImagePlus, Link2, List, ListOrdered, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LinkRow } from "@/components/link-row";
 import { ErrorText, inputClass } from "@/components/ui";
@@ -165,6 +165,18 @@ function Toolbar({
     { label: "Link", icon: Link2, on: active.link || linking, run: () => setLinking(!linking) },
     { label: uploadsEnabled ? "Image" : "Image (connect your storage first)", icon: ImagePlus, on: false, run: pickImage, disabled: !uploadsEnabled },
   ];
+  return <ToolbarButtons items={items} />;
+}
+
+export interface ToolbarItem {
+  label: string;
+  icon: LucideIcon;
+  on: boolean;
+  run: () => void;
+  disabled?: boolean;
+}
+
+export function ToolbarButtons({ items }: { items: ToolbarItem[] }) {
   return (
     <div role="toolbar" aria-label="Formatting" className="flex gap-0.5 border-b bg-muted/50 p-1">
       {items.map(({ label, icon: Icon, on, run, disabled }) => (

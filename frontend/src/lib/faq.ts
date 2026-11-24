@@ -7,7 +7,7 @@ export interface Question {
 
 const AI_COST: Question = {
   q: "What does the AI cost?",
-  a: "You add your own OpenRouter key and pick a model, so you pay your provider directly, at their price. We add nothing on top. Rules and help center answers don't call the model at all.",
+  a: "You add your own OpenAI, Anthropic, Google Gemini or OpenRouter key and pick a model, so you pay your provider directly, at their price. We add nothing on top. Rules and help center answers don't call the model at all.",
 };
 
 const SAME_SOFTWARE: Question = {
@@ -37,7 +37,7 @@ export const HOME_QUESTIONS: Question[] = [
   AI_COST,
   {
     q: "What if my AI provider is down?",
-    a: "We retry brief hiccups. If it's still down, the visitor gets the best matches from your help center instead, and the reason is left as an internal note.",
+    a: "Pick a fallback model from another provider and it takes over the reply right away. If that fails too, we retry, and then the visitor gets the best matches from your help center. Either way the reason is left as an internal note.",
   },
   {
     q: "Can the agent show someone else's data?",

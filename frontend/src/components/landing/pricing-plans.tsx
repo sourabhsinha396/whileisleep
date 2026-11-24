@@ -9,13 +9,13 @@ import { CLOUD_PRICE, cloudPrice, dollars, REPO_URL, yearlySaving, type Billing 
 const SELF_HOSTED = [
   "Every feature, nothing held back",
   "Unlimited workspaces, teammates and conversations",
-  "Your own OpenRouter key and model",
+  "Your own AI key, model and fallback",
   "One server with Docker Compose",
   "Community support",
 ];
 
 const CLOUD = [
-  "Bring your OpenRouter key: AI at your provider's price",
+  "Bring your own AI key: OpenAI, Anthropic, Gemini or OpenRouter, at their price",
   "Email support",
 ];
 

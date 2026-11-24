@@ -91,19 +91,38 @@ export interface Workspace {
   ai_instructions: string;
   role: "owner" | "agent";
   open_count: number;
-  /** The organization has an OpenRouter key and model. */
+  /** The organization has a model and its provider's key. */
   llm_ready: boolean;
   is_organization_owner: boolean;
   /** The server has somewhere to store images. */
   uploads_enabled: boolean;
 }
 
+export type ProviderId = "openai" | "anthropic" | "google" | "openrouter";
+
+export interface LlmProvider {
+  id: ProviderId;
+  name: string;
+  /** Where its keys are made. */
+  keys_url: string;
+  has_key: boolean;
+  key_hint: string;
+}
+
+export interface LlmModel {
+  id: string;
+  name: string;
+}
+
 export interface Organization {
   id: number;
   name: string;
-  has_openrouter_key: boolean;
-  key_hint: string;
+  providers: LlmProvider[];
+  llm_provider: ProviderId;
   llm_model: string;
+  /** "" when there is no fallback. */
+  fallback_provider: ProviderId | "";
+  fallback_model: string;
   llm_ready: boolean;
   workspace_count: number;
 }

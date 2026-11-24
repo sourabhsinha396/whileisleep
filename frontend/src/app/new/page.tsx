@@ -17,7 +17,7 @@ export default function NewWorkspacePage() {
     setBusy(true);
     try {
       const workspace = await api<Workspace>("/workspaces", { method: "POST", body: { name, website } });
-      router.push(`/w/${workspace.slug}/settings`);
+      router.push(`/w/${workspace.slug}/settings/install`);
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);

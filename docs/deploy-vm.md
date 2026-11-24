@@ -62,8 +62,8 @@ certificate.
 
 Open `https://YOUR_DOMAIN`, sign up (the first account owns its organization), then:
 
-1. Set the OpenRouter key and model under **Organization & LLM**.
-2. Copy the widget snippet from **Settings & widget** into your site.
+1. Set the OpenRouter key and model under **Settings › AI model**.
+2. Copy the widget snippet from **Settings › Install** into your site.
 3. Set `SIGNUP_ENABLED=false` in `.env` and run `docker compose up -d` so nobody else can
    create accounts on your server.
 

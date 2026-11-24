@@ -10,7 +10,7 @@ The technical reference: integration, security and internals. For what the produ
 - **Knowledge base**: articles in the widget's Help tab. They are split into passages and indexed with
   Postgres full-text search, so the AI reads the section that answers a question, not whole articles.
 - **Organizations**: own workspaces and the LLM settings. The owner sets an **OpenRouter API key and
-  model** on the Organization & LLM page (the key is write-only and encrypted in the database).
+  model** in Settings › AI model (the key is write-only and encrypted in the database).
 - **AI agent and tools**: the LLM answers visitors. Each workspace adds **tools** (HTTP endpoints on its
   own systems: product search, stock, order status…) so the agent looks facts up instead of guessing.
   Built in: `search_knowledge_base`, `handoff_to_human`, and `reply_to_visitor` (how the model finishes).
@@ -83,7 +83,7 @@ window.whileisleep.identify({ name, email, attributes: { plan: "pro" } });
 
 Anything from the page can be typed into a browser console, so a tool that returns someone's data
 (`/orders?email={visitor.email}`) only accepts **verified** values. Your server signs a short-lived
-token with the workspace's identity secret (Settings & widget) and the page passes it on:
+token with the workspace's identity secret (Settings › Verified identity) and the page passes it on:
 
 ```python
 import jwt, time
@@ -134,7 +134,7 @@ claims become verified attributes.
 
 ## The widget
 
-Add the widget to any site (Settings & widget shows the snippet):
+Add the widget to any site (Settings › Install shows the snippet):
 
 ```html
 <script src="http://localhost:3004/widget.js" data-workspace="ws_..." async></script>

@@ -3,7 +3,7 @@
     docker compose exec -T web python manage.py seed_demo
 
 Login: DEMO_EMAIL / DEMO_PASSWORD from .env. If OPENROUTER_API_KEY is set there, it goes into
-the demo organization; pick the model on the Organization page. The first workspace's tools call a site's
+the demo organization; pick the model in Settings, AI model. The first workspace's tools call a site's
 public API (EXAMGRILL_API_URL, default the examgrill dev backend on the host); the
 second is a plain knowledge-base-only shop.
 """

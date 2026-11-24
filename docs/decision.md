@@ -3,6 +3,19 @@
 Technical decisions made by the project owner, newest first. Each says what was decided and, when
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 
+## 2026-11-24: The README has one GIF and two images
+
+**Decision.** At most one GIF (or interactive demo) and two images, with the inbox captured on a large screen.
+
+**Why.** On a small screen the chat looked narrow.
+
+## 2026-11-24: One Settings entry with groups inside it
+
+**Decision.** The sidebar holds the daily work (inbox, visitors, knowledge base, AI agent), and everything set up
+once sits behind one Settings entry, in groups with sub-settings the way Crisp does it. Related settings are merged.
+
+**Why.** The sidebar was not arranged well: organization and LLM settings sat beside the daily pages.
+
 ## 2026-11-24: The deploy guide is for any VM
 
 **Decision.** The guide is "Deploy on a VM (before your Maggi is ready)" (`docs/deploy-vm.md`), not tied to Hetzner.

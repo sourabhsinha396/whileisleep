@@ -2,78 +2,13 @@
 
 import clsx from "clsx";
 import { Plug, Plus, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { useCallback, useState } from "react";
 import { McpServers } from "@/components/mcp-servers";
-import { Badge, Button, ErrorText, Field, inputClass, PageHeader, Switch } from "@/components/ui";
+import { Badge, Button, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
-import { api, type Tool, type Workspace } from "@/lib/api";
+import { api, type Tool } from "@/lib/api";
 import { rowsToSchema, schemaToRows, urlPlaceholders, type InputRow, type InputType } from "@/lib/tool-schema";
 import { usePoll } from "@/lib/use-poll";
-
-export default function AiPage() {
-  const { workspace } = useWorkspace();
-  const owner = workspace.role === "owner";
-  return (
-    <>
-      <PageHeader title="AI agent & tools" description="How the agent behaves, and the APIs it can call to look things up." />
-      <div className="mx-auto max-w-4xl space-y-8 p-8">
-        <AgentSettings key={workspace.id} canEdit={owner} />
-        <Tools canEdit={owner} />
-      </div>
-    </>
-  );
-}
-
-function AgentSettings({ canEdit }: { canEdit: boolean }) {
-  const { workspace, reload } = useWorkspace();
-  const [enabled, setEnabled] = useState(workspace.ai_enabled);
-  const [instructions, setInstructions] = useState(workspace.ai_instructions);
-  const [saved, setSaved] = useState("");
-
-  async function save() {
-    await api<Workspace>(`/workspaces/${workspace.id}`, { method: "PATCH", body: { ai_enabled: enabled, ai_instructions: instructions } });
-    await reload();
-    setSaved("Saved.");
-  }
-
-  return (
-    <section className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
-      <h2 className="text-base font-bold tracking-tight">Agent</h2>
-      {!workspace.llm_ready && (
-        <p className="rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning">
-          No LLM yet, so the agent only matches help articles by keyword and can&apos;t use tools.{" "}
-          {workspace.is_organization_owner ? (
-            <Link className="font-medium underline" href={`/w/${workspace.slug}/organization`}>
-              Add an OpenRouter key and model
-            </Link>
-          ) : (
-            "Ask the organization owner to add an OpenRouter key and model."
-          )}
-        </p>
-      )}
-      <label className="flex items-center gap-3 text-sm">
-        <Switch disabled={!canEdit} checked={enabled} onChange={setEnabled} />
-        Answer visitors automatically. It hands over to your team when asked, or when it can&apos;t answer.
-      </label>
-      <Field label="Instructions" hint="Tone, scope, and facts that don't fit an article. The agent always answers from your tools and articles, not its own knowledge.">
-        <textarea
-          className={clsx(inputClass, "min-h-32")}
-          disabled={!canEdit}
-          placeholder="Be friendly and brief. We only sell practice tests, not exam vouchers. Offer a person for refund questions."
-          value={instructions}
-          onChange={(e) => setInstructions(e.target.value)}
-        />
-      </Field>
-      {canEdit && (
-        <div className="flex items-center gap-3">
-          <Button onClick={save}>Save</Button>
-          <span className="text-sm text-success">{saved}</span>
-        </div>
-      )}
-    </section>
-  );
-}
 
 const EMPTY: ToolDraft = { name: "", description: "", method: "GET", url: "", inputs: [], headers: [], enabled: true };
 
@@ -89,8 +24,9 @@ interface ToolDraft {
   enabled: boolean;
 }
 
-function Tools({ canEdit }: { canEdit: boolean }) {
+export default function ToolsPage() {
   const { workspace } = useWorkspace();
+  const canEdit = workspace.role === "owner";
   const base = `/workspaces/${workspace.id}/tools`;
   const { data, reload } = usePoll(useCallback(() => api<Tool[]>(base), [base]), 60000);
   const [draft, setDraft] = useState<ToolDraft | null>(null);
@@ -116,65 +52,64 @@ function Tools({ canEdit }: { canEdit: boolean }) {
   }
 
   return (
-    <section className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-bold tracking-tight">Tools (data connectors)</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Endpoints on your own systems the agent calls for live data, like product search, stock or order status. It decides when to call
-            them from the description, so say what each one returns and when to use it.
-          </p>
-        </div>
+    <>
+      <PageHeader title="Tools" description="APIs on your own systems the agent can call to look things up.">
         {canEdit && (
           <Button onClick={() => setDraft({ ...EMPTY })}>
             <Plus size={16} /> Add tool
           </Button>
         )}
+      </PageHeader>
+      <div className="mx-auto max-w-4xl space-y-4 p-8">
+        <p className="text-sm text-muted-foreground">
+          The agent calls these for live data, like product search, stock or order status. It decides when from the description, so say what
+          each one returns and when to use it.
+        </p>
+
+        <ul className="divide-y overflow-hidden rounded-lg border bg-surface shadow-sm">
+          <BuiltIn name="search_knowledge_base" text="Searches your published articles." />
+          <BuiltIn name="handoff_to_human" text="Flags the conversation for your team and pauses the agent." />
+          {(data ?? []).map((tool) => (
+            <li key={tool.id} className="flex items-center gap-3 px-4 py-3">
+              <Plug size={16} className={isOn(tool) ? "text-primary-text" : "text-muted-foreground/50"} />
+              <div className="min-w-0 flex-1">
+                <p className="font-mono text-sm font-semibold">{tool.name}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {tool.mcp_server_id ? tool.description : `${tool.method} ${tool.url}`}
+                </p>
+              </div>
+              {tool.mcp_server_id !== null && !tool.read_only && <Badge tone="warning">Can change data</Badge>}
+              {tool.enabled && tool.needs_review && <Badge tone="danger">Changed: review</Badge>}
+              {!tool.enabled && <span className="text-xs text-muted-foreground">Off</span>}
+              {canEdit && tool.mcp_server_id === null && (
+                <Button variant="secondary" onClick={() => edit(tool)}>
+                  Edit
+                </Button>
+              )}
+              {canEdit && tool.mcp_server_id !== null && (
+                <Button variant="secondary" onClick={() => approve(tool, !isOn(tool))}>
+                  {isOn(tool) ? "Turn off" : tool.enabled ? "Approve again" : "Turn on"}
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+
+        {draft && (
+          <ToolEditor
+            key={draft.id ?? "new"}
+            initial={draft}
+            base={base}
+            onClose={() => setDraft(null)}
+            onSaved={() => {
+              reload();
+            }}
+          />
+        )}
+
+        <McpServers workspaceId={workspace.id} canEdit={canEdit} onChanged={reload} />
       </div>
-
-      <ul className="divide-y overflow-hidden rounded-lg border">
-        <BuiltIn name="search_knowledge_base" text="Searches your published articles." />
-        <BuiltIn name="handoff_to_human" text="Flags the conversation for your team and pauses the agent." />
-        {(data ?? []).map((tool) => (
-          <li key={tool.id} className="flex items-center gap-3 px-4 py-3">
-            <Plug size={16} className={isOn(tool) ? "text-primary-text" : "text-muted-foreground/50"} />
-            <div className="min-w-0 flex-1">
-              <p className="font-mono text-sm font-semibold">{tool.name}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {tool.mcp_server_id ? tool.description : `${tool.method} ${tool.url}`}
-              </p>
-            </div>
-            {tool.mcp_server_id !== null && !tool.read_only && <Badge tone="warning">Can change data</Badge>}
-            {tool.enabled && tool.needs_review && <Badge tone="danger">Changed: review</Badge>}
-            {!tool.enabled && <span className="text-xs text-muted-foreground">Off</span>}
-            {canEdit && tool.mcp_server_id === null && (
-              <Button variant="secondary" onClick={() => edit(tool)}>
-                Edit
-              </Button>
-            )}
-            {canEdit && tool.mcp_server_id !== null && (
-              <Button variant="secondary" onClick={() => approve(tool, !isOn(tool))}>
-                {isOn(tool) ? "Turn off" : tool.enabled ? "Approve again" : "Turn on"}
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      {draft && (
-        <ToolEditor
-          key={draft.id ?? "new"}
-          initial={draft}
-          base={base}
-          onClose={() => setDraft(null)}
-          onSaved={() => {
-            reload();
-          }}
-        />
-      )}
-
-      <McpServers workspaceId={workspace.id} canEdit={canEdit} onChanged={reload} />
-    </section>
+    </>
   );
 }
 

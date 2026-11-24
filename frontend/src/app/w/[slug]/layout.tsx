@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { BookOpen, Bot, Building2, Check, ChevronsUpDown, Eye, Inbox, LogOut, Plus, Settings, Sparkles, Zap } from "lucide-react";
+import { Check, ChevronsUpDown, LogOut, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -9,23 +9,30 @@ import { Avatar, Logo, Spinner, ThemeToggle } from "@/components/ui";
 import { WorkspaceContext } from "@/components/workspace-context";
 import { api, getToken, setToken, type User, type Workspace } from "@/lib/api";
 import { textOn } from "@/lib/contrast";
+import { isActive, MAIN_NAV, type NavItem, SETTINGS_LINK } from "@/lib/nav";
 import { usePoll } from "@/lib/use-poll";
 
-const NAV = [
-  { section: "Conversations", items: [
-    { href: "inbox", label: "Inbox", icon: Inbox },
-    { href: "visitors", label: "Visitors", icon: Eye },
-  ] },
-  { section: "AI agent", items: [
-    { href: "knowledge", label: "Knowledge base", icon: BookOpen },
-    { href: "ai", label: "Agent & tools", icon: Bot },
-    { href: "automation", label: "Rules & playbooks", icon: Zap },
-  ] },
-  { section: "Configure", items: [
-    { href: "settings", label: "Settings & widget", icon: Settings },
-    { href: "organization", label: "Organization & LLM", icon: Building2 },
-  ] },
-];
+function SidebarLink({ item, slug, pathname, count = 0 }: { item: NavItem; slug: string; pathname: string; count?: number }) {
+  const active = isActive(pathname, slug, item);
+  return (
+    <Link
+      href={`/w/${slug}/${item.href}`}
+      aria-current={active ? "page" : undefined}
+      className={clsx(
+        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+        active ? "bg-surface font-semibold text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+      )}
+    >
+      <item.icon size={17} className={active ? "text-primary-text" : undefined} />
+      <span className="flex-1">{item.label}</span>
+      {count > 0 && (
+        <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[11px] leading-5 font-bold text-primary-foreground">
+          {count}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 function WorkspaceBadge({ workspace, size = 36 }: { workspace: Workspace; size?: number }) {
   return (
@@ -72,14 +79,19 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     15000,
   );
   const workspace = data?.workspaces.find((w) => w.slug === slug);
-  // Links from before slugs used the workspace's id (/w/34/inbox).
-  const byOldId = workspace ? undefined : data?.workspaces.find((w) => String(w.id) === slug);
+  const lastId = useRef<number>(undefined);
 
   useEffect(() => {
-    if (!getToken()) router.replace("/login");
-    else if (byOldId) router.replace(pathname.replace(`/w/${slug}`, `/w/${byOldId.slug}`));
-    else if (data && !workspace) router.replace("/app");
-  }, [data, workspace, byOldId, pathname, slug, router]);
+    if (!getToken()) return router.replace("/login");
+    if (!data) return;
+    if (workspace) {
+      lastId.current = workspace.id;
+      return;
+    }
+    // Its address was changed while this page was open, or the link is from before slugs (/w/34/inbox).
+    const moved = data.workspaces.find((w) => w.id === lastId.current || String(w.id) === slug);
+    router.replace(moved ? pathname.replace(`/w/${slug}`, `/w/${moved.slug}`) : "/app");
+  }, [data, workspace, pathname, slug, router]);
 
   if (!data || !workspace) return <div className="h-screen"><Spinner /></div>;
   const { workspaces, me } = data;
@@ -145,43 +157,20 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
             )}
           </div>
 
-          <nav aria-label="Workspace" className="mt-5 flex-1 space-y-5 overflow-y-auto">
-            {NAV.map(({ section, items }) => (
-              <div key={section}>
-                <p className="px-3 pb-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">{section}</p>
-                <div className="space-y-0.5">
-                  {items.map(({ href, label, icon: Icon }) => {
-                    const active = pathname.startsWith(`/w/${slug}/${href}`);
-                    return (
-                      <Link
-                        key={href}
-                        href={`/w/${slug}/${href}`}
-                        aria-current={active ? "page" : undefined}
-                        className={clsx(
-                          "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                          active ? "bg-surface font-semibold text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                        )}
-                      >
-                        <Icon size={17} className={active ? "text-primary-text" : undefined} />
-                        <span className="flex-1">{label}</span>
-                        {href === "inbox" && workspace.open_count > 0 && (
-                          <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[11px] leading-5 font-bold text-primary-foreground">
-                            {workspace.open_count}
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
+          <nav aria-label="Workspace" className="mt-5 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-px">
+            {MAIN_NAV.map((item) => (
+              <SidebarLink key={item.href} item={item} slug={slug} pathname={pathname} count={item.href === "inbox" ? workspace.open_count : 0} />
             ))}
+            <div className="mt-auto pt-4">
+              <SidebarLink item={SETTINGS_LINK} slug={slug} pathname={pathname} />
+            </div>
           </nav>
 
           <div className="space-y-2 pt-3">
             {/* Only when the agent needs attention: switched off, or on without an LLM. */}
             {(!workspace.ai_enabled || !workspace.llm_ready) && (
               <Link
-                href={`/w/${slug}/ai`}
+                href={`/w/${slug}/ai/behavior`}
                 className="block rounded-lg border bg-surface p-3 text-xs shadow-sm transition-colors hover:border-primary/40"
               >
                 <span className="flex items-center gap-2 font-semibold">

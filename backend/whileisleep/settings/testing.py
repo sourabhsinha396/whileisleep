@@ -3,9 +3,14 @@ behave differently on anything else. `docker compose up -d db` provides it local
 defaults to its address); CI starts a Postgres service. No .env and no network are needed.
 """
 
+import re
+
 from .base import *  # noqa: F403
 
 SECRET_KEY = "test-secret-key-not-for-production"
+# Named after the folder, so tests in two checkouts don't delete each other's database.
+checkout = re.sub(r"\W+", "_", BASE_DIR.resolve().parent.name.lower())[:40]  # noqa: F405
+DATABASES["default"]["TEST"] = {"NAME": f"test_{checkout}"}  # noqa: F405
 ALLOWED_HOSTS = ["testserver"]
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 # Tests swap in a fake LLM; conftest.py fails any real HTTP request.

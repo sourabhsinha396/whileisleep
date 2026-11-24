@@ -91,8 +91,8 @@ class Organization(models.Model):
 
 
 class Bucket(models.Model):
-    """An organization's own S3-compatible bucket: where its articles' images are
-    (apps.workspaces.buckets)."""
+    """An organization's own S3-compatible bucket: where its articles' images and its
+    chats' files are (apps.workspaces.buckets)."""
 
     organization = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name="bucket")
     endpoint_url = models.CharField(max_length=300)

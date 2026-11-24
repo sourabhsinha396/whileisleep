@@ -8,7 +8,7 @@ only signs here.
 
 import re
 import uuid
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import httpx
 from botocore.auth import S3SigV4Auth
@@ -77,8 +77,11 @@ def clean(data: dict) -> dict:
 # --- Using it ---
 
 
-def put(bucket: Bucket, name: str, content: bytes, content_type: str) -> None:
+def put(bucket: Bucket, name: str, content: bytes, content_type: str, download_as: str = "") -> None:
+    """With `download_as`, opening its address saves it under that name instead of showing it."""
     headers = {"Content-Type": content_type, "Cache-Control": CACHE_FOREVER}
+    if download_as:
+        headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(download_as, safe='')}"
     response = send(bucket, "PUT", name, headers=headers, content=content)
     if response.status_code != 200:
         raise BucketError(refusal(bucket, response.status_code, "store files in"))

@@ -6,7 +6,7 @@ with the `X-Visitor-Token` header that POST /session hands out.
 
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from ninja import Router
+from ninja import File, Router, UploadedFile
 from ninja.errors import HttpError
 
 from apps.agent import actions, pipeline
@@ -17,11 +17,12 @@ from apps.realtime import events, presence
 from apps.workspaces.models import Workspace
 from whileisleep.client_ip import client_ip
 
-from . import identity, limits
+from . import attachments, identity, limits
 from .models import Conversation, Message, Visitor
 from .schemas import (
     ArticleOut,
     ArticleRef,
+    AttachmentOut,
     WidgetActionIn,
     WidgetConfigOut,
     WidgetMessageIn,
@@ -29,7 +30,7 @@ from .schemas import (
     WidgetSessionIn,
     WidgetSessionOut,
 )
-from .serializers import message_out
+from .serializers import attachment_out, message_out
 from .services import add_message, current_conversation, is_stale, touch_visitor
 
 router = Router(tags=["widget"])
@@ -49,7 +50,9 @@ def get_visitor(request, workspace: Workspace) -> Visitor:
 
 @router.get("/{key}/config", response=WidgetConfigOut)
 def config(request, key: str):
-    return get_workspace(key)
+    workspace = get_object_or_404(Workspace.objects.select_related("organization__bucket"), public_key=key)
+    workspace.uploads_enabled = workspace.organization.storage_bucket is not None
+    return workspace
 
 
 @router.post("/{key}/session", response=WidgetSessionOut)
@@ -113,7 +116,7 @@ def messages(request, key: str, after: int = 0):
     return {
         "conversation_id": conversation.id,
         "human_requested": conversation.human_requested,
-        "messages": [message_out(m) for m in rows.select_related("author__profile")],
+        "messages": [message_out(m) for m in rows.select_related("author__profile").prefetch_related("attachments")],
     }
 
 
@@ -123,11 +126,17 @@ def send(request, key: str, payload: WidgetMessageIn):
     visitor = get_visitor(request, workspace)
     if not limits.allow_message(visitor.id, client_ip(request)):
         raise HttpError(429, "You're sending messages too quickly. Please wait a minute.")
+    files = attachments.unsent(workspace, payload.attachments, visitor=visitor)
     conversation = current_conversation(visitor)
     if conversation is None or is_stale(conversation):
         conversation = Conversation.objects.create(workspace=workspace, visitor=visitor)
     message = add_message(
-        conversation, Message.Sender.VISITOR, payload.body.strip(), intent=payload.intent, intent_data=payload.data
+        conversation,
+        Message.Sender.VISITOR,
+        payload.body.strip(),
+        intent=payload.intent,
+        intent_data=payload.data,
+        attachments=files,
     )
     pipeline.handle(conversation, message)
     conversation.refresh_from_db(fields=["human_requested"])
@@ -135,8 +144,18 @@ def send(request, key: str, payload: WidgetMessageIn):
     return {
         "conversation_id": conversation.id,
         "human_requested": conversation.human_requested,
-        "messages": [message_out(m) for m in rows],
+        "messages": [message_out(m) for m in rows.prefetch_related("attachments")],
     }
+
+
+@router.post("/{key}/attachments", response=AttachmentOut)
+def upload(request, key: str, file: UploadedFile = File(...)):  # noqa: B008
+    """Stores a file the visitor is about to send. Sending a message with its id attaches it."""
+    workspace = get_workspace(key)
+    visitor = get_visitor(request, workspace)
+    if not limits.allow_upload(visitor.id, client_ip(request)):
+        raise HttpError(429, "You're sending too many files. Please try again later.")
+    return attachment_out(attachments.upload(workspace, file, visitor=visitor))
 
 
 @router.post("/{key}/typing", response=dict)

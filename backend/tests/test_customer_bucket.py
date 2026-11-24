@@ -54,6 +54,7 @@ def test_connecting_tries_the_bucket_first(api, s3, workspace):
         "key_hint": "…MPLE",
         "public_base_url": PUBLIC,
         "image_count": 0,
+        "file_count": 0,
     }
     assert api.get("/organization/storage").json() == body
 

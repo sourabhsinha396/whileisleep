@@ -1,5 +1,5 @@
-"""The organization's own bucket, for the images in its articles. Optional: without one, articles
-are text.
+"""The organization's own bucket, for the images in its articles and the files in its chats.
+Optional: without one, both are text.
 
 Only the organization's owner reaches these. Both halves of the key are write-only.
 """
@@ -30,6 +30,7 @@ def storage_out(organization: Organization) -> dict:
         "key_hint": bucket.key_hint,
         "public_base_url": bucket.public_base_url,
         "image_count": bucket.article_images.count(),
+        "file_count": bucket.attachments.count(),
     }
 
 

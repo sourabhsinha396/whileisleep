@@ -151,6 +151,7 @@ def widget_backlog(visitor: Visitor, after: int | None) -> list[Event]:
         conversation.messages.filter(is_note=False, id__gt=after)
         .exclude(sender=Message.Sender.SYSTEM)
         .select_related("author__profile", "conversation")
+        .prefetch_related("attachments")
     )
     return [("message", {"conversation_id": conversation.id, "message": message_out(m)}) for m in rows]
 
@@ -201,6 +202,7 @@ def inbox_backlog(workspace_id: int, after: int | None) -> list[Event]:
     rows = (
         Message.objects.filter(conversation__workspace_id=workspace_id, id__gt=after)
         .select_related("author__profile", "conversation")
+        .prefetch_related("attachments")
         .order_by("id")[:REPLAY_LIMIT]
     )
     return [("message", {"conversation_id": m.conversation_id, "message": message_out(m)}) for m in rows]

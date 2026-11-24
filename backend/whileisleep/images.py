@@ -31,10 +31,11 @@ def require_storage() -> None:
         raise HttpError(503, "Uploads are off: file storage isn't set up on this server.")
 
 
-def clean_image(upload, max_side: int, square: bool = False) -> ContentFile:
+def clean_image(upload, max_side: int, square: bool = False, max_bytes: int | None = None) -> ContentFile:
     """The uploaded image, checked and resized. HttpError 400 says what is wrong with it."""
-    if upload.size > MAX_BYTES:
-        raise HttpError(400, f"That image is too big. The limit is {MAX_BYTES // (1024 * 1024)} MB.")
+    max_bytes = max_bytes or MAX_BYTES
+    if upload.size > max_bytes:
+        raise HttpError(400, f"That image is too big. The limit is {max_bytes // (1024 * 1024)} MB.")
     try:
         with Image.open(upload, formats=list(FORMATS)) as image:
             kind = image.format
@@ -62,6 +63,12 @@ def clean_image(upload, max_side: int, square: bool = False) -> ContentFile:
         # What Pillow raises for a damaged file depends on where it is damaged.
         raise HttpError(400, "That image can't be read. It may be damaged.") from None
     return ContentFile(out.getvalue(), name=f"image.{FORMATS[kind]}")
+
+
+def size(content: bytes) -> tuple[int, int]:
+    """Width and height of an image that `clean_image` returned."""
+    with Image.open(io.BytesIO(content)) as image:
+        return image.size
 
 
 def delete_later(name: str) -> None:

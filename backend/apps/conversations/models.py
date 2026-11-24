@@ -2,9 +2,11 @@ import secrets
 
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils import timezone
 
-from apps.workspaces.models import Workspace
+from apps.workspaces.models import Bucket, Workspace
 
 
 def new_visitor_token() -> str:
@@ -125,3 +127,42 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender}: {self.body[:40]}"
+
+
+class Attachment(models.Model):
+    """A file in the customer's bucket, sent with a message (apps.conversations.attachments)."""
+
+    workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="+")
+    # Empty until the message it was uploaded for is sent.
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, null=True, blank=True, related_name="attachments")
+    # Who uploaded it: a visitor or a teammate.
+    visitor = models.ForeignKey(Visitor, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    # The bucket it is in; empty once that bucket is disconnected. `url` keeps working then.
+    bucket = models.ForeignKey(Bucket, on_delete=models.SET_NULL, null=True, blank=True, related_name="attachments")
+    path = models.CharField(max_length=200)
+    url = models.CharField(max_length=600)
+    # What it was called on the sender's device.
+    name = models.CharField(max_length=120)
+    content_type = models.CharField(max_length=100)
+    size = models.PositiveIntegerField()
+    # Pictures only, so the space for one is there before it loads.
+    width = models.PositiveIntegerField(null=True, blank=True)
+    height = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return self.name
+
+
+@receiver(post_delete, sender=Attachment)
+def delete_attachment_file(sender, instance, **kwargs):
+    from apps.knowledge.models import delete_from_bucket_later
+
+    if instance.bucket_id:
+        delete_from_bucket_later(instance.bucket_id, instance.path)

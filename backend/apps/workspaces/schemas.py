@@ -45,7 +45,7 @@ class WorkspaceOut(Schema):
     # Where the organization stands: "off" (no billing here), "trial", "active" or "paused".
     billing_state: str = "off"
     trial_days_left: int | None = None
-    # Whether articles can have images: the organization connected its own bucket for them.
+    # Whether articles can have images and chats files: the organization connected its own bucket for them.
     article_uploads_enabled: bool = False
 
 
@@ -134,6 +134,8 @@ class StorageOut(Schema):
     key_hint: str = ""
     public_base_url: str = ""
     image_count: int = 0
+    # Files in chat messages.
+    file_count: int = 0
 
 
 class KeyCheckOut(Schema):

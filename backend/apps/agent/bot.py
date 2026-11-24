@@ -22,9 +22,10 @@ import time
 import uuid
 
 from django.conf import settings
+from django.db.models import Exists, OuterRef, Q
 
-from apps.conversations import attributes
-from apps.conversations.models import Conversation, Message
+from apps.conversations import attachments, attributes
+from apps.conversations.models import Attachment, Conversation, Message
 from apps.conversations.services import add_message
 from apps.knowledge.models import Article
 from apps.knowledge.search import passages, search
@@ -121,6 +122,9 @@ When you need details from the visitor (an email to notify them, an order number
 options), add a form to reply_to_visitor instead of asking them to type it. Their answers come back \
 as their next message.
 
+A line like [Attached: photo.png] means files were sent. You can't open them: never guess what is in \
+one. If the answer depends on it, ask what it shows or offer a teammate, who can open it.
+
 When you have the answer, call reply_to_visitor; don't write it as plain text.
 {instructions}"""
 
@@ -179,7 +183,7 @@ def reply(
     if result is None:
         stage = Turn.Stage.FALLBACK
         recorder.doing("retrieval")
-        result = keyword_answer(conversation, history[-1]["content"])
+        result = keyword_answer(conversation, attachments.without_notes(history[-1]["content"]))
 
     if superseded(conversation, trigger):
         # They wrote again while the model was thinking: an answer to half the question would
@@ -225,7 +229,8 @@ def recent_messages(conversation: Conversation) -> list[Message]:
     rows = (
         conversation.messages.filter(is_note=False)
         .exclude(sender=Message.Sender.SYSTEM)
-        .exclude(body="")
+        .filter(~Q(body="") | Exists(Attachment.objects.filter(message=OuterRef("pk"))))
+        .prefetch_related("attachments")
         .order_by("-id")[:HISTORY_MESSAGES]
     )
     kept, used = [], 0
@@ -242,7 +247,7 @@ def chat_history(conversation: Conversation) -> list[dict]:
     """The visible conversation as alternating user/assistant turns, ending with the visitor."""
     turns: list[dict] = []
     for message in recent_messages(conversation):
-        message.body = clip(message.body, settings.HISTORY_MESSAGE_CHARS)
+        message.body = clip(attachments.text_for_ai(message), settings.HISTORY_MESSAGE_CHARS)
         role = "user" if message.sender == Message.Sender.VISITOR else "assistant"
         if not message.body:
             continue
@@ -417,7 +422,7 @@ def run_agent(
     tools = {t.name: t for t in mcp_tools.usable(workspace)}
     playbooks = list(Playbook.objects.filter(workspace=workspace, enabled=True))
     definitions = tool_definitions(list(tools.values()), with_playbooks=bool(playbooks))
-    found = prefetch(conversation, history[-1]["content"], recorder)
+    found = prefetch(conversation, attachments.without_notes(history[-1]["content"]), recorder)
     prompt = system_prompt(workspace, playbooks, instruction, conversation_facts(conversation), found)
     # Only the start of the prompt is the same in every conversation; see system_prompt.
     shared = len(system_prompt(workspace, playbooks))

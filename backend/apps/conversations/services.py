@@ -6,7 +6,7 @@ from django.utils import timezone
 from apps.realtime import events
 
 from . import attributes
-from .models import Conversation, Message, Visitor
+from .models import Attachment, Conversation, Message, Visitor
 
 
 def add_message(
@@ -20,6 +20,7 @@ def add_message(
     intent: str = "",
     intent_data: dict | None = None,
     form: dict | None = None,
+    attachments: list[Attachment] = (),
 ) -> Message:
     message = Message.objects.create(
         conversation=conversation,
@@ -32,6 +33,9 @@ def add_message(
         intent_data=intent_data or {},
         form=form,
     )
+    if attachments:
+        # Before anyone hears about the message. A file sent twice at once goes with the first.
+        Attachment.objects.filter(pk__in=[a.pk for a in attachments], message=None).update(message=message)
     conversation.last_message_at = message.created_at
     fields = ["last_message_at"]
     if sender == Message.Sender.VISITOR:

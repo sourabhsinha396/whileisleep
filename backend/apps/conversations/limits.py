@@ -36,6 +36,13 @@ def allow_message(visitor_id: int, ip: str | None) -> bool:
     return by_visitor and by_ip
 
 
+def allow_upload(visitor_id: int, ip: str | None) -> bool:
+    limits = settings.RATE_LIMITS
+    by_visitor = hit("upload_visitor", str(visitor_id), limits["uploads_per_visitor_per_hour"], 3600)
+    by_ip = hit("upload_ip", ip or "-", limits["uploads_per_ip_per_hour"], 3600)
+    return by_visitor and by_ip
+
+
 def allow_ai_reply(conversation) -> bool:
     """Counts one LLM reply against the visitor's and the workspace's daily caps."""
     limits = settings.RATE_LIMITS

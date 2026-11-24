@@ -3,7 +3,9 @@ from typing import Any
 
 from django.conf import settings
 from ninja import Schema
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
+
+from .attachments import MAX_PER_MESSAGE
 
 
 class AttributeOut(Schema):
@@ -34,6 +36,29 @@ class VisitorOut(Schema):
     conversation_id: int | None = None
 
 
+class AttachmentOut(Schema):
+    id: int
+    name: str
+    url: str
+    content_type: str
+    size: int
+    # Pictures only.
+    width: int | None = None
+    height: int | None = None
+
+
+class WithFiles(Schema):
+    """A message to send: text, files that were uploaded for it, or both."""
+
+    attachments: list[int] = Field(default_factory=list, max_length=MAX_PER_MESSAGE)
+
+    @model_validator(mode="after")
+    def not_empty(self):
+        if not self.body.strip() and not self.attachments:
+            raise ValueError("Write a message or attach a file.")
+        return self
+
+
 class MessageOut(Schema):
     id: int
     sender: str
@@ -44,6 +69,7 @@ class MessageOut(Schema):
     is_note: bool
     intent: str = ""
     form_submitted: bool = False
+    attachments: list[AttachmentOut] = []
     created_at: datetime
 
 
@@ -64,9 +90,13 @@ class ConversationDetail(ConversationRow):
     messages: list[MessageOut]
 
 
-class ReplyIn(Schema):
-    body: str = Field(min_length=1, max_length=10000)
+class ReplyIn(WithFiles):
+    body: str = Field("", max_length=10000)
     is_note: bool = False
+
+
+class OpeningIn(Schema):
+    body: str = Field(min_length=1, max_length=10000)
 
 
 class ConversationPatch(Schema):
@@ -86,6 +116,8 @@ class WidgetConfigOut(Schema):
     logo_url: str
     greeting: str
     ai_enabled: bool
+    # Visitors can send files: the organization connected its own bucket for them.
+    uploads_enabled: bool = False
     max_message_length: int = settings.VISITOR_MESSAGE_MAX_CHARS
 
 
@@ -120,8 +152,8 @@ class WidgetSessionOut(Schema):
 IntentValue = str | int | float | bool
 
 
-class WidgetMessageIn(Schema):
-    body: str = Field(min_length=1, max_length=settings.VISITOR_MESSAGE_MAX_CHARS)
+class WidgetMessageIn(WithFiles):
+    body: str = Field("", max_length=settings.VISITOR_MESSAGE_MAX_CHARS)
     # Set by a button on the host site that opened the chat (window.whileisleep.open(text, {intent, data})).
     intent: str = Field("", max_length=64, pattern=r"^[a-z0-9_.-]*$")
     data: dict[str, IntentValue] = Field(default_factory=dict, max_length=20)

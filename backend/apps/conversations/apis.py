@@ -6,7 +6,7 @@ from django.conf import settings
 from django.db.models import Max, OuterRef, Subquery
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from ninja import Router
+from ninja import File, Router, UploadedFile
 from ninja.errors import HttpError
 
 from apps.accounts.models import photo_url
@@ -15,19 +15,21 @@ from apps.realtime import events, presence
 from apps.workspaces.models import Membership
 from apps.workspaces.services import member_workspace
 
-from . import attributes
-from .models import Conversation, Message, Visitor
+from . import attachments, attributes
+from .models import Attachment, Conversation, Message, Visitor
 from .schemas import (
+    AttachmentOut,
     AttributeIn,
     AttributeOut,
     ConversationDetail,
     ConversationPatch,
     ConversationRow,
     MessageOut,
+    OpeningIn,
     ReplyIn,
     VisitorOut,
 )
-from .serializers import conversation_row, message_out, visitor_out
+from .serializers import attachment_out, conversation_row, message_out, visitor_out
 from .services import add_message
 
 router = Router(tags=["inbox"], auth=token_auth)
@@ -47,18 +49,26 @@ def list_conversations(request, workspace_id: int, status: str = "open", mine: b
     workspace = member_workspace(request.auth, workspace_id)
     if status not in STATUSES:
         raise HttpError(400, "status must be open, resolved or all.")
-    last_body = Message.objects.filter(conversation=OuterRef("pk"), is_note=False).order_by("-id").values("body")[:1]
-    rows = workspace.conversations.select_related("visitor").annotate(preview=Subquery(last_body))
+    last = Message.objects.filter(conversation=OuterRef("pk"), is_note=False).order_by("-id")
+    rows = workspace.conversations.select_related("visitor").annotate(
+        preview=Subquery(last.values("body")[:1]), last_id=Subquery(last.values("pk")[:1])
+    )
     if status != "all":
         rows = rows.filter(status=status)
     if mine:
         rows = rows.filter(assignee=request.auth)
     rows = list(rows[:200])
+    # A message that is only files is listed by their names.
+    files: dict[int, list[str]] = {}
+    for message_id, name in Attachment.objects.filter(
+        message_id__in=[c.last_id for c in rows if not c.preview]
+    ).values_list("message_id", "name"):
+        files.setdefault(message_id, []).append(name)
     online = presence.online_ids({c.visitor_id for c in rows})
     result = []
     for conversation in rows:
         row = conversation_row(conversation, online=None if online is None else conversation.visitor_id in online)
-        row["preview"] = (conversation.preview or "")[:140]
+        row["preview"] = (conversation.preview or "")[:140] or attachments.label(files.get(conversation.last_id, []))
         result.append(row)
     return result
 
@@ -71,7 +81,7 @@ def get(request, workspace_id: int, conversation_id: int):
         conversation.save(update_fields=["unread"])
         # Teammates' inbox lists drop the unread dot too.
         events.conversation_changed(conversation)
-    messages = list(conversation.messages.select_related("author__profile"))
+    messages = list(conversation.messages.select_related("author__profile").prefetch_related("attachments"))
     return {
         **conversation_row(conversation, next((m for m in reversed(messages) if not m.is_note), None)),
         "messages": [message_out(m) for m in messages],
@@ -82,12 +92,24 @@ def get(request, workspace_id: int, conversation_id: int):
 def reply(request, workspace_id: int, conversation_id: int, payload: ReplyIn):
     conversation = get_conversation(request, workspace_id, conversation_id)
     message = add_message(
-        conversation, Message.Sender.AGENT, payload.body.strip(), author=request.auth, is_note=payload.is_note
+        conversation,
+        Message.Sender.AGENT,
+        payload.body.strip(),
+        author=request.auth,
+        is_note=payload.is_note,
+        attachments=attachments.unsent(conversation.workspace, payload.attachments, user=request.auth),
     )
     if not payload.is_note and conversation.assignee_id is None:
         conversation.assignee = request.auth
         conversation.save(update_fields=["assignee"])
     return message_out(message)
+
+
+@router.post("/workspaces/{workspace_id}/attachments", response=AttachmentOut)
+def upload(request, workspace_id: int, file: UploadedFile = File(...)):  # noqa: B008
+    """Stores a file a teammate is about to send. Sending a reply with its id attaches it."""
+    workspace = member_workspace(request.auth, workspace_id)
+    return attachment_out(attachments.upload(workspace, file, user=request.auth))
 
 
 @router.post("/workspaces/{workspace_id}/conversations/{conversation_id}/typing", response=dict)
@@ -180,7 +202,7 @@ def delete_conversation_attribute(request, workspace_id: int, conversation_id: i
 
 
 @router.post("/workspaces/{workspace_id}/visitors/{visitor_id}/conversations", response=ConversationRow)
-def start_conversation(request, workspace_id: int, visitor_id: int, payload: ReplyIn):
+def start_conversation(request, workspace_id: int, visitor_id: int, payload: OpeningIn):
     """A teammate messages a visitor first (from the Visitors page)."""
     workspace = member_workspace(request.auth, workspace_id)
     visitor = get_object_or_404(Visitor, pk=visitor_id, workspace=workspace)

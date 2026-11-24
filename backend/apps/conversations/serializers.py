@@ -2,8 +2,8 @@
 
 from apps.accounts.models import photo_url
 
-from . import attributes
-from .models import Conversation, Message, Visitor
+from . import attachments, attributes
+from .models import Attachment, Conversation, Message, Visitor
 
 
 def visitor_out(visitor: Visitor, conversation_id: int | None = None, online: bool | None = None) -> dict:
@@ -25,6 +25,18 @@ def visitor_out(visitor: Visitor, conversation_id: int | None = None, online: bo
     }
 
 
+def attachment_out(attachment: Attachment) -> dict:
+    return {
+        "id": attachment.id,
+        "name": attachment.name,
+        "url": attachment.url,
+        "content_type": attachment.content_type,
+        "size": attachment.size,
+        "width": attachment.width,
+        "height": attachment.height,
+    }
+
+
 def message_out(message: Message) -> dict:
     author = message.author
     return {
@@ -38,8 +50,15 @@ def message_out(message: Message) -> dict:
         "intent": message.intent,
         # The widget shows a sent form disabled.
         "form_submitted": bool(message.form and message.form.get("submitted")),
+        "attachments": [attachment_out(a) for a in message.attachments.all()],
         "created_at": message.created_at,
     }
+
+
+def preview_of(message: Message | None) -> str:
+    if message is None:
+        return ""
+    return message.body[:140] or attachments.label([a.name for a in message.attachments.all()])
 
 
 def conversation_row(conversation: Conversation, last: Message | None = None, online: bool | None = None) -> dict:
@@ -52,6 +71,6 @@ def conversation_row(conversation: Conversation, last: Message | None = None, on
         "attributes": attributes.listing(conversation),
         "assignee_id": conversation.assignee_id,
         "last_message_at": conversation.last_message_at,
-        "preview": (last.body[:140] if last else ""),
+        "preview": preview_of(last),
         "visitor": visitor_out(conversation.visitor, conversation.id, online),
     }

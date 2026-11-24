@@ -111,6 +111,8 @@ RATE_LIMITS = {
     "messages_per_visitor_per_minute": 10,
     "messages_per_ip_per_minute": 30,
     "new_visitors_per_ip_per_hour": 30,
+    "uploads_per_visitor_per_hour": 20,
+    "uploads_per_ip_per_hour": 60,
     "ai_replies_per_visitor_per_day": 50,
     "ai_replies_per_workspace_per_day": 2000,
 }
@@ -181,6 +183,8 @@ CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULE = {
     # Picks up visitor messages whose reply job was lost; see apps/agent/tasks.py.
     "sweep-unanswered": {"task": "apps.agent.tasks.sweep_unanswered", "schedule": 60.0},
+    # Files visitors and teammates attached but never sent; see apps/conversations/tasks.py.
+    "delete-unsent-files": {"task": "apps.conversations.tasks.delete_unsent_files", "schedule": 3600.0},
     # Catches what a lost payment webhook would have said; see apps/billing/tasks.py.
     "refresh-subscriptions": {"task": "apps.billing.tasks.refresh_subscriptions", "schedule": 3600.0},
 }

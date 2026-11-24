@@ -26,6 +26,14 @@ The cheapest way to answer goes first. Each step only runs if the one before it 
 > [!TIP]
 > Nothing is required to begin. Without an AI model, the agent searches your articles and shows the best matches.
 
+## Buttons and forms in a reply
+
+- **Choices.** When the agent asks the visitor to pick an answer, it can add a button for each. Pressing one sends its words as the visitor's message, and the visitor can always type instead.
+- **Forms.** For details such as an email or an order number, it can show a short form.
+- **Cards.** It can show facts from your own systems as a card. See [Tools](tools.md#cards).
+
+There is nothing to set up.
+
 ## What to give the agent
 
 | You have | Use |

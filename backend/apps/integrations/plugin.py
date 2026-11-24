@@ -107,6 +107,7 @@ class Plugin:
     connect_fields: tuple[Field, ...] = ()
     # What an owner chooses once it is connected.
     settings_fields: tuple[Field, ...] = ()
+    save_label = "Save"
 
     # --- The server ---
 

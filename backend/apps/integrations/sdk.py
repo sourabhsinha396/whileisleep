@@ -4,12 +4,13 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 
+from apps.conversations import attributes
 from apps.conversations.models import Conversation, Message
 from apps.conversations.services import reply_as, set_human_requested, set_status
 from apps.conversations.signals import AI_RESUMED, MESSAGE, PERSON_REQUESTED, REOPENED, RESOLVED, Event
 from whileisleep import outbound
 
-from .models import Integration, Thread
+from .models import Delivery, Integration, Thread
 from .plugin import (
     BadRequest,
     Connection,
@@ -44,6 +45,7 @@ __all__ = [
     "WebhookRequest",
     "add_note",
     "display_name",
+    "email_is_verified",
     "find_thread",
     "give_to_ai",
     "inbox_url",
@@ -55,6 +57,7 @@ __all__ = [
     "reply",
     "resolve",
     "teammate",
+    "thread_expected",
     "thread_of",
     "transcript",
 ]
@@ -69,6 +72,14 @@ def integrations_of_account(plugin: Plugin, account_id: str):
 
 def thread_of(integration: Integration, conversation: Conversation) -> Thread | None:
     return Thread.objects.filter(integration=integration, conversation=conversation).first()
+
+
+def thread_expected(integration: Integration, conversation: Conversation) -> bool:
+    """There is a thread, or an event on its way that may start one."""
+    pending = Delivery.objects.filter(
+        integration=integration, conversation=conversation, status=Delivery.Status.PENDING
+    )
+    return thread_of(integration, conversation) is not None or pending.exists()
 
 
 def find_thread(plugin: Plugin, account_id: str, external_id: str) -> Thread | None:
@@ -98,6 +109,11 @@ def teammate(workspace, email: str):
 def needs_person(conversation: Conversation) -> bool:
     """Nobody but the team will answer: it was handed over, or the AI is off."""
     return conversation.human_requested or not conversation.workspace.ai_enabled
+
+
+def email_is_verified(visitor) -> bool:
+    """The website's server vouched for the visitor's email; otherwise anyone may have typed it."""
+    return attributes.is_verified(visitor, "email")
 
 
 def inbox_url(conversation: Conversation) -> str:

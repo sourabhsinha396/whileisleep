@@ -69,6 +69,7 @@ class IntegrationOut(Schema):
 
 class IntegrationDetail(IntegrationOut):
     settings_fields: list[FieldOut]
+    save_label: str
     # Why the choices couldn't be loaded from the service.
     options_error: str = ""
 
@@ -145,7 +146,7 @@ def integration_out(plugin: Plugin, integration: Integration | None) -> dict:
 
 
 def detail_out(plugin: Plugin, integration: Integration | None) -> dict:
-    out = integration_out(plugin, integration) | {"settings_fields": []}
+    out = integration_out(plugin, integration) | {"settings_fields": [], "save_label": plugin.save_label}
     if integration is None:
         return out
     for field in plugin.settings_fields:

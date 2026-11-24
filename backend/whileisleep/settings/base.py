@@ -215,7 +215,10 @@ TRIAL_DAYS = 14
 
 # Integrations (apps.integrations): the plugins this server has, as importable modules. Add your
 # own with EXTRA_PLUGINS, comma-separated; docs/plugins.md shows how to write one.
-PLUGINS = [*(path.strip() for path in os.environ.get("EXTRA_PLUGINS", "").split(",") if path.strip())]
+PLUGINS = [
+    "plugins.slack",
+    *(path.strip() for path in os.environ.get("EXTRA_PLUGINS", "").split(",") if path.strip()),
+]
 # What plugins need from whoever runs the server: PLUGIN_SLACK_CLIENT_ID...
 PLUGIN_OPTIONS = {
     key: value.strip() for key, value in os.environ.items() if key.startswith("PLUGIN_") and value.strip()

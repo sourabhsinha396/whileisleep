@@ -43,6 +43,3 @@ next-env.d.ts
 
 # built from src/widget
 /public/widget.js
-
-# copied from country-flag-icons
-/public/flags

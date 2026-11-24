@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { CountryFlag } from "@/components/country-flag";
@@ -23,7 +22,7 @@ describe("countryOf", () => {
     expect(countryOf(country(value))).toEqual({ code, name });
   });
 
-  it.each(["Atlantis", "ZZ", "constructor", "../x"])("keeps %j as text, without a flag", (value) => {
+  it.each(["Atlantis", "ZZ", "AC", "constructor", "../x"])("keeps %j as text, without a flag", (value) => {
     expect(countryOf(country(value))).toEqual({ code: "", name: value });
   });
 
@@ -37,10 +36,9 @@ describe("countryOf", () => {
 describe("CountryFlag", () => {
   it("shows the flag, named for screen readers", () => {
     const html = renderToStaticMarkup(<CountryFlag country={{ code: "IN", name: "India" }} />);
-    expect(html).toContain('src="/flags/IN.svg"');
+    expect(html).toContain('src="https://flagcdn.com/in.svg"');
     expect(html).toContain('alt="India"');
-    // Where scripts/flags.mjs copies it from.
-    expect(existsSync("node_modules/country-flag-icons/3x2/IN.svg")).toBe(true);
+    expect(html.toLowerCase()).toContain('referrerpolicy="no-referrer"');
   });
 
   it("shows nothing for an unknown country", () => {

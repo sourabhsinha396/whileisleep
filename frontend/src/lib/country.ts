@@ -28,9 +28,13 @@ const ALIASES: Record<string, string> = {
 
 const simple = (text: string) => text.trim().toLowerCase().replace(/&/g, "and");
 
+// In the package's list but not on flagcdn.com, where CountryFlag gets its images.
+const NOT_ON_FLAGCDN = ["AC", "IC", "TA", "XA", "XC", "XO"];
+const isCountry = (code: string) => /^[A-Z]{2}$/.test(code) && hasFlag(code) && !NOT_ON_FLAGCDN.includes(code);
+
 const byName = new Map<string, string>();
 for (const code of countries) {
-  if (code.length === 2) byName.set(simple(names.of(code) ?? code), code);
+  if (isCountry(code)) byName.set(simple(names.of(code) ?? code), code);
 }
 for (const [alias, code] of Object.entries(ALIASES)) byName.set(alias, code);
 
@@ -42,6 +46,6 @@ export function countryOf(attributes: Attribute[]): Country | null {
   const text = value.trim();
   const upper = text.toUpperCase();
   // Names first: "UK" is an alias, not a code.
-  const code = byName.get(simple(text)) ?? (/^[A-Z]{2}$/.test(upper) && hasFlag(upper) ? upper : "");
+  const code = byName.get(simple(text)) ?? (isCountry(upper) ? upper : "");
   return { code, name: code ? (names.of(code) ?? text) : text };
 }

@@ -4,6 +4,10 @@ Technical decisions made by the project owner, newest first. Each says what was 
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Product decisions are in [product-decisions.md](product-decisions.md).
 
+## 2026-11-24: Country flags load from flagcdn.com
+
+**Decision.** The flag images come from flagcdn.com, instead of copies on our own server.
+
 ## 2026-11-24: Slow services never block our threads
 
 **Decision.** If many requests to Slack, or any outside service, are slow, they must not block our threads. No blocking

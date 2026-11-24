@@ -1,8 +1,7 @@
-﻿// Starts `next dev` on WEB_PORT from .env and rebuilds public/widget.js on change. Copies the flags first.
+﻿// Starts `next dev` on WEB_PORT from .env and rebuilds public/widget.js on change.
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import * as esbuild from "esbuild";
-import "./flags.mjs";
 
 if (existsSync(".env")) process.loadEnvFile(".env");
 const port = process.env.WEB_PORT ?? "3004";

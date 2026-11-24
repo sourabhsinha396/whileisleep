@@ -26,6 +26,7 @@ def workspace_out(workspace: Workspace, viewer, role: str, open_count: int = 0) 
         "llm_ready": workspace.organization.llm_ready,
         "is_organization_owner": workspace.organization.owner_id == viewer.id,
         "uploads_enabled": settings.UPLOADS_ENABLED,
+        "article_uploads_enabled": workspace.organization.storage_bucket is not None,
     }
 
 
@@ -33,7 +34,7 @@ def workspace_out(workspace: Workspace, viewer, role: str, open_count: int = 0) 
 def list_workspaces(request):
     memberships = (
         Membership.objects.filter(user=request.auth)
-        .select_related("workspace__organization")
+        .select_related("workspace__organization__bucket")
         .order_by("workspace__name")
     )
     counts = dict(

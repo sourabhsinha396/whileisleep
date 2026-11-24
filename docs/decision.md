@@ -3,6 +3,15 @@
 Technical decisions made by the project owner, newest first. Each says what was decided and, when
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 
+## 2026-11-24: Help articles are written in a small visual editor
+
+**Decision.** A minimal what-you-see-is-what-you-get editor, from a popular toolkit, with only 5 or 6 controls.
+It is Tiptap, with bold, heading, bullet list, numbered list, link and image.
+
+## 2026-11-24: Uploaded images are kept in folders
+
+**Decision.** A workspace's images are arranged in folders and subfolders in Cloudflare R2, not all in one place.
+
 ## 2026-11-24: The README has one GIF and two images
 
 **Decision.** At most one GIF (or interactive demo) and two images, with the inbox captured on a large screen.

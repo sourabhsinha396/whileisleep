@@ -9,6 +9,10 @@ The technical reference: integration, security and internals. For what the produ
 - **Visitors**: who's on your site now, and what page they're on; message them first.
 - **Knowledge base**: articles in the widget's Help tab. They are split into passages and indexed with
   Postgres full-text search, so the AI reads the section that answers a question, not whole articles.
+  Written in a small visual editor and stored as Markdown; the AI reads a picture's description.
+- **Images**: the workspace's logo, teammates' photos and article pictures. Every upload is checked and saved
+  again as an image, then stored in an S3-compatible bucket, in folders:
+  `workspaces/<id>/logo`, `workspaces/<id>/articles/<article id>` and `users/<id>/photo`.
 - **Organizations**: own workspaces and the LLM settings. The owner sets an **OpenRouter API key and
   model** in Settings › AI model (the key is write-only and encrypted in the database).
 - **AI agent and tools**: the LLM answers visitors. Each workspace adds **tools** (HTTP endpoints on its

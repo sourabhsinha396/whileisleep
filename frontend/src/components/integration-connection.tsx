@@ -8,7 +8,7 @@ import { Badge, Button, ErrorText, Notice, Spinner } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, type ConnectionDetail, type Delivery, type IntegrationDetail } from "@/lib/api";
 import { ago } from "@/lib/format";
-import { complete, initialValues, run, statusOf, type Values } from "@/lib/integrations";
+import { complete, eventName, initialValues, run, statusOf, type Values } from "@/lib/integrations";
 import { useConnect } from "@/lib/use-connect";
 import { usePoll } from "@/lib/use-poll";
 
@@ -183,7 +183,7 @@ function Log({ base }: { base: string }) {
             <Badge tone={TONES[delivery.status]}>{LABELS[delivery.status]}</Badge>
             <span className="min-w-0 flex-1">
               <Link href={`/w/${workspace.slug}/inbox?c=${delivery.conversation_id}`} className="hover:underline">
-                {delivery.event}
+                {eventName(delivery.event)}
               </Link>
               <span className="block truncate text-xs text-muted-foreground">
                 {ago(delivery.created_at)} · {delivery.detail || "On its way"}

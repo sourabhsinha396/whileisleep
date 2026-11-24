@@ -62,6 +62,16 @@ One script tag on your site, in one of 16 colors. Visitors chat or search your h
 </details>
 
 <details>
+<summary><b>🔔 Slack and webhooks</b></summary>
+<br>
+
+- **Slack:** a chat that needs a person becomes a thread. Reply there and the visitor gets it; start with `note:` to keep it in the team.
+- **Webhooks:** tell Zapier, n8n or your own server what happens, and let it answer.
+- **Plugins:** add your own integration in one folder.
+
+</details>
+
+<details>
 <summary><b>👀 Live visitors</b></summary>
 <br>
 
@@ -116,4 +126,6 @@ Open <http://localhost:3004>, create an account, and add your AI provider's key 
 | --- | --- |
 | Run it on my own server | [Deploy on a VM (before your Maggi is ready 🍜)](docs/deploy-vm.md) |
 | Add the widget and identify my users | [How it works](docs/how-it-works.md) |
+| Answer chats from Slack, or connect any system | [Slack](docs/slack.md) and [webhooks](docs/webhooks.md) |
+| Build an integration | [Build a plugin](docs/plugins.md) |
 | Know why it is built this way | [Product](docs/product-decisions.md) and [tech](docs/tech-decisions.md) decisions |

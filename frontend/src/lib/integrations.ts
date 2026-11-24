@@ -46,6 +46,21 @@ export function summaryOf(integration: Pick<Integration, "available" | "connecti
   return all.find((s) => s.tone === "danger") ?? all.find((s) => s.tone === "warning") ?? all[0];
 }
 
+/** What happened (backend/apps/conversations/signals.py), in the words of the log. */
+const EVENTS: Record<string, string> = {
+  started: "Chat started",
+  message: "Message",
+  person_requested: "Needs a person",
+  resolved: "Resolved",
+  reopened: "Reopened",
+  ai_resumed: "Given back to the AI",
+  contact_updated: "Contact details",
+};
+
+export function eventName(event: string): string {
+  return EVENTS[event] ?? event;
+}
+
 /** What the service's page sent the owner back with. */
 export function readCallback(search: string): { code: string; state: string } | { error: string } {
   const params = new URLSearchParams(search);

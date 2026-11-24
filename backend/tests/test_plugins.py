@@ -212,11 +212,11 @@ def test_a_plugin_the_server_lacks_the_options_for(api, base, installed):
     assert api.post(f"{base}/example/connect", {"values": {"key": "good"}}).status_code == 409
 
 
-def test_members_look_owners_change_and_others_see_nothing(base, one, workspace, api):
+def test_only_owners_see_and_change_integrations(base, one, workspace, api):
     member = Api(AuthTokenFactory(user=MembershipFactory(workspace=workspace, role="agent").user).key)
     stranger = Api(AuthTokenFactory(user=MembershipFactory().user).key)
-    assert member.get(base).status_code == 200 and stranger.get(base).status_code == 404
     for someone in (member, stranger):
+        assert someone.get(base).status_code == 404
         assert someone.get(f"{base}/example").status_code == 404
         assert someone.put(one, {"values": {"room": "r2"}}).status_code == 404
         assert someone.post(f"{one}/options").status_code == 404
@@ -437,6 +437,19 @@ def test_deliveries_of_a_removed_plugin_are_dropped(integration, conversation, i
     assert not Delivery.objects.exists()
     say(conversation)
     assert not Delivery.objects.exists()
+
+
+def test_disconnecting_while_something_is_being_sent(integration, conversation, monkeypatch, caplog):
+    """Everything about it is gone by the time the service has answered."""
+
+    def deliver(self, integration, event):
+        Integration.objects.all().delete()
+
+    for keeps_log in (True, False):
+        monkeypatch.setattr(type(plugin), "keeps_log", keeps_log)
+        monkeypatch.setattr(type(plugin), "deliver", deliver)
+        say(conversation)
+        assert not Delivery.objects.exists()
 
 
 # --- The log ---

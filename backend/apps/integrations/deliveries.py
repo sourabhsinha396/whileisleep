@@ -115,8 +115,7 @@ def send(delivery: Delivery) -> int | None:
         log.exception("Plugin %s failed to deliver %s", plugin.id, delivery.event)
         return failed(delivery, f"{plugin.name} failed unexpectedly. The server's log says why.", retry=True)
     if plugin.keeps_log:
-        delivery.status, delivery.detail = Delivery.Status.SENT, detail or ""
-        delivery.save(update_fields=["status", "detail"])
+        record(delivery, status=Delivery.Status.SENT, detail=detail or "")
     else:
         delivery.delete()
     if integration.last_error:
@@ -124,16 +123,18 @@ def send(delivery: Delivery) -> int | None:
     return None
 
 
+def record(delivery: Delivery, **fields) -> None:
+    """It may be gone: disconnected while it was being sent."""
+    Delivery.objects.filter(pk=delivery.pk).update(**fields)
+
+
 def failed(delivery: Delivery, error: str, retry: bool, after: int | None = None) -> int | None:
-    delivery.attempts += 1
-    delivery.detail = error
-    if retry and delivery.attempts <= len(RETRY_DELAYS):
+    attempts = delivery.attempts + 1
+    if retry and attempts <= len(RETRY_DELAYS):
         # A busy service says when; never sooner than that, nor later than our longest wait.
-        wait = min(max(RETRY_DELAYS[delivery.attempts - 1], after or 0), RETRY_DELAYS[-1])
-        delivery.due_at = timezone.now() + timedelta(seconds=wait)
-        delivery.save(update_fields=["attempts", "detail", "due_at"])
+        wait = min(max(RETRY_DELAYS[attempts - 1], after or 0), RETRY_DELAYS[-1])
+        record(delivery, attempts=attempts, detail=error, due_at=timezone.now() + timedelta(seconds=wait))
         return wait
-    delivery.status = Delivery.Status.FAILED
-    delivery.save(update_fields=["attempts", "detail", "status"])
+    record(delivery, attempts=attempts, detail=error, status=Delivery.Status.FAILED)
     Integration.objects.filter(pk=delivery.integration_id).update(last_error=error)
     return None

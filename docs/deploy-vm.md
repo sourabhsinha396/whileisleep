@@ -2,7 +2,7 @@
 
 One small virtual machine, from any provider, runs everything with Docker Compose: Caddy (HTTPS), the Django API, the
 stream process that sends live updates to the widget and the inbox, a Celery worker that
-writes the AI's replies, the Next.js dashboard, Postgres and Redis.
+writes the AI's replies, another that talks to Slack and webhooks, the Next.js dashboard, Postgres and Redis.
 
 ## What you need
 
@@ -60,8 +60,8 @@ docker compose up -d --build
 docker compose ps
 ```
 
-The `release` service runs the database migrations and exits; `web`, `stream`, `worker` and
-`beat` start after it. The first HTTPS request takes a few seconds while Caddy obtains the
+The `release` service runs the database migrations and exits; `web`, `stream`, `worker`,
+`integrations` and `beat` start after it. The first HTTPS request takes a few seconds while Caddy obtains the
 certificate.
 
 Open `https://YOUR_DOMAIN`, sign up (the first account owns its organization), then:
@@ -70,6 +70,10 @@ Open `https://YOUR_DOMAIN`, sign up (the first account owns its organization), t
 2. Copy the widget snippet from **Settings › Install** into your site.
 3. Set `SIGNUP_ENABLED=false` in `.env` and run `docker compose up -d` so nobody else can
    create accounts on your server.
+
+## Slack (optional)
+
+[Slack](slack.md#set-it-up-on-your-own-server) needs an app of your own and three settings. Webhooks need nothing.
 
 ## Selling plans (optional)
 

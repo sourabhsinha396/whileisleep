@@ -50,6 +50,9 @@ The technical reference: integration, security and internals. For what the produ
 - **Turns**: every visitor message leaves a record of the stage that answered it (rule, limit, AI or
   fallback), the model, tokens, cost, duration and each tool call. `GET /turns/summary` shows how much
   of your traffic never needed the model.
+- **Integrations**: plugins that connect a workspace to an outside service. [Slack](slack.md): a chat that needs a
+  person is a thread, and replies there reach the visitor. [Webhooks](webhooks.md): signed events to any system, which can
+  answer. [Build your own](plugins.md).
 - **A2UI**: bot replies carry [A2UI](https://a2ui.org) v1.0 surfaces (article buttons, "Talk to a person",
   forms). The server builds them from templates; the widget renders them with a small safe renderer
   (`frontend/src/lib/a2ui`), and button events come back to `POST /api/v1/widget/{key}/actions`.
@@ -92,6 +95,21 @@ events**. No WebSockets: sending stays plain REST.
   3 seconds; only who is typing goes out, never the draft.
 - **Presence** is a Redis key per visitor with a 45-second TTL, refreshed by the open stream.
 - While a stream is down the page polls the REST endpoints, as often as it used to.
+
+## Integrations (`backend/apps/integrations`)
+
+- Conversations **announce** what happens (`apps/conversations/signals.py`) and know nothing about integrations. For each
+  connected plugin that wants the event, a **Delivery** is written to Postgres, and a worker sends it.
+- One conversation's events go out in order, one at a time. A failed one is tried again, up to about 2.5 hours, and the rest
+  wait behind it. A sweep sends what the queue lost.
+- **A slow service holds nobody up.** Integrations have their own queues and, in production, their own worker (the
+  `integrations` service), so AI replies keep theirs. Deliveries may use half of its threads, and one integration two of
+  them; a job that finds no room gives its thread back. Every call has a deadline for all of it (8 seconds), and after five
+  without an answer the service counts as down for 30 seconds, when calls fail at once.
+- **No web request calls a service.** Connecting, listing choices and saving are jobs (encrypted in the queue), and the page
+  asks how they went. Webhooks are checked, queued and answered.
+- Live streams are the only async code. They use async Redis and the async ORM, and Ruff's `ASYNC` rules refuse blocking
+  calls there.
 
 ## Identifying visitors
 
@@ -146,9 +164,9 @@ claims become verified attributes.
   `accounts` (token auth), `workspaces` (organizations, workspaces, members),
   `conversations` (visitors, conversations, messages, attributes, identity, widget API),
   `knowledge` (articles, passages, search),
-  `agent` (pipeline, rules and conditions, the OpenRouter tool loop, the Celery tasks, HTTP and MCP
+  `integrations` (plugins, deliveries, webhooks), `agent` (pipeline, rules and conditions, the OpenRouter tool loop, the Celery tasks, HTTP and MCP
   tools, turns, A2UI), `realtime` (Redis pub/sub, presence, the live streams).
-  Tests in `backend/tests/`, with factories in `tests/factories.py`.
+  Plugins in `backend/plugins/`. Tests in `backend/tests/`, with factories in `tests/factories.py`.
 - `frontend/`: Next.js App Router dashboard, plus the widget (`src/widget`, built by esbuild into
   `public/widget.js`). Tests in `frontend/tests/`.
 - `deploy/`: the production Docker Compose stack. [deploy-vm.md](deploy-vm.md) walks through it.

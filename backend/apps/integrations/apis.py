@@ -1,7 +1,7 @@
 """Dashboard APIs for a workspace's integrations, and the address services send webhooks to.
 
-Members see what is connected; owners connect and change it. Nothing here waits for a service: what
-needs one is a job (apps.integrations.jobs).
+Only owners: an endpoint's address can be a secret too. Nothing here waits for a service: what needs
+one is a job (apps.integrations.jobs).
 """
 
 import json
@@ -16,7 +16,7 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from apps.accounts.security import token_auth
-from apps.workspaces.services import member_workspace, owner_workspace
+from apps.workspaces.services import owner_workspace
 from whileisleep import encryption
 
 from . import connections, deliveries, jobs, registry, tasks
@@ -210,7 +210,7 @@ def detail_out(plugin: Plugin, rows: list[Integration]) -> dict:
 
 @router.get("/workspaces/{workspace_id}/integrations", response=list[IntegrationOut], auth=token_auth)
 def list_integrations(request, workspace_id: int):
-    workspace = member_workspace(request.auth, workspace_id)
+    workspace = owner_workspace(request.auth, workspace_id)
     rows: dict[str, list[Integration]] = {}
     for row in workspace.integrations.order_by("pk"):
         rows.setdefault(row.plugin, []).append(row)

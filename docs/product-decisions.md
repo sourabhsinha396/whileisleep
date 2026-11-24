@@ -4,6 +4,19 @@ Product decisions made by the project owner, newest first. Each says what was de
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Technical decisions are in [tech-decisions.md](tech-decisions.md).
 
+## 2026-11-24: Slack and webhooks are the first integrations
+
+**Decision.** Slack comes first, then webhooks: like Slack, but general, for any system. No Telegram. Later ones are
+chosen by what is used most at Fin, Intercom and Crisp.
+
+## 2026-11-24: Answers from real data work with any system
+
+**Decision.** Integrations don't supply customer data, so there is no Shopify or Stripe plugin for it. Questions such as
+"where is my order?" and "why was I charged?" are answered by the agent's tools, rules, playbooks and later features,
+with A2UI, from any system.
+
+**Why.** That is the whole point of the chatbot and A2UI.
+
 ## 2026-11-24: The widget has a background and a color mode
 
 **Decision.** Owners pick the chatbox background, as in Crisp, and one more important option. Color mode (light, dark

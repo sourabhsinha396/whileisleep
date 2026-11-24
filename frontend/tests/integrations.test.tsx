@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PluginFields, PluginIcon } from "@/components/plugin-fields";
 import type { PluginField } from "@/lib/api";
-import { complete, finish, iconUrl, initialValues, readCallback, run, statusOf, summaryOf, toggled } from "@/lib/integrations";
+import { complete, eventName, finish, iconUrl, initialValues, readCallback, run, statusOf, summaryOf, toggled } from "@/lib/integrations";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -65,6 +65,11 @@ describe("status", () => {
     expect(summaryOf({ available: true, connections: [] })).toBeNull();
     expect(summaryOf({ available: false, connections: [] })?.label).toBe("Not set up on this server");
   });
+});
+
+it("names events in words, and leaves unknown ones as they are", () => {
+  expect(eventName("person_requested")).toBe("Needs a person");
+  expect(eventName("from_the_future")).toBe("from_the_future");
 });
 
 describe("coming back from the service", () => {

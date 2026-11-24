@@ -4,6 +4,15 @@ Technical decisions made by the project owner, newest first. Each says what was 
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Product decisions are in [product-decisions.md](product-decisions.md).
 
+## 2026-11-24: Slow services never block our threads
+
+**Decision.** If many requests to Slack, or any outside service, are slow, they must not block our threads. No blocking
+call runs inside async code.
+
+## 2026-11-24: Integrations are plugins
+
+**Decision.** The code is kept so that other people can build plugins, and we can add integrations easily when needed.
+
 ## 2026-11-24: Payments go through Dodo Payments
 
 **Decision.** The hosted plans are sold with Dodo Payments.

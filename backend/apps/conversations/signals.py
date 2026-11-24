@@ -9,11 +9,14 @@ from datetime import datetime
 
 from django.dispatch import Signal
 
+STARTED = "started"  # a new conversation; its first message follows
 MESSAGE = "message"  # someone wrote; `message` is set, and may be an internal note
 PERSON_REQUESTED = "person_requested"  # handed to the team; data["reason"] says why
 RESOLVED = "resolved"
 REOPENED = "reopened"
 AI_RESUMED = "ai_resumed"  # a teammate gave the conversation back to the AI
+# The visitor told us who they are, in a form; data["changed"] names what ("email", "phone", "name").
+CONTACT_UPDATED = "contact_updated"
 
 
 @dataclass(frozen=True)

@@ -226,6 +226,7 @@ TRIAL_DAYS = 14
 # own with EXTRA_PLUGINS, comma-separated; docs/plugins.md shows how to write one.
 PLUGINS = [
     "plugins.slack",
+    "plugins.webhooks",
     *(path.strip() for path in os.environ.get("EXTRA_PLUGINS", "").split(",") if path.strip()),
 ]
 # What plugins need from whoever runs the server: PLUGIN_SLACK_CLIENT_ID...

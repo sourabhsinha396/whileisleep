@@ -20,7 +20,7 @@ from apps.workspaces.models import Membership, Workspace
 from whileisleep.client_ip import client_ip
 
 from . import attachments, identity, limits
-from .models import Conversation, Message, Visitor
+from .models import Message, Visitor
 from .schemas import (
     ArticleOut,
     ArticleRef,
@@ -33,7 +33,7 @@ from .schemas import (
     WidgetSessionOut,
 )
 from .serializers import attachment_out, message_out
-from .services import add_message, current_conversation, is_stale, touch_visitor
+from .services import add_message, current_conversation, is_stale, start_conversation, touch_visitor
 
 router = Router(tags=["widget"])
 
@@ -145,7 +145,7 @@ def send(request, key: str, payload: WidgetMessageIn):
     files = attachments.unsent(workspace, payload.attachments, visitor=visitor)
     conversation = current_conversation(visitor)
     if conversation is None or is_stale(conversation):
-        conversation = Conversation.objects.create(workspace=workspace, visitor=visitor)
+        conversation = start_conversation(visitor)
     message = add_message(
         conversation,
         Message.Sender.VISITOR,

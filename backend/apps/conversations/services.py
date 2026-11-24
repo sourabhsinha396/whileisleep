@@ -62,6 +62,12 @@ def add_message(
     return message
 
 
+def start_conversation(visitor: Visitor, *, by=None, **fields) -> Conversation:
+    conversation = Conversation.objects.create(workspace=visitor.workspace, visitor=visitor, **fields)
+    signals.announce(signals.STARTED, conversation, by=by)
+    return conversation
+
+
 def reply_as(user, conversation: Conversation, body: str, *, is_note=False, attachments=(), origin="") -> Message:
     """A teammate writes to the visitor, or a note for the team. Answering takes the conversation."""
     message = add_message(

@@ -165,13 +165,13 @@ def connection_out(plugin: Plugin, integration: Integration) -> dict:
     fields = plugin.settings_fields
     secrets = [f.name for f in fields if f.kind == "secret" and integration.credentials.get(f.name)]
     values = {f.name: str(integration.config.get(f.name, f.default)) for f in fields if f.kind != "secret"}
-    chosen = all(values.get(f.name) or f.name in secrets for f in fields if f.required)
+    chosen = all(integration.config.get(f.name) or f.name in secrets for f in fields if f.required)
     return {
         "id": integration.pk,
         "account_name": integration.account_name,
         "settings": values,
         "secrets": secrets,
-        "ready": chosen and (bool(integration.config) or not fields),
+        "ready": chosen,
         "last_error": integration.last_error,
     }
 

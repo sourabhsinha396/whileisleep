@@ -1,13 +1,24 @@
 """Everything a plugin may use of whileisleep. Plugins import from here and nowhere else in
 `apps`, so the rest can change without breaking them (tests/test_plugins.py checks ours)."""
 
+from pathlib import Path
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from apps.conversations import attributes
 from apps.conversations.models import Conversation, Message
 from apps.conversations.services import reply_as, set_human_requested, set_status
-from apps.conversations.signals import AI_RESUMED, MESSAGE, PERSON_REQUESTED, REOPENED, RESOLVED, Event
+from apps.conversations.signals import (
+    AI_RESUMED,
+    CONTACT_UPDATED,
+    MESSAGE,
+    PERSON_REQUESTED,
+    REOPENED,
+    RESOLVED,
+    STARTED,
+    Event,
+)
 
 from .http import Unreachable, request
 from .models import Delivery, Integration, Thread
@@ -26,10 +37,12 @@ from .plugin import (
 
 __all__ = [
     "AI_RESUMED",
+    "CONTACT_UPDATED",
     "MESSAGE",
     "PERSON_REQUESTED",
     "REOPENED",
     "RESOLVED",
+    "STARTED",
     "BadRequest",
     "Connection",
     "Conversation",
@@ -47,10 +60,14 @@ __all__ = [
     "Unreachable",
     "WebhookRequest",
     "add_note",
+    "attributes_of",
+    "conversation_in",
     "display_name",
     "email_is_verified",
+    "find_integration",
     "find_thread",
     "give_to_ai",
+    "icon_of",
     "inbox_url",
     "integrations_of_account",
     "link_thread",
@@ -63,9 +80,44 @@ __all__ = [
     "thread_expected",
     "thread_of",
     "transcript",
+    "webhook_url",
 ]
 
+# --- About the plugin itself ---
+
+
+def icon_of(file: str) -> str:
+    """icon.svg beside the module whose __file__ this is."""
+    return (Path(file).parent / "icon.svg").read_text(encoding="utf-8")
+
+
+def webhook_url(plugin: Plugin) -> str:
+    """Where the service sends what `receive` gets."""
+    return f"{settings.SITE_URL}/api/v1/integrations/{plugin.id}/webhook"
+
+
 # --- Looking things up ---
+
+
+def find_integration(plugin: Plugin, account_id: str) -> Integration | None:
+    """For a plugin whose every connection has an account id of its own."""
+    if not account_id:
+        return None
+    rows = Integration.objects.filter(plugin=plugin.id, account_id=account_id)
+    return rows.select_related("workspace", "connected_by").first()
+
+
+def conversation_in(integration: Integration, conversation_id) -> Conversation | None:
+    """The conversation with this id, if it is in the integration's workspace."""
+    if type(conversation_id) is not int:
+        return None
+    rows = Conversation.objects.filter(workspace_id=integration.workspace_id, pk=conversation_id)
+    return rows.select_related("visitor", "workspace").first()
+
+
+def attributes_of(target) -> dict:
+    """What is known about a visitor or a conversation, by name."""
+    return {row["key"]: row["value"] for row in attributes.listing(target)}
 
 
 def integrations_of_account(plugin: Plugin, account_id: str):

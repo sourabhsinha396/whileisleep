@@ -82,6 +82,8 @@ class Connection:
     account_id: str
     account_name: str
     credentials: dict = field(default_factory=dict, repr=False)
+    # Settings it starts with.
+    settings: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

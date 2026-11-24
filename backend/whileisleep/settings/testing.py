@@ -24,7 +24,7 @@ PAYMENT_PROVIDER = DODO_BASE_URL = DODO_API_KEY = ""
 DODO_PRODUCT_MONTHLY = DODO_PRODUCT_YEARLY = DODO_WEBHOOK_KEY = ""
 
 # Nor other plugins than ours, which are not set up; tests do that.
-PLUGINS = ["plugins.slack"]
+PLUGINS = ["plugins.slack", "plugins.webhooks"]
 PLUGIN_OPTIONS = {}
 
 # Nor a real bucket: files stay in memory.

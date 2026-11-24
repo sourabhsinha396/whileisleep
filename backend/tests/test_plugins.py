@@ -46,7 +46,11 @@ def base(workspace):
 @pytest.fixture
 def integration(workspace):
     return Integration.objects.create(
-        workspace=workspace, plugin="example", account_id="acct_1", account_name="Acme", config={"room": "r1"}
+        workspace=workspace,
+        plugin="example",
+        account_id="acct_1",
+        account_name="Acme",
+        config={"room": "r1", "mode": "all"},
     )
 
 
@@ -151,7 +155,7 @@ def test_what_the_service_offers_is_asked_in_a_job(api, one):
 def test_settings_are_checked(api, one, integration, values, problem):
     assert api.job(api.put(one, {"values": values}))["error"] == problem
     integration.refresh_from_db()
-    assert integration.config == {"room": "r1"}
+    assert integration.config == {"room": "r1", "mode": "all"}
 
 
 def test_saving_settings_keeps_only_known_ones(api, one, integration):
@@ -181,7 +185,7 @@ def test_connecting_another_account_starts_over(api, base, integration, conversa
 def test_connecting_the_same_account_again_keeps_everything(api, base, integration, conversation):
     Thread.objects.create(integration=integration, conversation=conversation, external_id="t1")
     connect(api, base)
-    assert Integration.objects.get().config == {"room": "r1"} and Thread.objects.exists()
+    assert Integration.objects.get().config["room"] == "r1" and Thread.objects.exists()
 
 
 def test_several_connections_where_the_plugin_allows_them(api, base, monkeypatch):

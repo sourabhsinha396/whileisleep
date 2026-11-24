@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from apps.conversations.models import Conversation, Message
 from apps.conversations.services import add_message, reply_as, request_human, set_human_requested, set_status
+from apps.conversations.signals import CONTACT_UPDATED, announce
 from apps.integrations import tasks
 from apps.integrations.models import Delivery, Integration, Thread
 from plugins.slack import plugin as slack_plugin
@@ -330,6 +331,14 @@ def test_files_and_forms_are_mentioned(thread, conversation, slack, workspace):
     files, form = slack.sent("chat.postMessage")
     assert "<https://cdn.example.com/a.png|a/b&gt;.png>" in text_of(files)
     assert "form" in text_of(form)
+
+
+def test_a_visitor_leaving_their_email_shows_on_the_first_message(thread, conversation, slack):
+    conversation.visitor.email = "maya@example.com"
+    conversation.visitor.save()
+    announce(CONTACT_UPDATED, conversation, data={"changed": ["email"]})
+    assert "maya@example.com" in text_of(slack.sent("chat.update")[0])
+    assert "Maya left their email" in slack.sent("chat.postMessage")[0]["text"]
 
 
 def test_internal_system_notes_stay_out(thread, conversation, slack):

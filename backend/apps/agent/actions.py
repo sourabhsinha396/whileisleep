@@ -1,5 +1,6 @@
 """Handles A2UI action events the widget sends back when a visitor presses a button."""
 
+from apps.conversations import signals
 from apps.conversations.models import Conversation, Message
 from apps.conversations.services import add_message, request_human
 from apps.knowledge.models import Article
@@ -67,6 +68,7 @@ def submit_form(conversation: Conversation, surface_id: str, values) -> None:
     changed = forms.remember(conversation, form, answers)
     answer = add_message(conversation, Message.Sender.VISITOR, forms.as_text(form, answers))
     if changed:
+        signals.announce(signals.CONTACT_UPDATED, conversation, data={"changed": list(changed)})
         add_message(
             conversation,
             Message.Sender.SYSTEM,

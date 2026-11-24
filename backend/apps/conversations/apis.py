@@ -30,7 +30,7 @@ from .schemas import (
     VisitorOut,
 )
 from .serializers import attachment_out, conversation_row, message_out, visitor_out
-from .services import add_message, reply_as, set_human_requested, set_status
+from .services import add_message, reply_as, set_human_requested, set_status, start_conversation
 
 router = Router(tags=["inbox"], auth=token_auth)
 
@@ -193,12 +193,10 @@ def delete_conversation_attribute(request, workspace_id: int, conversation_id: i
 
 
 @router.post("/workspaces/{workspace_id}/visitors/{visitor_id}/conversations", response=ConversationRow)
-def start_conversation(request, workspace_id: int, visitor_id: int, payload: OpeningIn):
+def message_first(request, workspace_id: int, visitor_id: int, payload: OpeningIn):
     """A teammate messages a visitor first (from the Visitors page)."""
     workspace = member_workspace(request.auth, workspace_id)
     visitor = get_object_or_404(Visitor, pk=visitor_id, workspace=workspace)
-    conversation = Conversation.objects.create(
-        workspace=workspace, visitor=visitor, assignee=request.auth, unread=False
-    )
+    conversation = start_conversation(visitor, by=request.auth, assignee=request.auth, unread=False)
     message = add_message(conversation, Message.Sender.AGENT, payload.body.strip(), author=request.auth)
     return conversation_row(conversation, message)

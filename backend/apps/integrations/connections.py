@@ -46,6 +46,8 @@ def save(workspace: Workspace, plugin: Plugin, connection: Connection, user) -> 
         "connected_by": user,
         "last_error": "",
     }
+    if connection.settings:
+        fields["config"] = connection.settings
     with transaction.atomic():
         # One owner's two clicks can't make two.
         Workspace.objects.select_for_update().get(pk=workspace.pk)

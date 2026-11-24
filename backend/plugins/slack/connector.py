@@ -11,13 +11,13 @@ import json
 import logging
 import re
 import time
-from pathlib import Path
 from urllib.parse import parse_qs
 
 from django.core.cache import cache
 
 from apps.integrations.sdk import (
     AI_RESUMED,
+    CONTACT_UPDATED,
     MESSAGE,
     PERSON_REQUESTED,
     REOPENED,
@@ -38,6 +38,7 @@ from apps.integrations.sdk import (
     display_name,
     find_thread,
     give_to_ai,
+    icon_of,
     integrations_of_account,
     link_thread,
     needs_person,
@@ -67,7 +68,9 @@ SCOPES = (
     "users:read.email",
 )
 BOT_EVENTS = ("app_uninstalled", "message.channels", "message.groups", "tokens_revoked")
-ICON = (Path(__file__).parent / "icon.svg").read_text(encoding="utf-8")
+
+# What a thread shows.
+SHOWN = {MESSAGE, PERSON_REQUESTED, RESOLVED, REOPENED, AI_RESUMED, CONTACT_UPDATED}
 
 # A request older (or newer) than this is refused, so a captured one can't be replayed later.
 TOLERANCE_SECONDS = 300
@@ -85,7 +88,7 @@ class SlackPlugin(Plugin):
     name = "Slack"
     description = "Get told when a chat needs you, and answer it from Slack."
     notice = "Everyone in the channel can read these chats. Only members of this workspace can answer them."
-    icon = ICON
+    icon = icon_of(__file__)
     server_options = ("CLIENT_ID", "CLIENT_SECRET", "SIGNING_SECRET")
     save_label = "Save and send a test"
     settings_fields = (
@@ -164,7 +167,7 @@ class SlackPlugin(Plugin):
     # --- To Slack ---
 
     def wants(self, integration: Integration, event: Event) -> bool:
-        if not integration.config.get("channel") or not self.token(integration):
+        if event.name not in SHOWN or not integration.config.get("channel") or not self.token(integration):
             return False
         if event.name == MESSAGE and event.message.sender == Message.Sender.SYSTEM:
             return False
@@ -238,6 +241,9 @@ class SlackPlugin(Plugin):
             mention = self.mention(integration, event.conversation)
             name = text.escape(event.conversation.visitor.display_name)
             return text.clip(f"{mention} :bell: {name} needs a person again.{' ' + reason if reason else ''}".strip())
+        if event.name == CONTACT_UPDATED:
+            what = " and ".join(event.data.get("changed", []))
+            return f":bust_in_silhouette: {text.escape(event.conversation.visitor.display_name)} left their {what}"
         return {
             RESOLVED: f":white_check_mark: Resolved{by}",
             REOPENED: f":arrows_counterclockwise: Reopened{by}",

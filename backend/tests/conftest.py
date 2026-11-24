@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.db import transaction
 from django.test import Client
 
-from apps.agent import openrouter
+from apps.agent import providers
 
 from .factories import AuthTokenFactory, MembershipFactory, OrganizationFactory, UserFactory, WorkspaceFactory
 
@@ -167,7 +167,7 @@ def anon():
     return Api()
 
 
-# --- Fake OpenRouter ---
+# --- Fake LLM ---
 
 
 def tool_call(name: str, arguments: dict, id: str = "call_1") -> dict:
@@ -175,7 +175,7 @@ def tool_call(name: str, arguments: dict, id: str = "call_1") -> dict:
 
 
 def assistant(*calls: dict, content: str | None = None) -> dict:
-    """An assistant message as OpenRouter returns it (choices[0].message)."""
+    """An assistant message, as every provider client returns it."""
     return {"role": "assistant", "content": content, "tool_calls": list(calls) or None}
 
 
@@ -185,7 +185,7 @@ def final(reply: str, article_ids=(), offer_human=False) -> dict:
     return assistant(tool_call("reply_to_visitor", args, id="call_final"))
 
 
-class FakeOpenRouter:
+class FakeLlm:
     """Returns scripted messages in order and records each request. Each response counts as
     `usage` tokens, so tests can check what a reply cost."""
 
@@ -194,23 +194,32 @@ class FakeOpenRouter:
         self.requests = []
         self.usage = usage or {"input_tokens": 100, "cached_tokens": 0, "output_tokens": 20}
 
-    def complete(self, api_key, model, messages, tools):
-        # Copy the messages: the bot appends to the same list after the call.
-        self.requests.append({"api_key": api_key, "model": model, "messages": list(messages), "tools": tools})
+    def complete(self, provider, api_key, model, messages, tools, timeout):
+        self.requests.append(
+            {
+                "provider": provider,
+                "api_key": api_key,
+                "model": model,
+                # A copy: the bot appends to the same list after the call.
+                "messages": list(messages),
+                "tools": tools,
+                "timeout": timeout,
+            }
+        )
         response = self.responses.pop(0)
         if isinstance(response, Exception):
             raise response
-        return openrouter.Completion(message=response, **self.usage)
+        return providers.Completion(message=response, **self.usage)
 
 
 @pytest.fixture
 def llm(monkeypatch):
-    """Install a fake OpenRouter. Call it with the scripted assistant messages. The
+    """Install a fake LLM, whichever the provider. Call it with the scripted assistant messages. The
     conversation's organization must be ready (OrganizationFactory(ready=True))."""
 
     def install(*responses, usage=None):
-        fake = FakeOpenRouter(responses, usage)
-        monkeypatch.setattr(openrouter, "complete", fake.complete)
+        fake = FakeLlm(responses, usage)
+        monkeypatch.setattr(providers, "complete", fake.complete)
         return fake
 
     return install

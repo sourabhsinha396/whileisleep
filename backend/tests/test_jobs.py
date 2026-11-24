@@ -9,8 +9,9 @@ from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 
-from apps.agent import openrouter, pipeline, tasks
+from apps.agent import pipeline, providers, tasks
 from apps.agent.models import Turn
+from apps.agent.providers import ProviderError
 from apps.conversations.models import Message
 from whileisleep.celery import app as celery_app
 from whileisleep.settings import base
@@ -148,7 +149,7 @@ def test_the_lock_expires_by_itself(settings):
 
 
 def transient(status=503):
-    return openrouter.OpenRouterError("OpenRouter is overloaded.", status)
+    return ProviderError("OpenRouter is overloaded.", status)
 
 
 @pytest.fixture
@@ -197,7 +198,7 @@ def test_after_the_last_try_the_fallback_answers(llm, delays):
 @pytest.mark.parametrize("status", [401, 402, 400, 404])
 def test_failures_that_will_not_pass_are_not_retried(llm, delays, status):
     conversation, message = asking()
-    fake = llm(openrouter.OpenRouterError("The OpenRouter API key was rejected.", status))
+    fake = llm(ProviderError("The OpenRouter API key was rejected.", status))
     tasks.answer.apply(args=(conversation.pk, "", message.pk, None)).get()
     assert len(fake.requests) == 1 and delays == []
     assert Turn.objects.get().stage == Turn.Stage.FALLBACK
@@ -233,22 +234,22 @@ def test_the_lock_is_free_between_tries(llm, monkeypatch):
 
 
 def test_which_failures_count_as_passing():
-    assert openrouter.OpenRouterError("x", 503).transient
-    assert openrouter.OpenRouterError("x", 429).transient
-    assert not openrouter.OpenRouterError("x", 401).transient
-    assert not openrouter.OpenRouterError("x", 402).transient
+    assert ProviderError("x", 503).transient
+    assert ProviderError("x", 429).transient
+    assert not ProviderError("x", 401).transient
+    assert not ProviderError("x", 402).transient
     # No status: a malformed response, not worth repeating unless said so.
-    assert not openrouter.OpenRouterError("x").transient
-    assert openrouter.OpenRouterError("x", transient=True).transient
+    assert not ProviderError("x").transient
+    assert ProviderError("x", transient=True).transient
 
 
 def test_a_network_failure_counts_as_passing(monkeypatch):
     def unreachable(*args, **kwargs):
         raise httpx.ConnectTimeout("slow")
 
-    monkeypatch.setattr(openrouter.httpx, "request", unreachable)
-    with pytest.raises(openrouter.OpenRouterError) as error:
-        openrouter.complete("k", "m", [], [])
+    monkeypatch.setattr(httpx, "request", unreachable)
+    with pytest.raises(ProviderError) as error:
+        providers.complete("openrouter", "k", "m", [], [])
     assert error.value.transient
 
 
@@ -347,7 +348,7 @@ def test_the_sweep_waits_longer_than_any_reply_can_take(settings):
     """So it doesn't re-queue a message whose reply is still being written. The slowest
     reply: every retried try times out on its first model call, the waits between tries,
     then a last try that uses its whole deadline and overruns it by one model call."""
-    one_call = openrouter.TIMEOUT_SECONDS
+    one_call = providers.TIMEOUT_SECONDS
     retried = len(tasks.LLM_RETRY_DELAYS) * one_call + sum(tasks.LLM_RETRY_DELAYS)
     slowest = settings.REPLY_DEBOUNCE_SECONDS + retried + settings.REPLY_DEADLINE_SECONDS + one_call
     assert tasks.SWEEP_AFTER.total_seconds() > slowest

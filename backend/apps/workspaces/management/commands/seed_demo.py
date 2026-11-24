@@ -15,7 +15,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from apps.agent.models import Playbook, Rule, Tool
 from apps.knowledge.models import Article
-from apps.workspaces.models import Workspace
+from apps.workspaces.models import Provider, Workspace
 from apps.workspaces.services import create_workspace, organization_for
 
 EXAM_API = os.environ.get("EXAMGRILL_API_URL", "http://host.docker.internal:8006")
@@ -137,9 +137,9 @@ class Command(BaseCommand):
 
         organization = organization_for(user)
         key = os.environ.get("OPENROUTER_API_KEY", "").strip()
-        if key and not organization.openrouter_api_key:
-            organization.openrouter_api_key = key
-            organization.save(update_fields=["openrouter_api_key"])
+        if key and not organization.provider_keys.get(Provider.OPENROUTER):
+            organization.provider_keys[Provider.OPENROUTER.value] = key
+            organization.save(update_fields=["provider_keys"])
             self.stdout.write(f"OpenRouter key from .env saved to {organization.name}. Pick a model on its page.")
 
         for spec in WORKSPACES:

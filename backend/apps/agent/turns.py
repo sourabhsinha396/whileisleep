@@ -7,7 +7,7 @@ from apps.conversations.models import Conversation, Message
 from apps.realtime import events
 
 from .models import Rule, Turn
-from .openrouter import Completion
+from .providers import Completion
 
 # Tool results can be long; the Turn keeps enough to see what came back.
 RESULT_CHARS = 500

@@ -2,7 +2,8 @@ import json
 
 import pytest
 
-from apps.agent import bot, http_tools, openrouter
+from apps.agent import bot, http_tools
+from apps.agent.providers import ProviderError
 from apps.conversations.models import Message
 
 from .conftest import assistant, final, tool_call
@@ -175,7 +176,7 @@ def test_plain_text_answer_is_still_used(llm):
 def test_openrouter_error_falls_back_and_tells_the_team(llm):
     conversation = ask("shipping to Canada?")
     ArticleFactory(workspace=conversation.workspace, title="Shipping", body="We ship to Canada.")
-    llm(openrouter.OpenRouterError("OpenRouter credits or key limit ran out (Insufficient credits).", 402))
+    llm(ProviderError("OpenRouter credits or key limit ran out (Insufficient credits).", 402))
     message = bot.reply(conversation.id)
     assert "help center" in message.body
     assert conversation.messages.filter(is_note=True, body__contains="Insufficient credits").exists()

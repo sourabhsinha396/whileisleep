@@ -5,14 +5,14 @@ Before the first model call, the help center is searched with the visitor's mess
 best passages go into the prompt, so a question the help center answers costs one call
 instead of a search round-trip.
 
-Then a tool-calling loop runs on OpenRouter with the organization's key and model. Built-in
-tools search the knowledge base again and hand off to a person; each workspace adds HTTP
-tools (apps.agent.models.Tool) that fetch live data from its own systems. The model finishes
-by calling reply_to_visitor with the reply text, the articles worth linking, and whether to
-offer a person; the server turns the last two into an A2UI surface. (A final tool works on
-any tool-capable model, unlike structured-output modes.)
+Then a tool-calling loop runs on the organization's model, or on its fallback when that one
+fails (apps.agent.llm). Built-in tools search the knowledge base again and hand off to a person;
+each workspace adds HTTP tools (apps.agent.models.Tool) that fetch live data from its own
+systems. The model finishes by calling reply_to_visitor with the reply text, the articles worth
+linking, and whether to offer a person; the server turns the last two into an A2UI surface. (A
+final tool works on any tool-capable model, unlike structured-output modes.)
 
-Without a key and model, or when OpenRouter fails, it falls back to a help center search.
+Without a key and model, or when every model fails, it falls back to a help center search.
 Either way the pass is recorded as a Turn.
 """
 
@@ -29,8 +29,10 @@ from apps.conversations.services import add_message
 from apps.knowledge.models import Article
 from apps.knowledge.search import passages, search
 
-from . import a2ui, forms, http_tools, mcp_tools, openrouter
+from . import a2ui, forms, http_tools, mcp_tools
+from .llm import Chain
 from .models import Playbook, Rule, Tool, Turn
+from .providers import ProviderError, parse_arguments
 from .turns import Recorder
 
 log = logging.getLogger(__name__)
@@ -165,11 +167,11 @@ def reply(
     if conversation.workspace.organization.llm_ready:
         try:
             result = run_agent(conversation, history, instruction, recorder)
-        except openrouter.OpenRouterError as failure:
+        except ProviderError as failure:
             if retry_transient and failure.transient and not any(step["type"] == "tool" for step in recorder.steps):
                 raise
             error = str(failure)
-            log.warning("OpenRouter failed on conversation %s: %s", conversation_id, error)
+            log.warning("The model failed on conversation %s: %s", conversation_id, error)
             # The team sees why the bot fell back, e.g. an expired key or no credits.
             add_message(conversation, Message.Sender.SYSTEM, f"AI agent error: {error}", is_note=True)
         if result is None and not error:
@@ -384,16 +386,6 @@ def tool_definitions(tools: list[Tool], with_playbooks: bool = False) -> list[di
     ]
 
 
-def parse_arguments(raw) -> dict:
-    if isinstance(raw, dict):
-        return raw
-    try:
-        value = json.loads(raw or "{}")
-    except (TypeError, ValueError):
-        return {}
-    return value if isinstance(value, dict) else {}
-
-
 def final_answer(arguments: dict) -> dict:
     ids = arguments.get("article_ids") or []
     return {
@@ -421,14 +413,16 @@ def run_agent(
     conversation: Conversation, history: list[dict], instruction: str = "", recorder: Recorder | None = None
 ) -> dict | None:
     workspace = conversation.workspace
-    organization = workspace.organization
     recorder = recorder or Recorder(conversation)
     tools = {t.name: t for t in mcp_tools.usable(workspace)}
     playbooks = list(Playbook.objects.filter(workspace=workspace, enabled=True))
     definitions = tool_definitions(list(tools.values()), with_playbooks=bool(playbooks))
     found = prefetch(conversation, history[-1]["content"], recorder)
     prompt = system_prompt(workspace, playbooks, instruction, conversation_facts(conversation), found)
-    messages: list[dict] = [{"role": "system", "content": prompt}, *history]
+    # Only the start of the prompt is the same in every conversation; see system_prompt.
+    shared = len(system_prompt(workspace, playbooks))
+    messages: list[dict] = [{"role": "system", "content": prompt, "cached": shared}, *history]
+    chain = Chain(workspace.organization.llm_choices)
     trace: list[str] = []
     result = None
 
@@ -437,8 +431,11 @@ def run_agent(
             # Slow tools or a slow model: stop here rather than keep the visitor waiting.
             break
         recorder.doing("model")
-        completion = openrouter.complete(organization.openrouter_api_key, organization.llm_model, messages, definitions)
-        recorder.completion(completion, organization.llm_model)
+        failed = len(chain.failures)
+        completion = chain.complete(messages, definitions)
+        if len(chain.failures) > failed:
+            tell_team_about_fallback(conversation, chain, recorder)
+        recorder.completion(completion, chain.current.slug)
         message = completion.message
         calls = message.get("tool_calls") or []
         if not calls:
@@ -446,8 +443,8 @@ def run_agent(
             text = (message.get("content") or "").strip()
             result = {"reply": text, "article_ids": [], "offer_human": False} if text else None
             break
-        # Keep the whole message (reasoning details included) so the next turn continues it.
-        messages.append({k: v for k, v in message.items() if v is not None})
+        # Kept as the model wrote it too, so its next step continues its own reasoning.
+        messages.append({**message, "native": completion.native})
         for call in calls:
             name = (call.get("function") or {}).get("name", "")
             arguments = parse_arguments((call.get("function") or {}).get("arguments"))
@@ -464,6 +461,7 @@ def run_agent(
                 {
                     "role": "tool",
                     "tool_call_id": call.get("id", ""),
+                    "name": name,
                     "content": ("Error: " if is_error else "") + content,
                 }
             )
@@ -476,6 +474,15 @@ def run_agent(
     if result is None or not result["reply"]:
         return None
     return result
+
+
+def tell_team_about_fallback(conversation: Conversation, chain: Chain, recorder: Recorder) -> None:
+    """The visitor gets an answer either way; the team should know their model isn't the one
+    writing it (a revoked key would otherwise go unnoticed)."""
+    choice, error = chain.failures[-1]
+    recorder.step("model_fallback", failed=choice.label, used=chain.current.label, error=clip(str(error), 500))
+    note = f"{choice.label} failed, so {chain.current.label} is answering. {error}"
+    add_message(conversation, Message.Sender.SYSTEM, note, is_note=True)
 
 
 def call_tool(conversation: Conversation, tools: dict[str, Tool], name: str, inputs: dict) -> tuple[str, bool]:

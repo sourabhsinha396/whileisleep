@@ -85,26 +85,26 @@ def test_a_key_made_with_openssl_works(settings):
 
 @pytest.mark.django_db
 def test_llm_key_is_ciphertext_in_the_database():
-    organization = OrganizationFactory(openrouter_api_key="sk-or-live-1234")
-    stored = raw("workspaces_organization", "openrouter_api_key", organization.pk)
+    organization = OrganizationFactory(provider_keys={"openrouter": "sk-or-live-1234"})
+    stored = raw("workspaces_organization", "provider_keys", organization.pk)
     assert stored.startswith(encryption.PREFIX) and "sk-or-live" not in stored
-    assert Organization.objects.get(pk=organization.pk).openrouter_api_key == "sk-or-live-1234"
+    assert Organization.objects.get(pk=organization.pk).provider_keys == {"openrouter": "sk-or-live-1234"}
 
 
 @pytest.mark.django_db
 def test_empty_llm_key_is_stored_empty():
     organization = OrganizationFactory()
-    assert raw("workspaces_organization", "openrouter_api_key", organization.pk) == ""
+    assert raw("workspaces_organization", "provider_keys", organization.pk) == ""
     assert not Organization.objects.get(pk=organization.pk).llm_ready
 
 
 @pytest.mark.django_db
 def test_saving_again_does_not_encrypt_twice():
-    organization = OrganizationFactory(openrouter_api_key="sk-or-live-1234")
+    organization = OrganizationFactory(provider_keys={"openrouter": "sk-or-live-1234"})
     fresh = Organization.objects.get(pk=organization.pk)
     fresh.name = "Renamed"
     fresh.save()
-    assert Organization.objects.get(pk=organization.pk).openrouter_api_key == "sk-or-live-1234"
+    assert Organization.objects.get(pk=organization.pk).provider_keys == {"openrouter": "sk-or-live-1234"}
 
 
 @pytest.mark.django_db

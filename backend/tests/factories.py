@@ -45,8 +45,15 @@ class OrganizationFactory(factory.django.DjangoModelFactory):
     owner = factory.SubFactory(UserFactory)
 
     class Params:
-        # Has an OpenRouter key and model, so the bot calls the (fake) LLM.
-        ready = factory.Trait(openrouter_api_key="sk-or-test-key-1234", llm_model="test/model")
+        # Has a key and a model, so the bot calls the (fake) LLM.
+        ready = factory.Trait(provider_keys={"openrouter": "sk-or-test-key-1234"}, llm_model="test/model")
+        # And another model to take over when that one fails.
+        with_fallback = factory.Trait(
+            provider_keys={"openrouter": "sk-or-test-key-1234", "anthropic": "sk-ant-test-key-5678"},
+            llm_model="test/model",
+            fallback_provider="anthropic",
+            fallback_model="claude-test",
+        )
 
 
 class WorkspaceFactory(factory.django.DjangoModelFactory):

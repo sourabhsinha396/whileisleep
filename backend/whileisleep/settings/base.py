@@ -213,4 +213,4 @@ REPLY_DEADLINE_SECONDS = 120
 # last model call, so a lock never expires under a reply that is still being written.
 REPLY_LOCK_SECONDS = 300
 
-# The AI agent's OpenRouter key and model are per organization, set in the dashboard.
+# The AI agent's provider keys and models are per organization, set in the dashboard.

@@ -15,9 +15,7 @@ const SELF_HOSTED = [
 ];
 
 const CLOUD = [
-  "Everything in self-hosted",
-  "We run it, update it and back it up",
-  "Your own OpenRouter key: AI at your provider's price",
+  "Your bring Openrouter key: AI at your provider's price",
   "Email support",
 ];
 

@@ -51,7 +51,7 @@ export default function Home() {
             </p>
             <h1 className="mt-5 text-4xl leading-[1.08] font-extrabold tracking-tight text-balance sm:text-5xl lg:text-6xl">
               AI answers.
-              <span className="block text-primary-text">While I sleep.</span>
+              <span className="block text-primary-text">While you sleep.</span>
             </h1>
             <p className="mt-5 max-w-lg text-lg text-muted-foreground">
               We answer from your APIs, MCP, and other data sources, only waking you for chats that need a human.

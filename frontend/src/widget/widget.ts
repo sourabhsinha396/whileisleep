@@ -2,6 +2,7 @@ import { renderSurface } from "@/lib/a2ui/render";
 import { applyMessages, type ActionEvent } from "@/lib/a2ui/surface";
 import { inkOf, isBright, textOn } from "@/lib/contrast";
 import { openLiveStream, throttle, type LiveStream } from "@/lib/live-stream";
+import { formatArticle } from "./article";
 import { WidgetApi, type ChatMessage, type Identity, type Intent, type StreamEvent, type WidgetConfig } from "./api";
 import { styles } from "./styles";
 import { counterText } from "./limits";
@@ -584,7 +585,7 @@ export class Widget {
     const wrap = div("article");
     const h = document.createElement("h3");
     h.textContent = article.title;
-    wrap.append(h, ...formatText(article.body, this.config.website || undefined));
+    wrap.append(h, ...formatArticle(article.body, this.config.website || undefined));
     body.append(back, wrap);
     body.scrollTop = 0;
   }

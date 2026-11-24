@@ -134,6 +134,12 @@ button { font: inherit; }
 .article h3 { margin: 0 0 12px; font-size: 18px; line-height: 1.3; letter-spacing: -.01em; }
 .article p { margin: 0 0 10px; }
 .article a { color: var(--od-ink); }
+.article h4, .article h5 { margin: 18px 0 8px; font-size: 16px; line-height: 1.35; font-weight: 700; }
+.article h5 { font-size: 14px; }
+.article ul, .article ol { margin: 0 0 10px; padding-left: 22px; list-style: revert; }
+.article li { margin: 0 0 4px; }
+.article li > ul, .article li > ol { margin: 4px 0 0; }
+.article img { display: block; max-width: 100%; height: auto; margin: 6px 0; border-radius: 10px; box-shadow: 0 0 0 1px var(--od-border); }
 .back { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; color: var(--od-ink); cursor: pointer; padding: 4px 0;
   margin-bottom: 10px; font-weight: 600; font-size: 13px; }
 .empty { color: var(--od-muted); text-align: center; padding: 28px 12px; }

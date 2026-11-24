@@ -16,6 +16,8 @@ GOOD = {
     "POSTGRES_PASSWORD": "a-real-password",
     "SITE_URL": "https://chat.example.com",
     "REDIS_URL": "redis://redis:6379/0",
+    # Selling plans is optional, and a developer's .env may be halfway through setting it up.
+    "PAYMENT_PROVIDER": "",
 }
 
 

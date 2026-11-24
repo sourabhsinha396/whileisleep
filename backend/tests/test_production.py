@@ -105,3 +105,35 @@ def test_signup_can_be_closed(settings):
     assert closed.status_code == 403 and "closed" in closed.json()["detail"]
     settings.SIGNUP_ENABLED = True
     assert Api().post("/auth/signup", body).status_code == 200
+
+
+# --- Payments ---
+
+DODO = {
+    "PAYMENT_PROVIDER": "dodo",
+    "DODO_BASE_URL": "https://live.dodopayments.com",
+    "DODO_API_KEY": "key",
+    "DODO_PRODUCT_MONTHLY": "pdt_m",
+    "DODO_PRODUCT_YEARLY": "pdt_y",
+    "DODO_WEBHOOK_KEY": "whsec_x",
+}
+NO_DODO = dict.fromkeys(DODO)
+
+
+def test_payments_are_off_by_default(monkeypatch):
+    assert load_production(monkeypatch, **NO_DODO).BILLING_ENABLED is False
+
+
+def test_payments_fully_set_up(monkeypatch):
+    assert load_production(monkeypatch, **DODO).BILLING_ENABLED is True
+
+
+@pytest.mark.parametrize("missing", [name for name in DODO if name != "PAYMENT_PROVIDER"])
+def test_half_set_up_payments_stop_startup(monkeypatch, missing):
+    with pytest.raises(ImproperlyConfigured, match=missing):
+        load_production(monkeypatch, **DODO | {missing: None})
+
+
+def test_an_unknown_payment_provider_stops_startup(monkeypatch):
+    with pytest.raises(ImproperlyConfigured, match="PAYMENT_PROVIDER"):
+        load_production(monkeypatch, **DODO | {"PAYMENT_PROVIDER": "stripe"})

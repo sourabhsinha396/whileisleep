@@ -10,7 +10,7 @@ import os
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F403
-from .base import ENCRYPTION_KEYS, MIDDLEWARE, SECRET_KEY
+from .base import BILLING_ENABLED, ENCRYPTION_KEYS, MIDDLEWARE, PAYMENT_PROVIDER, SECRET_KEY
 
 
 def required(name: str) -> str:
@@ -54,6 +54,13 @@ SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 # Rate limits are counted in the cache, and every worker must see the same counts.
 required("REDIS_URL")
+
+# Half-configured payments would either take no money or lose track of who paid.
+if PAYMENT_PROVIDER:
+    for name in ("DODO_BASE_URL", "DODO_API_KEY", "DODO_PRODUCT_MONTHLY", "DODO_PRODUCT_YEARLY", "DODO_WEBHOOK_KEY"):
+        required(name)
+    if not BILLING_ENABLED:
+        raise ImproperlyConfigured("PAYMENT_PROVIDER must be 'dodo', or empty.")
 
 # Keep database connections open between requests, and check them before use.
 DATABASES["default"]["CONN_MAX_AGE"] = 60  # noqa: F405

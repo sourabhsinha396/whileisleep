@@ -18,6 +18,11 @@ CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 
+# Nor real payments; the `billing` fixture turns them on, against a fake Dodo.
+BILLING_ENABLED = False
+PAYMENT_PROVIDER = DODO_BASE_URL = DODO_API_KEY = ""
+DODO_PRODUCT_MONTHLY = DODO_PRODUCT_YEARLY = DODO_WEBHOOK_KEY = ""
+
 # Nor a real bucket: files stay in memory.
 STORAGES["default"] = {  # noqa: F405
     "BACKEND": "django.core.files.storage.InMemoryStorage",

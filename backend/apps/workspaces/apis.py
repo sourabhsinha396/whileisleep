@@ -8,6 +8,7 @@ from ninja.errors import HttpError
 
 from apps.accounts.models import photo_url
 from apps.accounts.security import token_auth
+from apps.billing import services as billing
 from whileisleep import images
 
 from .colors import WIDGET_COLORS
@@ -19,6 +20,7 @@ router = Router(tags=["workspaces"], auth=token_auth)
 
 
 def workspace_out(workspace: Workspace, viewer, role: str, open_count: int = 0) -> dict:
+    standing = billing.standing(workspace.organization)
     return {
         **{f: getattr(workspace, f) for f in WorkspaceOut.model_fields if hasattr(workspace, f)},
         "role": role,
@@ -26,6 +28,8 @@ def workspace_out(workspace: Workspace, viewer, role: str, open_count: int = 0) 
         "llm_ready": workspace.organization.llm_ready,
         "is_organization_owner": workspace.organization.owner_id == viewer.id,
         "uploads_enabled": settings.UPLOADS_ENABLED,
+        "billing_state": standing.state,
+        "trial_days_left": standing.trial_days_left,
     }
 
 
@@ -33,7 +37,7 @@ def workspace_out(workspace: Workspace, viewer, role: str, open_count: int = 0) 
 def list_workspaces(request):
     memberships = (
         Membership.objects.filter(user=request.auth)
-        .select_related("workspace__organization")
+        .select_related("workspace__organization__billing_account")
         .order_by("workspace__name")
     )
     counts = dict(

@@ -38,6 +38,9 @@ class WorkspaceOut(Schema):
     is_organization_owner: bool = False
     # Whether this server can store images at all.
     uploads_enabled: bool = False
+    # Where the organization stands: "off" (no billing here), "trial", "active" or "paused".
+    billing_state: str = "off"
+    trial_days_left: int | None = None
 
 
 class IdentitySecretOut(Schema):

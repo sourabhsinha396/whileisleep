@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.knowledge",
     "apps.agent",
     "apps.realtime",
+    "apps.billing",
 ]
 
 MIDDLEWARE = [
@@ -182,7 +183,30 @@ CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULE = {
     # Picks up visitor messages whose reply job was lost; see apps/agent/tasks.py.
     "sweep-unanswered": {"task": "apps.agent.tasks.sweep_unanswered", "schedule": 60.0},
+    # Catches what a lost payment webhook would have said; see apps/billing/tasks.py.
+    "refresh-subscriptions": {"task": "apps.billing.tasks.refresh_subscriptions", "schedule": 3600.0},
 }
+
+# The dashboard's public address, where a payment page sends people back to.
+SITE_URL = (os.environ.get("SITE_URL") or "http://localhost:3004").rstrip("/")
+
+# Selling the hosted plan (apps.billing). Off unless all of it is set: on your own server
+# everything is free. The webhook key may be missing in development, where Dodo can't
+# reach this machine anyway; production requires it.
+PAYMENT_PROVIDER = os.environ.get("PAYMENT_PROVIDER", "")
+DODO_BASE_URL = os.environ.get("DODO_BASE_URL", "")
+DODO_API_KEY = os.environ.get("DODO_API_KEY", "")
+DODO_PRODUCT_MONTHLY = os.environ.get("DODO_PRODUCT_MONTHLY", "")
+DODO_PRODUCT_YEARLY = os.environ.get("DODO_PRODUCT_YEARLY", "")
+DODO_WEBHOOK_KEY = os.environ.get("DODO_WEBHOOK_KEY", "")
+BILLING_MISSING = [
+    name
+    for name in ("DODO_BASE_URL", "DODO_API_KEY", "DODO_PRODUCT_MONTHLY", "DODO_PRODUCT_YEARLY")
+    if not globals()[name]
+]
+BILLING_ENABLED = PAYMENT_PROVIDER == "dodo" and not BILLING_MISSING
+# How long the AI answers before an organization has to pay.
+TRIAL_DAYS = 14
 
 # Whether anyone can create an account (and with it an organization). Turn it off on a
 # private installation once your own accounts exist.

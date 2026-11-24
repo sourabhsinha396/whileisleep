@@ -9,8 +9,10 @@ from django.db import transaction
 from django.test import Client
 
 from apps.agent import openrouter
+from apps.billing import services as billing_services
 
 from .factories import AuthTokenFactory, MembershipFactory, OrganizationFactory, UserFactory, WorkspaceFactory
+from .fake_dodo import SECRET, FakeDodo
 
 # No __pycache__ folders from test runs.
 sys.dont_write_bytecode = True
@@ -214,3 +216,28 @@ def llm(monkeypatch):
         return fake
 
     return install
+
+
+# --- Payments ---
+
+
+@pytest.fixture
+def billing(settings, monkeypatch):
+    """Billing switched on."""
+    settings.BILLING_ENABLED = True
+    settings.PAYMENT_PROVIDER = "dodo"
+    settings.DODO_BASE_URL = "https://test.dodopayments.com"
+    settings.DODO_API_KEY = "dodo-key"
+    settings.DODO_PRODUCT_MONTHLY, settings.DODO_PRODUCT_YEARLY = "pdt_m", "pdt_y"
+    settings.DODO_WEBHOOK_KEY = SECRET
+    settings.SITE_URL = "https://chat.example.com"
+    fake = FakeDodo()
+    monkeypatch.setattr(
+        httpx.HTTPTransport, "handle_request", lambda transport, request: fake.handle(transport, request)
+    )
+    return fake
+
+
+@pytest.fixture
+def account(billing, workspace):
+    return billing_services.account_for(workspace.organization)

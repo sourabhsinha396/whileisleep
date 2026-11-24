@@ -139,6 +139,28 @@ describe("the composer", () => {
     expect(container.querySelector("[role=alert]")!.textContent).toBe("Offline");
   });
 
+  it("keeps what is typed while a message is being sent", async () => {
+    let done = () => {};
+    const { write, press, text, button } = await open({ onSend: vi.fn(() => new Promise<void>((resolve) => (done = resolve))) });
+    await write("<p>first</p>");
+    await press({ key: "Enter" });
+    await write("<p>second</p>");
+    expect(button("Send").disabled).toBe(true);
+    await act(async () => done());
+    expect(text()).toBe("second");
+    expect(button("Send").disabled).toBe(false);
+  });
+
+  it("puts a failed message back before what was typed since", async () => {
+    let fail = () => {};
+    const { write, press, text } = await open({ onSend: vi.fn(() => new Promise<void>((_, reject) => (fail = () => reject(new Error("Offline"))))) });
+    await write("<p>first</p>");
+    await press({ key: "Enter" });
+    await write("<p>second</p>");
+    await act(async () => fail());
+    expect(text()).toBe("firstsecond");
+  });
+
   it("puts emoji in the text", async () => {
     const { click, button, text } = await open();
     await click(button("Emoji"));

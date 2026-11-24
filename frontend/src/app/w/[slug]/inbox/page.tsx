@@ -33,6 +33,7 @@ import { plainText } from "@/lib/chat-text";
 import { ago, browserName, clock } from "@/lib/format";
 import { addMessage, applyConversation, setOnline, withPresence, type Filter } from "@/lib/inbox";
 import { throttle } from "@/lib/live-stream";
+import { stayAtEnd } from "@/lib/stay-at-end";
 import { usePoll } from "@/lib/use-poll";
 
 // Polling is the fallback; with the live stream connected it only double-checks now and then.
@@ -294,7 +295,7 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
           )}
         </header>
 
-        <div className="flex-1 space-y-3 overflow-y-auto px-6 py-5">
+        <div ref={stayAtEnd} className="flex-1 space-y-3 overflow-y-auto px-6 py-5">
           {data.messages.map((m, i) => {
             const day = dayLabel(m.created_at);
             const showDay = i === 0 || day !== dayLabel(data.messages[i - 1].created_at);

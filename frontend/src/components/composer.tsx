@@ -83,20 +83,24 @@ export function Composer({
 
   async function send() {
     if (!editor || !ready) return;
-    const body = fromDoc(editor.getJSON());
+    const doc = editor.getJSON();
+    const body = fromDoc(doc);
     if (!body && !uploads.length) return;
     setBusy(true);
     setError("");
+    // Emptied at once: what is typed while this is on its way belongs to the next message.
+    editor.commands.clearContent();
+    setUploads([]);
+    setLinking(false);
     try {
       await onSend({ body, is_note: note, attachments: uploads.map((each) => each.file!.id) });
-      editor.commands.clearContent();
-      setUploads([]);
-      setLinking(false);
     } catch (err) {
+      if (editor.isEmpty) editor.commands.setContent(doc);
+      else editor.commands.insertContentAt(0, doc.content ?? []);
+      setUploads((now) => [...uploads, ...now]);
       setError((err as Error).message);
     } finally {
       setBusy(false);
-      editor.commands.focus();
     }
   }
 

@@ -47,6 +47,10 @@ Edit `.env`:
 | `POSTGRES_PASSWORD` | `openssl rand -hex 24` |
 | `ENCRYPTION_KEYS` | `openssl rand -base64 32 \| tr '+/' '-_'` |
 
+The `S3_*` and `STORAGE_*` settings are where uploaded files go: an S3-compatible bucket, such
+as Cloudflare R2 or Hetzner Object Storage. Leave them empty if you have none. Everything in
+that bucket is readable by anyone with the link, so use a different, private one for backups.
+
 `ENCRYPTION_KEYS` encrypts the API keys you store in the dashboard (your OpenRouter key,
 tool headers). **Keep a copy of it outside the server**: a database backup is unreadable
 without it.
@@ -107,6 +111,12 @@ docker compose logs -f web        # the API
 docker compose logs -f worker     # AI replies: one "Task ... answer ... succeeded" per reply
 docker compose logs -f caddy      # HTTPS and certificates
 curl https://YOUR_DOMAIN/api/v1/ready
+```
+
+Check the file storage settings (writes a small file, opens its public address, deletes it):
+
+```sh
+docker compose exec web python manage.py check_storage
 ```
 
 `/api/v1/ready` answers `{"ok": true}` when the API can reach the database and Redis.

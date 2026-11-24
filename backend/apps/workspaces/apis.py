@@ -10,9 +10,10 @@ from apps.accounts.models import photo_url
 from apps.accounts.security import token_auth
 from whileisleep import images
 
+from . import setup
 from .colors import WIDGET_COLORS
 from .models import Membership, Workspace, new_identity_secret
-from .schemas import IdentitySecretOut, MemberIn, MemberOut, WorkspaceIn, WorkspaceOut, WorkspacePatch
+from .schemas import IdentitySecretOut, MemberIn, MemberOut, SetupStepOut, WorkspaceIn, WorkspaceOut, WorkspacePatch
 from .services import create_workspace, member_workspace, owner_workspace
 
 router = Router(tags=["workspaces"], auth=token_auth)
@@ -26,6 +27,7 @@ def workspace_out(workspace: Workspace, viewer, role: str, open_count: int = 0) 
         "llm_ready": workspace.organization.llm_ready,
         "is_organization_owner": workspace.organization.owner_id == viewer.id,
         "uploads_enabled": settings.UPLOADS_ENABLED,
+        "article_uploads_enabled": workspace.organization.storage_bucket is not None,
     }
 
 
@@ -33,7 +35,7 @@ def workspace_out(workspace: Workspace, viewer, role: str, open_count: int = 0) 
 def list_workspaces(request):
     memberships = (
         Membership.objects.filter(user=request.auth)
-        .select_related("workspace__organization")
+        .select_related("workspace__organization__bucket")
         .order_by("workspace__name")
     )
     counts = dict(
@@ -92,6 +94,12 @@ def remove_logo(request, workspace_id: int):
     workspace = owner_workspace(request.auth, workspace_id)
     images.replace(workspace, "logo", None)
     return workspace_out(workspace, request.auth, Membership.Role.OWNER)
+
+
+@router.get("/workspaces/{workspace_id}/setup", response=list[SetupStepOut])
+def setup_steps(request, workspace_id: int):
+    """The steps of the "Get started" guide, in order, and which are done."""
+    return setup.steps(member_workspace(request.auth, workspace_id))
 
 
 @router.get("/workspaces/{workspace_id}/identity-secret", response=IdentitySecretOut)

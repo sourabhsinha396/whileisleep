@@ -84,6 +84,35 @@ class Organization(models.Model):
         key = self.provider_keys.get(provider, "")
         return f"…{key[-4:]}" if len(key) > 8 else ""
 
+    @property
+    def storage_bucket(self) -> "Bucket | None":
+        """The bucket the organization connected, if any."""
+        return getattr(self, "bucket", None)
+
+
+class Bucket(models.Model):
+    """An organization's own S3-compatible bucket: where its articles' images are
+    (apps.workspaces.buckets)."""
+
+    organization = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name="bucket")
+    endpoint_url = models.CharField(max_length=300)
+    region = models.CharField(max_length=40, default="auto")
+    bucket = models.CharField(max_length=63)
+    # Secret: encrypted in the database, and the API never returns them.
+    access_key_id = EncryptedTextField()
+    secret_access_key = EncryptedTextField()
+    # Where anyone can read the files: the bucket's public address, or a CDN in front of it.
+    public_base_url = models.CharField(max_length=300)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.bucket} of {self.organization}"
+
+    @property
+    def key_hint(self) -> str:
+        key = self.access_key_id
+        return f"…{key[-4:]}" if len(key) > 8 else ""
+
 
 workspace_slug = RegexValidator(
     r"^[a-z0-9]+(?:-[a-z0-9]+)*$", "Lowercase letters and digits, with single hyphens between words."

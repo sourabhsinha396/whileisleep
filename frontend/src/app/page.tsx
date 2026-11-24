@@ -102,7 +102,7 @@ export default function Home() {
 
         {/* Features */}
         <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-          <h2 className="max-w-xl text-3xl font-bold tracking-tight">Everything a support inbox needs, minus the night shift</h2>
+          <h2 className="max-w-xl text-3xl font-bold tracking-tight">Everything a support inbox needs</h2>
           <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map(({ icon: Icon, title, text }) => (
               <li key={title} className="rounded-2xl border bg-surface p-5">

@@ -90,10 +90,8 @@ STORAGES = {
     "default": default_storage_config(os.environ),
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
-# Logos, photos and article images need a bucket: nothing serves files from the local disk.
+# Logos and photos need a bucket: nothing serves files from the local disk.
 UPLOADS_ENABLED = "OPTIONS" in STORAGES["default"]
-# Article images one workspace can store, so an account can't fill the bucket.
-ARTICLE_IMAGES_PER_WORKSPACE = 500
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # The dashboard and the widget both send bearer tokens, never cookies, so the

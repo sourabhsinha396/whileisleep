@@ -10,9 +10,13 @@ The technical reference: integration, security and internals. For what the produ
 - **Knowledge base**: articles in the widget's Help tab. They are split into passages and indexed with
   Postgres full-text search, so the AI reads the section that answers a question, not whole articles.
   Written in a small visual editor and stored as Markdown; the AI reads a picture's description.
-- **Images**: the workspace's logo, teammates' photos and article pictures. Every upload is checked and saved
-  again as an image, then stored in an S3-compatible bucket, in folders:
+- **Images**: the workspace's logo and teammates' photos, in the server's S3-compatible bucket, and article pictures,
+  in the customer's own. Every upload is checked and saved again as an image, in folders:
   `workspaces/<id>/logo`, `workspaces/<id>/articles/<article id>` and `users/<id>/photo`.
+- **Your own storage** (optional): an organization connects its S3-compatible bucket in Settings › Storage, and its
+  articles' images go there, under `whileisleep/`. Without one, articles are text. Connecting tries the bucket first
+  (write, open the public address, delete). Disconnecting leaves the files where they are.
+- **Get started**: a row in the sidebar with the next setup step. Each step is done when the thing itself is there.
 - **Organizations**: own workspaces and the LLM settings. In Settings › AI model the owner adds a key for
   **OpenAI, Anthropic, Google Gemini or OpenRouter** (write-only, and encrypted in the database) and picks
   the **model** that answers, and optionally one **fallback** model. When a call to the model fails, for any

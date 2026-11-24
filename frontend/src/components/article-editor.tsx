@@ -72,7 +72,7 @@ export function ArticleEditor({
   }
 
   async function add(files: File[], at?: number) {
-    if (!uploadsEnabled) return setError("Image uploads are off: file storage isn't set up on this server.");
+    if (!uploadsEnabled) return setError("Articles are text until you connect your storage (Settings › Storage). Then you can add images.");
     setError("");
     for (const file of files) {
       const problem = imageProblem(file);
@@ -162,7 +162,7 @@ function Toolbar({
     { label: "Bullet list", icon: List, on: active.bullets, run: () => chain().toggleBulletList().run() },
     { label: "Numbered list", icon: ListOrdered, on: active.numbers, run: () => chain().toggleOrderedList().run() },
     { label: "Link", icon: Link2, on: active.link || linking, run: () => setLinking(!linking) },
-    { label: uploadsEnabled ? "Image" : "Image (file storage isn't set up)", icon: ImagePlus, on: false, run: pickImage, disabled: !uploadsEnabled },
+    { label: uploadsEnabled ? "Image" : "Image (connect your storage first)", icon: ImagePlus, on: false, run: pickImage, disabled: !uploadsEnabled },
   ];
   return (
     <div role="toolbar" aria-label="Formatting" className="flex gap-0.5 border-b bg-muted/50 p-1">

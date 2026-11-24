@@ -116,4 +116,4 @@ Open <http://localhost:3004>, create an account, and add your AI provider's key 
 | --- | --- |
 | Run it on my own server | [Deploy on a VM (before your Maggi is ready 🍜)](docs/deploy-vm.md) |
 | Add the widget and identify my users | [How it works](docs/how-it-works.md) |
-| Know why it is built this way | [Decisions](docs/decision.md) |
+| Know why it is built this way | [Product](docs/product-decisions.md) and [tech](docs/tech-decisions.md) decisions |

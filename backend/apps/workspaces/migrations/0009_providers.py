@@ -26,7 +26,7 @@ def restore_openrouter_keys(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("workspaces", "0007_logo"),
+        ("workspaces", "0008_storage_bucket"),
     ]
 
     operations = [

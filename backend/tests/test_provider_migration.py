@@ -7,7 +7,7 @@ from django.db.migrations.executor import MigrationExecutor
 
 from whileisleep import encryption
 
-BEFORE, AFTER = [("workspaces", "0007_logo")], [("workspaces", "0008_providers")]
+BEFORE, AFTER = [("workspaces", "0008_storage_bucket")], [("workspaces", "0009_providers")]
 
 
 def migrate(target):
@@ -17,7 +17,7 @@ def migrate(target):
 
 
 @pytest.fixture
-def at_0007(transactional_db):
+def at_0008(transactional_db):
     """Organization as it was. Whatever the test does, the newest schema is back after it."""
     newest = MigrationExecutor(connection).loader.graph.leaf_nodes()
     yield migrate(BEFORE)
@@ -25,12 +25,12 @@ def at_0007(transactional_db):
     MigrationExecutor(connection).migrate(newest)
 
 
-def test_the_openrouter_key_and_model_are_kept(at_0007):
+def test_the_openrouter_key_and_model_are_kept(at_0008):
     users = [get_user_model().objects.create(username=name, email=name) for name in ("a@x.com", "b@x.com")]
-    with_key = at_0007.objects.create(
+    with_key = at_0008.objects.create(
         name="A", owner_id=users[0].pk, openrouter_api_key="sk-or-old-1234", llm_model="x/y"
     )
-    without = at_0007.objects.create(name="B", owner_id=users[1].pk)
+    without = at_0008.objects.create(name="B", owner_id=users[1].pk)
 
     organization = migrate(AFTER)
 

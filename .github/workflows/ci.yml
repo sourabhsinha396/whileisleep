@@ -47,7 +47,7 @@ jobs:
       - name: Every model change has a migration
         run: uv run python manage.py makemigrations --check --dry-run --settings=whileisleep.settings.testing
       - name: Tests
-        run: uv run pytest
+        run: uv run pytest -n 4
 
   frontend:
     runs-on: ubuntu-latest

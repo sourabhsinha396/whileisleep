@@ -191,7 +191,7 @@ Backend tests run on Postgres (the `db` service from `docker compose up -d db`);
 `.env` and make no network calls.
 
 ```sh
-cd backend && uv run pytest && uv run ruff check . && uv run ruff format --check .
+cd backend && uv run pytest -n 4 && uv run ruff check . && uv run ruff format --check .
 cd frontend && pnpm test && pnpm lint && pnpm typecheck
 ```
 

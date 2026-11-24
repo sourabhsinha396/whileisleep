@@ -15,7 +15,13 @@ User = get_user_model()
 
 
 def user_out(user) -> dict:
-    return {"id": user.id, "name": user.first_name or user.email, "email": user.email, "photo_url": photo_url(user)}
+    return {
+        "id": user.id,
+        "name": user.first_name or user.email,
+        "email": user.email,
+        "photo_url": photo_url(user),
+        "is_superuser": user.is_superuser,
+    }
 
 
 def session_for(user) -> dict:

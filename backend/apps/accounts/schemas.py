@@ -19,6 +19,8 @@ class UserOut(Schema):
     name: str
     email: str
     photo_url: str
+    # Of this installation: may edit the docs' videos.
+    is_superuser: bool
 
 
 class SessionOut(Schema):

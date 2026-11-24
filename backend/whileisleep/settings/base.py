@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "apps.realtime",
     "apps.billing",
     "apps.integrations",
+    "apps.docs",
 ]
 
 MIDDLEWARE = [

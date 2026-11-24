@@ -51,6 +51,10 @@ class EnvFile(BaseModel):
     DODO_PRODUCT_MONTHLY: str | None = Field(None, pattern=r"^pdt_")
     DODO_PRODUCT_YEARLY: str | None = Field(None, pattern=r"^pdt_")
     DODO_WEBHOOK_KEY: str | None = Field(None, pattern=r"^whsec_")
+    # Plugins besides ours (apps.integrations): importable modules, comma-separated. What a plugin
+    # needs is in PLUGIN_<ID>_<NAME> keys, which only the plugin knows; `manage.py check` names
+    # the ones that no plugin here has.
+    EXTRA_PLUGINS: str | None = None
     # "false" closes account creation.
     SIGNUP_ENABLED: bool | None = None
     # Only `manage.py seed_demo` reads these. The running app takes each organization's
@@ -74,7 +78,7 @@ class EnvError(Exception):
 
 def validate_env_file(path: Path) -> EnvFile:
     """Parse and check a .env file. Raises EnvError listing every problem."""
-    raw = {key: value for key, value in dotenv_values(path).items() if key}
+    raw = {key: value for key, value in dotenv_values(path).items() if key and not key.startswith("PLUGIN_")}
     try:
         return EnvFile(**raw)
     except ValidationError as error:

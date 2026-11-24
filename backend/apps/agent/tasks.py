@@ -18,17 +18,15 @@ sweep finds visitor messages that nothing ever picked up and runs the pipeline f
 """
 
 import logging
-import uuid
-from contextlib import contextmanager
 from datetime import timedelta
 
 from celery import shared_task
 from django.conf import settings
-from django.core.cache import cache
 from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
 from apps.conversations.models import Message
+from whileisleep.locks import cache_lock
 
 from . import bot
 from .models import Turn
@@ -50,21 +48,9 @@ SWEEP_UNTIL = timedelta(minutes=30)
 SWEEP_BATCH = 100
 
 
-@contextmanager
 def reply_lock(conversation_id: int):
-    """Yields True if this job now holds the conversation's reply lock, False if another
-    job does. The lock expires by itself (REPLY_LOCK_SECONDS), so a worker that dies while
-    holding it can't block the conversation for long."""
-    key = f"reply-lock:{conversation_id}"
-    token = uuid.uuid4().hex
-    # cache.add sets the key only if it is absent, atomically (SET NX on Redis).
-    held = cache.add(key, token, timeout=settings.REPLY_LOCK_SECONDS)
-    try:
-        yield held
-    finally:
-        # Only our own lock: after an expiry the key may belong to a newer job.
-        if held and cache.get(key) == token:
-            cache.delete(key)
+    """Yields True if this job may write the conversation's reply, False if another job is."""
+    return cache_lock(f"reply-lock:{conversation_id}", settings.REPLY_LOCK_SECONDS)
 
 
 @shared_task(bind=True, max_retries=LOCK_RETRIES)

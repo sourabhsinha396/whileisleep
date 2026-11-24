@@ -11,6 +11,7 @@ from apps.agent.turn_apis import router as turns_router
 from apps.billing.apis import router as billing_router
 from apps.conversations.apis import router as inbox_router
 from apps.conversations.widget_apis import router as widget_router
+from apps.integrations.apis import router as integrations_router
 from apps.knowledge.apis import router as knowledge_router
 from apps.workspaces.apis import router as workspaces_router
 from apps.workspaces.organization_apis import router as organization_router
@@ -29,6 +30,7 @@ api.add_router("v1", tools_router)
 api.add_router("v1", automation_router)
 api.add_router("v1", mcp_router)
 api.add_router("v1", turns_router)
+api.add_router("v1", integrations_router)
 api.add_router("v1/widget", widget_router)
 
 

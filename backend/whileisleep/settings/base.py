@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "apps.agent",
     "apps.realtime",
     "apps.billing",
+    "apps.integrations",
 ]
 
 MIDDLEWARE = [
@@ -187,6 +188,8 @@ CELERY_BEAT_SCHEDULE = {
     "delete-unsent-files": {"task": "apps.conversations.tasks.delete_unsent_files", "schedule": 3600.0},
     # Catches what a lost payment webhook would have said; see apps/billing/tasks.py.
     "refresh-subscriptions": {"task": "apps.billing.tasks.refresh_subscriptions", "schedule": 3600.0},
+    # Events for integrations that no job is coming for; see apps/integrations/tasks.py.
+    "sweep-deliveries": {"task": "apps.integrations.tasks.sweep_deliveries", "schedule": 60.0},
 }
 
 # The dashboard's public address, where a payment page sends people back to.
@@ -209,6 +212,14 @@ BILLING_MISSING = [
 BILLING_ENABLED = PAYMENT_PROVIDER == "dodo" and not BILLING_MISSING
 # How long the AI answers before an organization has to pay.
 TRIAL_DAYS = 14
+
+# Integrations (apps.integrations): the plugins this server has, as importable modules. Add your
+# own with EXTRA_PLUGINS, comma-separated; docs/plugins.md shows how to write one.
+PLUGINS = [*(path.strip() for path in os.environ.get("EXTRA_PLUGINS", "").split(",") if path.strip())]
+# What plugins need from whoever runs the server: PLUGIN_SLACK_CLIENT_ID...
+PLUGIN_OPTIONS = {
+    key: value.strip() for key, value in os.environ.items() if key.startswith("PLUGIN_") and value.strip()
+}
 
 # Whether anyone can create an account (and with it an organization). Turn it off on a
 # private installation once your own accounts exist.

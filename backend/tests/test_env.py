@@ -74,3 +74,11 @@ def test_payment_settings(tmp_path):
     with pytest.raises(EnvError) as error:
         validate_env_file(write(tmp_path, REQUIRED + bad))
     assert all(key in str(error.value) for key in ("PAYMENT_PROVIDER", "DODO_PRODUCT_YEARLY", "DODO_WEBHOOK_KEY"))
+
+
+def test_plugins_bring_their_own_keys(tmp_path):
+    """Only a plugin knows its options, so the validator leaves them to it."""
+    text = REQUIRED + "EXTRA_PLUGINS=acme_plugin\nPLUGIN_ACME_TOKEN=x\n"
+    assert validate_env_file(write(tmp_path, text)).EXTRA_PLUGINS == "acme_plugin"
+    with pytest.raises(EnvError, match="PLUGINS_TYPO"):
+        validate_env_file(write(tmp_path, REQUIRED + "PLUGINS_TYPO=1\n"))

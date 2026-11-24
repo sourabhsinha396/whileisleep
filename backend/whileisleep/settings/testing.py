@@ -23,6 +23,10 @@ BILLING_ENABLED = False
 PAYMENT_PROVIDER = DODO_BASE_URL = DODO_API_KEY = ""
 DODO_PRODUCT_MONTHLY = DODO_PRODUCT_YEARLY = DODO_WEBHOOK_KEY = ""
 
+# Nor any plugin but ours, and those not set up; tests turn them on.
+PLUGINS = []
+PLUGIN_OPTIONS = {}
+
 # Nor a real bucket: files stay in memory.
 STORAGES["default"] = {  # noqa: F405
     "BACKEND": "django.core.files.storage.InMemoryStorage",

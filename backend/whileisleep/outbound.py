@@ -15,12 +15,21 @@ Self-hosters whose tools live on a private network set OUTBOUND_ALLOW_PRIVATE_NE
 
 import ipaddress
 import socket
+import ssl
+from functools import cache
 
 import httpx
 from django.conf import settings
 
 ALLOWED_SCHEMES = {"http", "https"}
 DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+@cache
+def tls() -> ssl.SSLContext:
+    """What every request here checks certificates with (`verify=`). Left to itself, httpx reads the
+    list of authorities again for each request, which takes it tens of milliseconds."""
+    return httpx.create_ssl_context()
 
 
 class BlockedAddress(Exception):
@@ -94,5 +103,5 @@ def request(method: str, url: str, *, headers: dict | None = None, timeout: floa
 def send(method: str, url: httpx.URL, *, headers: dict, timeout: float, extensions: dict, **kwargs) -> httpx.Response:
     """The one place a guarded request leaves this process. Redirects are never followed:
     one could lead back inside the network we just refused."""
-    with httpx.Client(follow_redirects=False, timeout=timeout) as client:
+    with httpx.Client(follow_redirects=False, timeout=timeout, verify=tls()) as client:
         return client.request(method, url, headers=headers, extensions=extensions, **kwargs)

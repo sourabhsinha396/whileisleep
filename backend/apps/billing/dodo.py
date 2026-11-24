@@ -16,6 +16,8 @@ from datetime import datetime
 import httpx
 from django.conf import settings
 
+from whileisleep import outbound
+
 TIMEOUT_SECONDS = 20
 # A webhook older (or newer) than this is refused, so a captured one can't be replayed later.
 WEBHOOK_TOLERANCE_SECONDS = 300
@@ -36,6 +38,7 @@ def call(method: str, path: str, **kwargs) -> dict:
             settings.DODO_BASE_URL.rstrip("/") + path,
             headers={"Authorization": f"Bearer {settings.DODO_API_KEY}"},
             timeout=TIMEOUT_SECONDS,
+            verify=outbound.tls(),
             **kwargs,
         )
     except httpx.HTTPError as error:

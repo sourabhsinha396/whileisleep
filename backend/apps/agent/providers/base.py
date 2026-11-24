@@ -18,6 +18,8 @@ from typing import Any
 
 import httpx
 
+from whileisleep import outbound
+
 # The most one model call may take. With a fallback set, the two share it (apps.agent.llm).
 TIMEOUT_SECONDS = 60
 # Room for the answer and for the thinking newer models do before it.
@@ -92,7 +94,7 @@ def failure(name: str, response: httpx.Response) -> ProviderError:
 def call(name: str, method: str, url: str, headers: dict, timeout: float = TIMEOUT_SECONDS, **kwargs) -> dict:
     """One request to a provider. Raises ProviderError unless it answers with a JSON object."""
     try:
-        response = httpx.request(method, url, headers=headers, timeout=timeout, **kwargs)
+        response = httpx.request(method, url, headers=headers, timeout=timeout, verify=outbound.tls(), **kwargs)
     except httpx.HTTPError as error:
         # The network, not the request: worth another try.
         raise ProviderError(f"Could not reach {name}: {type(error).__name__}", transient=True) from error

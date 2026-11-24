@@ -53,7 +53,7 @@ def request(method: str, url: str, *, customer_address: bool = False, headers: d
         if customer_address:
             target, headers, extensions = outbound.prepare(url, headers)
         timeout = httpx.Timeout(READ_SECONDS, connect=CONNECT_SECONDS)
-        with httpx.Client(timeout=timeout, follow_redirects=False) as client:
+        with httpx.Client(timeout=timeout, follow_redirects=False, verify=outbound.tls()) as client:
             with client.stream(method, target, headers=headers, extensions=extensions, **kwargs) as response:
                 body = read(response, ends)
     except outbound.BlockedAddress as error:

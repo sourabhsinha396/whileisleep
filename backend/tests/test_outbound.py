@@ -1,3 +1,5 @@
+import ssl
+
 import httpx
 import pytest
 
@@ -163,3 +165,14 @@ def test_private_networks_can_be_allowed(sent, settings):
     assert call["url"] == "http://host.docker.internal:8006/api"
     assert call["headers"] == {"X-Key": "k"}
     assert call["extensions"] == {}
+
+
+def test_the_certificate_list_is_read_once(monkeypatch):
+    made = []
+    create = httpx.create_ssl_context
+    monkeypatch.setattr(httpx, "create_ssl_context", lambda: made.append(1) or create())
+    outbound.tls.cache_clear()
+    assert outbound.tls() is outbound.tls() and len(made) == 1
+    # Shared, so it must still check who it talks to.
+    assert outbound.tls().verify_mode == ssl.CERT_REQUIRED and outbound.tls().check_hostname
+    outbound.tls.cache_clear()

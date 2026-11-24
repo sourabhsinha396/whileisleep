@@ -7,6 +7,7 @@ import {
   CreditCard,
   Cpu,
   Eye,
+  HardDrive,
   Inbox,
   type LucideIcon,
   MessageCircle,
@@ -99,6 +100,7 @@ export function settingsNav(workspace: Pick<Workspace, "role" | "is_organization
       items: [
         { href: "settings/organization", label: "Details", icon: Building2 },
         { href: "settings/ai-model", label: "AI model", icon: Cpu },
+        { href: "settings/storage", label: "Storage", icon: HardDrive },
         ...(workspace.billing_state === "off" ? [] : [billing]),
       ],
     });

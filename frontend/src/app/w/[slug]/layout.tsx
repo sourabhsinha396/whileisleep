@@ -5,12 +5,14 @@ import { Check, ChevronsUpDown, LogOut, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { GetStarted, useGuide } from "@/components/get-started";
 import { Avatar, CoverImage, Logo, Spinner, ThemeToggle } from "@/components/ui";
 import { WorkspaceContext } from "@/components/workspace-context";
 import { api, getToken, setToken, type User, type Workspace } from "@/lib/api";
 import { sidebarNotice } from "@/lib/billing";
 import { textOn } from "@/lib/contrast";
 import { isActive, MAIN_NAV, type NavItem, SETTINGS_LINK } from "@/lib/nav";
+import { useDismiss } from "@/lib/use-dismiss";
 import { usePoll } from "@/lib/use-poll";
 
 function SidebarLink({ item, slug, pathname, count = 0 }: { item: NavItem; slug: string; pathname: string; count?: number }) {
@@ -60,23 +62,6 @@ function WorkspaceBadge({ workspace, size = 36 }: { workspace: Workspace; size?:
   );
 }
 
-/** Closes a popover when you click outside it or press Escape. */
-function useDismiss(open: boolean, close: () => void) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && close();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
-    document.addEventListener("mousedown", onClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open, close]);
-  return ref;
-}
-
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const { slug } = useParams<{ slug: string }>();
   const pathname = usePathname();
@@ -94,6 +79,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     15000,
   );
   const workspace = data?.workspaces.find((w) => w.slug === slug);
+  const steps = useGuide(workspace);
   const lastId = useRef<number>(undefined);
 
   useEffect(() => {
@@ -183,8 +169,11 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
           <div className="space-y-2 pt-3">
             <BillingNotice workspace={workspace} />
-            {/* Only when the agent needs attention: switched off, or on without an LLM. */}
-            {(!workspace.ai_enabled || !workspace.llm_ready) && (
+            {steps.length > 0 && <GetStarted key={workspace.id} steps={steps} workspaceId={workspace.id} />}
+
+            {/* Only when the agent needs attention: switched off, or on without an LLM (unless
+                connecting one is already a step of the guide). */}
+            {(!workspace.ai_enabled || (!workspace.llm_ready && !steps.some((step) => step.key === "ai"))) && (
               <Link
                 href={`/w/${slug}/ai/behavior`}
                 className="block rounded-lg border bg-surface p-3 text-xs shadow-sm transition-colors hover:border-primary/40"

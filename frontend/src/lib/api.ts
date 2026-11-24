@@ -100,6 +100,14 @@ export interface Workspace {
   /** Where the organization stands with its plan. */
   billing_state: BillingState;
   trial_days_left: number | null;
+  /** Articles can have images: the organization connected its own bucket for them. */
+  article_uploads_enabled: boolean;
+}
+
+/** A step of the "Get started" guide; lib/get-started has its words and link. */
+export interface SetupStep {
+  key: string;
+  done: boolean;
 }
 
 export interface Organization {
@@ -110,6 +118,17 @@ export interface Organization {
   llm_model: string;
   llm_ready: boolean;
   workspace_count: number;
+}
+
+/** The organization's own bucket. The key itself never comes back. */
+export interface StorageSettings {
+  connected: boolean;
+  endpoint_url: string;
+  region: string;
+  bucket: string;
+  key_hint: string;
+  public_base_url: string;
+  image_count: number;
 }
 
 export interface KeyCheck {

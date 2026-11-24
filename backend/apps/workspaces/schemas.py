@@ -41,6 +41,13 @@ class WorkspaceOut(Schema):
     # Where the organization stands: "off" (no billing here), "trial", "active" or "paused".
     billing_state: str = "off"
     trial_days_left: int | None = None
+    # Whether articles can have images: the organization connected its own bucket for them.
+    article_uploads_enabled: bool = False
+
+
+class SetupStepOut(Schema):
+    key: str
+    done: bool
 
 
 class IdentitySecretOut(Schema):
@@ -80,6 +87,26 @@ class OrganizationPatch(Schema):
 class ModelOut(Schema):
     id: str
     name: str
+
+
+class StorageIn(Schema):
+    endpoint_url: str = Field(max_length=300)
+    region: str = Field("", max_length=40)
+    bucket: str = Field(max_length=63)
+    # Write-only. Both empty keeps the saved key.
+    access_key_id: str = Field("", max_length=300)
+    secret_access_key: str = Field("", max_length=300)
+    public_base_url: str = Field(max_length=300)
+
+
+class StorageOut(Schema):
+    connected: bool
+    endpoint_url: str = ""
+    region: str = ""
+    bucket: str = ""
+    key_hint: str = ""
+    public_base_url: str = ""
+    image_count: int = 0
 
 
 class KeyCheckOut(Schema):

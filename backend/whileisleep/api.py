@@ -14,6 +14,7 @@ from apps.conversations.widget_apis import router as widget_router
 from apps.knowledge.apis import router as knowledge_router
 from apps.workspaces.apis import router as workspaces_router
 from apps.workspaces.organization_apis import router as organization_router
+from apps.workspaces.storage_apis import router as storage_router
 
 api = NinjaAPI(title="whileisleep API", version="1")
 
@@ -21,6 +22,7 @@ api.add_router("v1/auth", auth_router)
 api.add_router("v1", workspaces_router)
 api.add_router("v1", organization_router)
 api.add_router("v1", billing_router)
+api.add_router("v1", storage_router)
 api.add_router("v1", inbox_router)
 api.add_router("v1", knowledge_router)
 api.add_router("v1", tools_router)

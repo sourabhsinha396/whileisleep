@@ -10,9 +10,11 @@ from django.test import Client
 
 from apps.agent import openrouter
 from apps.billing import services as billing_services
+from whileisleep import outbound
 
 from .factories import AuthTokenFactory, MembershipFactory, OrganizationFactory, UserFactory, WorkspaceFactory
 from .fake_dodo import SECRET, FakeDodo
+from .fake_s3 import SETTINGS, FakeBucket
 
 # No __pycache__ folders from test runs.
 sys.dont_write_bytecode = True
@@ -167,6 +169,26 @@ def api(membership):
 @pytest.fixture
 def anon():
     return Api()
+
+
+# --- A customer's bucket ---
+
+
+@pytest.fixture
+def s3(monkeypatch):
+    """A customer's bucket in memory. Requests run through real httpx and stop at the socket."""
+    fake = FakeBucket()
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", lambda self, request: fake.handle(request))
+    monkeypatch.setattr(outbound, "resolve", lambda host, port: ["93.184.216.34"])
+    return fake
+
+
+@pytest.fixture
+def connected(api, s3):
+    """`s3`, connected to the owner's organization."""
+    assert api.put("/organization/storage", SETTINGS).status_code == 200
+    s3.requests.clear()
+    return s3
 
 
 # --- Fake OpenRouter ---

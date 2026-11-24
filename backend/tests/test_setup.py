@@ -6,7 +6,6 @@ from apps.conversations.models import Message
 
 from .conftest import Api
 from .factories import (
-    ArticleFactory,
     AuthTokenFactory,
     ConversationFactory,
     MembershipFactory,
@@ -28,7 +27,6 @@ def test_a_new_workspace_has_every_step_ahead_of_it(api, workspace):
     assert api.get(f"/workspaces/{workspace.id}/setup").json() == [
         {"key": "install", "done": False},
         {"key": "ai", "done": False},
-        {"key": "article", "done": False},
         {"key": "chat", "done": False},
         {"key": "storage", "done": False},
     ]
@@ -56,14 +54,6 @@ def test_ai_needs_both_a_key_and_a_model(api, workspace):
     assert done(api, workspace) == ["ai"]
 
 
-def test_a_draft_article_does_not_count(api, workspace):
-    article = ArticleFactory(workspace=workspace, published=False)
-    assert done(api, workspace) == []
-    article.published = True
-    article.save()
-    assert done(api, workspace) == ["article"]
-
-
 def test_chatted_once_a_visitor_writes(api, workspace):
     visitor = VisitorFactory(workspace=workspace, current_url="")
     conversation = ConversationFactory(workspace=workspace, visitor=visitor)
@@ -75,7 +65,6 @@ def test_chatted_once_a_visitor_writes(api, workspace):
 
 def test_another_workspace_does_not_count(api, workspace):
     other = WorkspaceFactory()
-    ArticleFactory(workspace=other)
     MessageFactory(conversation__workspace=other)
     assert done(api, workspace) == []
 

@@ -29,11 +29,6 @@ export function guide(workspace: Viewer, setup: SetupStep[]): GuideStep[] {
       why: "Paste one script tag and visitors can write to you.",
       href: page("settings/install"),
     },
-    article: {
-      label: "Publish an article",
-      why: "Visitors read it, and the AI answers from it.",
-      href: page("knowledge"),
-    },
     chat: {
       label: "Send a test chat",
       why: "See what a visitor sees, then answer from your inbox.",

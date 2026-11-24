@@ -10,15 +10,15 @@ import { guide, progress, settled } from "@/lib/get-started";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const OWNER = { id: 1, slug: "acme", public_key: "ws_1", role: "owner", is_organization_owner: true } as Workspace;
-const KEYS = ["install", "ai", "article", "chat", "storage"];
-const REQUIRED = KEYS.slice(0, 4);
+const KEYS = ["install", "ai", "chat", "storage"];
+const REQUIRED = KEYS.slice(0, 3);
 const setup = (...done: string[]): SetupStep[] => KEYS.map((key) => ({ key, done: done.includes(key) }));
 
 describe("guide", () => {
   it("keeps the server's order and says what is next", () => {
     const steps = guide(OWNER, setup("install"));
     expect(steps.map((s) => s.key)).toEqual(KEYS);
-    expect(progress(steps)).toMatchObject({ done: 1, total: 5, finished: false, dismissible: false, next: { key: "ai" } });
+    expect(progress(steps)).toMatchObject({ done: 1, total: 4, finished: false, dismissible: false, next: { key: "ai" } });
   });
 
   it("only links to pages that exist", () => {
@@ -30,12 +30,12 @@ describe("guide", () => {
 
   it("leaves out what the person can't do", () => {
     const keys = guide({ ...OWNER, is_organization_owner: false }, setup()).map((s) => s.key);
-    expect(keys).toEqual(["install", "article", "chat"]);
+    expect(keys).toEqual(["install", "chat"]);
     expect(guide({ ...OWNER, role: "agent" }, setup())).toEqual([]);
   });
 
   it("leaves out steps it doesn't know", () => {
-    expect(guide(OWNER, [...setup(), { key: "from-the-future", done: false }])).toHaveLength(5);
+    expect(guide(OWNER, [...setup(), { key: "from-the-future", done: false }])).toHaveLength(4);
   });
 
   it("can be put away once only the optional step is left", () => {
@@ -48,7 +48,7 @@ describe("guide", () => {
     expect(settled(setup(...REQUIRED), true, false)).toBe(false);
     expect(settled(setup(...REQUIRED), true, true)).toBe(true);
     expect(settled(setup("install"), true, true)).toBe(false);
-    expect(settled(setup("install", "article", "chat"), false, false)).toBe(true);
+    expect(settled(setup("install", "chat"), false, false)).toBe(true);
   });
 
   it("is finished when every step is done", () => {
@@ -83,17 +83,17 @@ describe("the sidebar row", () => {
 
   it("is one row with the next step until it is opened", () => {
     show("install");
-    expect(row().textContent).toBe("Next: Connect your AI1/5");
-    expect(row().getAttribute("aria-label")).toContain("1 of 5 done");
+    expect(row().textContent).toBe("Next: Connect your AI1/4");
+    expect(row().getAttribute("aria-label")).toContain("1 of 4 done");
     expect(panel()).toBeNull();
     expect(links()).toEqual([]);
   });
 
   it("opens the whole guide and points at one next step", () => {
     open();
-    expect(links()).toHaveLength(5);
+    expect(links()).toHaveLength(4);
     const bar = box.querySelector('[role="progressbar"]')!;
-    expect([bar.getAttribute("aria-valuenow"), bar.getAttribute("aria-valuemax")]).toEqual(["1", "5"]);
+    expect([bar.getAttribute("aria-valuenow"), bar.getAttribute("aria-valuemax")]).toEqual(["1", "4"]);
     const current = [...box.querySelectorAll('[aria-current="step"]')];
     expect(current.map((a) => a.getAttribute("href"))).toEqual(["/w/acme/settings/ai-model"]);
     expect(document.activeElement).toBe(panel());
@@ -139,13 +139,13 @@ describe("the sidebar row", () => {
     await act(async () => root.render(<Count key="a" workspace={OWNER} />));
     expect(box.textContent).toBe("0");
     await act(async () => root.render(<Count key="b" workspace={{ ...OWNER, id: 2 }} />));
-    expect(box.textContent).toBe("5");
+    expect(box.textContent).toBe("4");
     localStorage.clear();
   });
 
   it("goes away when setup is finished, and stops asking", async () => {
     vi.useFakeTimers();
-    const answers = [setup("install", "ai", "article"), setup(...KEYS)];
+    const answers = [setup("install", "ai", "chat"), setup(...KEYS)];
     const fetch = vi.fn(async () => new Response(JSON.stringify(answers.shift())));
     vi.stubGlobal("fetch", fetch);
     function Sidebar() {
@@ -154,7 +154,7 @@ describe("the sidebar row", () => {
     }
     await act(async () => root.render(<Sidebar />));
     await act(() => vi.advanceTimersByTimeAsync(0));
-    expect(box.textContent).toContain("3/5");
+    expect(box.textContent).toContain("3/4");
     await act(() => vi.advanceTimersByTimeAsync(15000));
     expect(box.textContent).toBe("");
     await act(() => vi.advanceTimersByTimeAsync(60000));

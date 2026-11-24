@@ -14,7 +14,6 @@ def steps(workspace: Workspace) -> list[dict]:
     done = {
         "install": installed(workspace),
         "ai": workspace.organization.llm_ready,
-        "article": workspace.articles.filter(published=True).exists(),
         "chat": workspace.conversations.filter(messages__sender="visitor").exists(),
         "storage": workspace.organization.storage_bucket is not None,
     }

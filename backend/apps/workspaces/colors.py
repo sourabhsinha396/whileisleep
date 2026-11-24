@@ -2,8 +2,8 @@
 
 A short list instead of any color, so the widget always looks right: it puts white text on
 a deep color and dark text on a bright one, and darkens a bright one for text on white
-(frontend/src/lib/contrast.ts; frontend/tests/colors.test.ts checks every color is readable). The dashboard shows the same list
-(frontend/src/lib/colors.ts; a test there keeps the two equal).
+(frontend/src/lib/contrast.ts; frontend/tests/colors.test.ts checks every color is readable).
+The dashboard shows the same list (frontend/src/lib/colors.ts; a test there keeps the two equal).
 """
 
 WIDGET_COLORS = {

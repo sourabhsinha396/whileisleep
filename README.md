@@ -30,6 +30,13 @@ Every conversation in one place. Read what the AI said, take over any chat, or a
   <img src="docs/images/inbox-light.png" alt="The inbox: conversations on the left, the chat in the middle, visitor details on the right">
 </picture>
 
+## The AI agent
+
+**Rules** run before the AI: send an exact reply, add a tag, or hand off to a person.
+**Playbooks** are plain-language instructions the AI follows for tricky cases, like refunds.
+
+![The AI agent's rules: each one says when it applies, what it does, and how often it matched](docs/images/rules.png)
+
 ## Explore
 
 *Click to open.*
@@ -39,19 +46,6 @@ Every conversation in one place. Read what the AI said, take over any chat, or a
 <br>
 
 One script tag on your site, in one of 16 colors. Visitors chat or search your help center without leaving the page.
-
-<img src="docs/images/widget.png" width="360" alt="The chat widget">
-
-</details>
-
-<details>
-<summary><b>⚡ Rules and playbooks</b></summary>
-<br>
-
-**Rules** run before the AI: send an exact reply, add a tag, or hand off to a person.
-**Playbooks** are plain-language instructions the AI follows for tricky cases, like refunds.
-
-![The rules and playbooks page](docs/images/rules.png)
 
 </details>
 
@@ -113,7 +107,7 @@ pnpm --dir frontend install
 pnpm --dir frontend dev
 ```
 
-Open <http://localhost:3004>, create an account, and add your OpenRouter key under **Organization & LLM**.
+Open <http://localhost:3004>, create an account, and add your OpenRouter key under **Settings › AI model**.
 
 ## Docs
 

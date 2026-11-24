@@ -293,7 +293,30 @@ def test_openrouter_models_skip_those_without_tools(http):
         {"id": "c/unknown", "display_name": "C"},
     ]
     http({"data": rows})
-    assert openrouter.list_models() == [{"id": "b/with-tools", "name": "B"}, {"id": "c/unknown", "name": "C"}]
+    assert openrouter.list_models() == [
+        {"id": "b/with-tools", "name": "B", "recommended": False, "tier": ""},
+        {"id": "c/unknown", "name": "C", "recommended": False, "tier": ""},
+    ]
+
+
+def test_openrouter_recommends_a_short_list_in_order(http):
+    kept = list(openrouter.RECOMMENDED)[:-1]
+    ids = ["anthropic/claude-haiku-4.5", *reversed(kept), "z/other"]
+    http({"data": [{"id": i, "name": i} for i in ids]})
+    models = openrouter.list_models()
+    # One that OpenRouter no longer lists isn't offered.
+    assert [m["id"] for m in models if m["recommended"]] == kept
+    assert [m["tier"] for m in models if m["recommended"]] == [openrouter.RECOMMENDED[i] for i in kept]
+    assert [m["id"] for m in models if not m["recommended"]] == ["anthropic/claude-haiku-4.5", "z/other"]
+
+
+def test_the_openrouter_short_list_stays_short():
+    assert len(openrouter.RECOMMENDED) <= 20
+    # Tier by tier, as the picker groups them.
+    tiers = list(openrouter.RECOMMENDED.values())
+    assert tiers == sorted(tiers, key=["low", "mid", "high"].index)
+    high = sorted(i.split("/")[0] for i, tier in openrouter.RECOMMENDED.items() if tier == "high")
+    assert high == ["anthropic", "google", "openai"]
 
 
 # --- OpenAI ---

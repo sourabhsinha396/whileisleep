@@ -120,6 +120,10 @@ export interface LlmProvider {
 export interface LlmModel {
   id: string;
   name: string;
+  /** Whether the picker offers it. Any other can be typed. */
+  recommended: boolean;
+  /** How it is priced next to the others offered; "" when the provider isn't sorted by price. */
+  tier: "low" | "mid" | "high" | "";
 }
 
 export interface Organization {

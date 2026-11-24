@@ -13,6 +13,32 @@ BASE_URL = "https://openrouter.ai/api/v1"
 # Less than the others get: OpenRouter refuses a call whose whole allowance the balance
 # can't cover.
 MAX_TOKENS = 4000
+# The models the picker offers, out of hundreds: the current cheap and mid-priced ones that
+# call tools well, and one high-end model each from OpenAI, Anthropic and Google. At most 20.
+# Cheapest tier first. One that OpenRouter drops leaves the picker by itself; any other model
+# can still be typed. Reviewed 2026-11-24.
+RECOMMENDED = {
+    "openai/gpt-6-luna": "low",
+    "anthropic/claude-haiku-5.5": "low",
+    "google/gemini-3.5-flash-lite": "low",
+    "deepseek/deepseek-v4.1-flash": "low",
+    "qwen/qwen3.8-flash": "low",
+    "z-ai/glm-5.3-flash": "low",
+    "mistralai/mistral-small-2603": "low",
+    "minimax/minimax-m3.1-flash": "low",
+    "xiaomi/mimo-v2.6-flash": "low",
+    "openai/gpt-6.1-terra": "mid",
+    "openai/gpt-6.2-sol": "mid",
+    "anthropic/claude-sonnet-5.5": "mid",
+    "google/gemini-3.8-flash": "mid",
+    "google/gemini-4-hydrogen": "mid",
+    "x-ai/grok-4.7": "mid",
+    "qwen/qwen4-max": "mid",
+    "mistralai/mistral-large-4-0": "mid",
+    "openai/gpt-6.2-astra": "high",
+    "anthropic/claude-opus-5.5": "high",
+    "google/gemini-4-neon": "high",
+}
 # What it knows in a message; the rest is there for the other providers.
 FIELDS = ("role", "content", "tool_calls", "tool_call_id")
 
@@ -82,7 +108,8 @@ def check_key(api_key: str) -> dict:
 
 
 def list_models(api_key: str = "") -> list[dict]:
-    """Its list is public, so this works without a key."""
+    """Every model that takes tools, the recommended ones first. The list is public, so this
+    works without a key."""
     models = []
     for row in base.as_list(_call("GET", "/models", api_key).get("data")):
         if not row.get("id"):
@@ -91,5 +118,14 @@ def list_models(api_key: str = "") -> list[dict]:
         # Skip models known not to take tools; keep those that don't say.
         if isinstance(params, list) and "tools" not in params:
             continue
-        models.append({"id": row["id"], "name": row.get("name") or row.get("display_name") or row["id"]})
-    return sorted(models, key=lambda m: m["id"])
+        name = row.get("name") or row.get("display_name") or row["id"]
+        models.append(
+            {
+                "id": row["id"],
+                "name": name,
+                "recommended": row["id"] in RECOMMENDED,
+                "tier": RECOMMENDED.get(row["id"], ""),
+            }
+        )
+    rank = {model: position for position, model in enumerate(RECOMMENDED)}
+    return sorted(models, key=lambda m: (rank.get(m["id"], len(rank)), m["id"]))

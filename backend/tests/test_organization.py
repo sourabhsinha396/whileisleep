@@ -165,7 +165,7 @@ def test_choices_come_in_order_and_skip_what_is_incomplete():
 
 def test_models_are_cached_until_the_key_changes(api, monkeypatch):
     keys = []
-    rows = [{"id": "gpt-x", "name": "GPT X"}]
+    rows = [{"id": "gpt-x", "name": "GPT X", "recommended": True, "tier": ""}]
     monkeypatch.setattr(providers.PROVIDERS["openai"], "list_models", lambda key: keys.append(key) or rows)
     api.put("/organization/keys/openai", {"api_key": "sk-first"})
     assert api.get("/organization/models/openai").json() == rows
@@ -181,7 +181,7 @@ def test_models_of_one_account_are_not_shown_to_another(api, monkeypatch):
     api.get("/organization/models/openai")
     other = Api(token=AuthTokenFactory().key)
     other.put("/organization/keys/openai", {"api_key": "sk-theirs"})
-    assert other.get("/organization/models/openai").json() == [{"id": "sk-theirs", "name": "sk-theirs"}]
+    assert [m["id"] for m in other.get("/organization/models/openai").json()] == ["sk-theirs"]
 
 
 def test_only_openrouter_lists_models_without_a_key(api, monkeypatch):

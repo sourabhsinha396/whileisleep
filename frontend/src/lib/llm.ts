@@ -1,4 +1,4 @@
-import type { LlmProvider, Organization, ProviderId } from "@/lib/api";
+import type { LlmModel, LlmProvider, Organization, ProviderId } from "@/lib/api";
 
 /** What a model id looks like at each provider, shown until one is typed. */
 export const MODEL_EXAMPLES: Record<ProviderId, string> = {
@@ -15,6 +15,15 @@ export const KEY_EXAMPLES: Record<ProviderId, string> = {
   google: "AIza…",
   openrouter: "sk-or-v1-…",
 };
+
+/** The headings of the model picker. */
+export const TIERS: Record<Exclude<LlmModel["tier"], "">, string> = { low: "Low cost", mid: "Mid range", high: "High end" };
+
+/** The models whose name or id has every word typed. */
+export function matchingModels(models: LlmModel[], typed: string): LlmModel[] {
+  const words = typed.toLowerCase().split(/\s+/).filter(Boolean);
+  return models.filter((m) => words.every((word) => `${m.name} ${m.id}`.toLowerCase().includes(word)));
+}
 
 type LlmSettings = Pick<Organization, "providers" | "llm_provider" | "llm_model" | "fallback_provider" | "fallback_model">;
 

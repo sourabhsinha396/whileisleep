@@ -1,6 +1,8 @@
 ---
 title: How it works
 description: What happens between a visitor's question and the answer.
+seo_title: How the AI support agent works
+seo_description: How whileisleep answers a visitor, with rules first, then an AI agent that reads your articles and calls your APIs, and a person when one is needed.
 ---
 
 whileisleep is a chat for your website. An AI agent answers from what you give it, and passes a chat to your team when a person is needed.

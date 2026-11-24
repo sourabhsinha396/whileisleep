@@ -1,6 +1,8 @@
 ---
 title: Verified identity
 description: Prove who a signed-in visitor is, so the agent can look up their own data.
+seo_title: Verify chat users with JWT
+seo_description: Sign a JWT on your server so the AI agent can safely look up a signed-in customer's own data. Examples in Node.js, Python and PHP.
 ---
 
 A web page can claim anything. So a tool that returns personal data only trusts details your **server** has signed.

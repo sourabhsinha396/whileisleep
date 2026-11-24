@@ -1,6 +1,8 @@
 ---
 title: Rules
 description: Exact replies, tags and hand-offs that run before the AI.
+seo_title: Chat automation rules
+seo_description: Send exact replies, tag chats and hand off to a person with rules that run before the AI. Conditions, actions and ready-made examples.
 ---
 
 A rule says **when** it applies and **what** to do. Rules are checked on every visitor message, in order, before the AI. The first match wins.

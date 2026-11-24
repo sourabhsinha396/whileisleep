@@ -1,13 +1,15 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { PricingPlans } from "@/components/landing/pricing-plans";
 import { Logo, ThemeToggle } from "@/components/ui";
 import { PRICING_QUESTIONS } from "@/lib/faq";
+import { publicMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Pricing",
-  description: "Self-host whileisleep for free, or let us host it from $1 a month. Your AI runs on your own key, with no markup.",
-};
+export const generateMetadata = () =>
+  publicMetadata({
+    title: "Pricing: free to self-host, or hosted",
+    description: "Self-host whileisleep for free, or let us host it from $1 a month with a 14-day trial. Your AI runs on your own key, with no markup.",
+    path: "/pricing",
+  });
 
 export default function PricingPage() {
   return (

@@ -1,6 +1,8 @@
 ---
 title: Your first test chat
 description: See what a visitor sees, and answer from the inbox.
+seo_title: Test your AI chat before launch
+seo_description: Send a first test chat, see it arrive in the inbox, take it over and hand it back to the AI. Plus a checklist to go through before launch.
 ---
 
 1. Open **Settings › Install** and follow **Open a test page with the widget**.

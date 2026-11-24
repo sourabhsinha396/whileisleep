@@ -1,6 +1,8 @@
 ---
 title: Tools and MCP
 description: Let the agent look up orders, stock and anything else in your own systems.
+seo_title: Connect APIs and MCP to AI chat
+seo_description: Let the AI agent look up orders, stock and account data with your own HTTP APIs or MCP servers, without showing one customer another's data.
 ---
 
 A tool is an address on your own server that the agent can call. It decides when from the tool's description, so it looks facts up instead of guessing.

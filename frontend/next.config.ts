@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   // A self-contained server in .next/standalone, for the Docker image.
   output: "standalone",
   // The docs read their pages while the server runs.
-  outputFileTracingIncludes: { "/docs": ["./content/docs/*.md"], "/docs/*": ["./content/docs/*.md"] },
+  outputFileTracingIncludes: { "/docs": ["./content/docs/*.md"], "/docs/**": ["./content/docs/*.md"], "/llms*": ["./content/docs/*.md"] },
   // The dashboard and the widget call Django through this proxy, so one origin serves
   // both the widget script and its API.
   async rewrites() {
@@ -16,6 +16,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/api/v1/widget/:key/stream", destination: `${STREAM_URL}/api/v1/widget/:key/stream` },
       { source: "/api/v1/workspaces/:id/stream", destination: `${STREAM_URL}/api/v1/workspaces/:id/stream` },
+      // A page of the docs as Markdown, for language models.
+      { source: "/docs/:page([a-z0-9-]+).md", destination: "/docs/:page/markdown" },
       { source: "/api/:path*", destination: `${API_URL}/api/:path*` },
     ];
   },
@@ -31,7 +33,10 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     // widget.js is loaded by other sites.
-    return [{ source: "/widget.js", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] }];
+    const widget = { source: "/widget.js", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] };
+    // The dashboard and the test page are nothing to find in a search engine.
+    const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
+    return [widget, ...["/w/:path*", "/app", "/new", "/demo", "/integrations/:path*"].map((source) => ({ source, headers: noindex }))];
   },
 };
 

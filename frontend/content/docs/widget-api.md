@@ -1,6 +1,8 @@
 ---
 title: Widget in code
 description: Say who your users are, and open the chat from your own buttons.
+seo_title: Chat widget JavaScript API
+seo_description: Identify users, open the chat from your own buttons, and show or hide the whileisleep widget with JavaScript. Every call, with examples.
 ---
 
 The script sets `window.whileisleep`. It loads in the background, so wait for it once:

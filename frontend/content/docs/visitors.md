@@ -1,6 +1,8 @@
 ---
 title: Live visitors
 description: See who is on your site, and message them first.
+seo_title: Live website visitors
+seo_description: See who is on your website right now and which page they are on, then start a chat with them before they ask. Names appear for known users.
 ---
 
 **Visitors** shows who is on your site now, which page they are on, and who came by in the last 7 days. It updates by itself.

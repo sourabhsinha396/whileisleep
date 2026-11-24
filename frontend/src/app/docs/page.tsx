@@ -1,11 +1,13 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { docSections } from "@/lib/docs";
+import { publicMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Docs",
-  description: "Set up whileisleep, teach its AI agent, and connect it to your own systems.",
-};
+export const generateMetadata = () =>
+  publicMetadata({
+    title: "Docs: set up your AI support chat",
+    description: "Guides for whileisleep: install the chat widget, connect your AI model, write articles and rules, and connect your APIs, Slack and webhooks.",
+    path: "/docs",
+  });
 
 export default function DocsPage() {
   return (

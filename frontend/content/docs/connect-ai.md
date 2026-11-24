@@ -1,6 +1,8 @@
 ---
 title: Connect your AI
 description: Add your provider's key, pick a model, and choose a fallback.
+seo_title: Connect OpenAI, Claude or Gemini
+seo_description: Use your own OpenAI, Anthropic, Google Gemini or OpenRouter key for customer chat, pick a model, and set a fallback for when it is down.
 ---
 
 You bring your own AI account. Your provider bills you directly, at its own price. You need to be the organization's owner.

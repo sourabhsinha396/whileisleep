@@ -59,3 +59,10 @@ export async function docEdits(slug: string): Promise<DocEdits> {
   }
   return { body: "", youtube_id: "" };
 }
+
+/** A page as it is now: the file's text, or what a superuser made of it. */
+export async function docPage(slug: string): Promise<DocFile & { edited: boolean; youtubeId: string }> {
+  const file = docFile(slug);
+  const edits = await docEdits(slug);
+  return { ...file, body: edits.body || file.body, edited: Boolean(edits.body), youtubeId: edits.youtube_id };
+}

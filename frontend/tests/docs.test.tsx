@@ -63,7 +63,7 @@ describe("the pages", () => {
 
 describe("reading a file", () => {
   it("splits title, description and text", () => {
-    expect(readDocFile("---\r\ntitle: A: b\r\ndescription: c\r\n---\r\n\r\nText\r\n")).toEqual({ title: "A: b", description: "c", body: "Text" });
+    expect(readDocFile("---\r\ntitle: A: b\r\ndescription: c\r\n---\r\n\r\nText\r\n")).toMatchObject({ title: "A: b", description: "c", seoTitle: "A: b", seoDescription: "c", body: "Text" });
   });
 
   it("refuses a file without them", () => {

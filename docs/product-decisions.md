@@ -4,6 +4,12 @@ Product decisions made by the project owner, newest first. Each says what was de
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Technical decisions are in [tech-decisions.md](tech-decisions.md).
 
+## 2026-11-24: The docs are easy to give to an LLM
+
+**Decision.** Each page of the docs has a "Copy page" button, and the site has `llms.txt` and the basics of SEO.
+
+**Why.** People can just copy a page and give it to their LLM.
+
 ## 2026-11-24: Docs with videos, edited in place by a superuser
 
 **Decision.** The product has basic docs of how the platform works, with code snippets. A superuser can put a YouTube

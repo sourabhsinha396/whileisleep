@@ -1,6 +1,8 @@
 ---
 title: Playbooks
 description: Teach the agent how to handle tricky conversations.
+seo_title: AI agent playbooks
+seo_description: Teach the AI agent how to handle refunds, cancellations and other tricky chats with step-by-step playbooks in plain words, with an example.
 ---
 
 A playbook is a procedure in plain words. The AI sees each playbook's title and **When to use** line, and reads the rest only when a conversation matches. So you can have many.

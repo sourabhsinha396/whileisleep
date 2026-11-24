@@ -3,11 +3,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { CopyPage } from "@/components/docs/copy-page";
 import { DocBody } from "@/components/docs/doc-body";
 import { DocMarkdown } from "@/components/docs/markdown";
 import { DocVideo } from "@/components/docs/video";
+import { StructuredData } from "@/components/structured-data";
+import { pageMarkdown } from "@/lib/doc-llm";
 import { headings } from "@/lib/doc-text";
-import { DOC_SLUGS, docEdits, docFile, docSections } from "@/lib/docs";
+import { DOC_SLUGS, docFile, docPage, docSections } from "@/lib/docs";
+import { siteOrigin } from "@/lib/origin";
+import { REPO_URL } from "@/lib/pricing";
+import { breadcrumbData, publicMetadata } from "@/lib/seo";
 
 type Props = { params: Promise<{ page: string }> };
 
@@ -19,17 +25,19 @@ async function slugOf(params: Props["params"]): Promise<string> {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { title, description } = docFile(await slugOf(params));
-  return { title, description };
+  const slug = await slugOf(params);
+  const { seoTitle, seoDescription } = docFile(slug);
+  return publicMetadata({ title: seoTitle, description: seoDescription, path: `/docs/${slug}`, markdown: `/docs/${slug}.md` });
 }
 
 export default async function DocPage({ params }: Props) {
   const slug = await slugOf(params);
   // An edit shows at once, and the API isn't there while the app is built.
   await connection();
-  const file = docFile(slug);
-  const edits = await docEdits(slug);
-  const body = edits.body || file.body;
+  const page = await docPage(slug);
+  const { title, description, body, edited, youtubeId } = page;
+  const origin = await siteOrigin();
+  const markdown = pageMarkdown(page, origin, REPO_URL);
   const onPage = headings(body);
   const pages = docSections().flatMap((section) => section.pages);
   const at = pages.findIndex((page) => page.slug === slug);
@@ -39,11 +47,13 @@ export default async function DocPage({ params }: Props) {
   return (
     <div className="grid gap-12 xl:grid-cols-[minmax(0,1fr)_13rem]">
       <main className="max-w-3xl min-w-0">
-        <h1 className="text-3xl font-extrabold tracking-tight text-balance">{file.title}</h1>
-        <p className="mt-2 text-muted-foreground">{file.description}</p>
+        <StructuredData data={breadcrumbData(title, slug, origin)} />
+        <h1 className="text-3xl font-extrabold tracking-tight text-balance">{title}</h1>
+        <p className="mt-2 text-muted-foreground">{description}</p>
+        <CopyPage slug={slug} markdown={markdown} />
         {/* A new page starts closed, and unedited. */}
-        <DocBody key={slug} slug={slug} body={body} edited={Boolean(edits.body)} youtubeId={edits.youtube_id}>
-          {edits.youtube_id && <DocVideo key={edits.youtube_id} id={edits.youtube_id} title={file.title} />}
+        <DocBody key={slug} slug={slug} body={body} edited={edited} youtubeId={youtubeId}>
+          {youtubeId && <DocVideo key={youtubeId} id={youtubeId} title={title} />}
           <DocMarkdown>{body}</DocMarkdown>
         </DocBody>
         <nav aria-label="More pages" className="mt-14 flex justify-between gap-4 border-t pt-6 text-sm font-medium">

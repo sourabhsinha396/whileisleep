@@ -1,6 +1,8 @@
 ---
 title: Self-hosting
 description: Deploy whileisleep on a VM, before your Noodles is ready 🍜
+seo_title: Self-host an AI support chat
+seo_description: Deploy whileisleep on your own VM with Docker Compose, with HTTPS, Postgres, Redis, backups, updates and troubleshooting, step by step.
 ---
 
 One small virtual machine, from any provider, runs everything with Docker Compose: Caddy (HTTPS), the Django API, the stream process that sends live updates to the widget and the inbox, a Celery worker that writes the AI's replies, another that talks to Slack and webhooks, the Next.js dashboard, Postgres and Redis.

@@ -1,6 +1,8 @@
 ---
 title: Inbox
 description: Read what the AI said, take over a chat, and hand it back.
+seo_title: Shared inbox for AI chats
+seo_description: Read every conversation the AI has, take over a chat, reply or leave a note for your team, and hand the conversation back when you are done.
 ---
 
 Every conversation is in the inbox, also those the AI answers alone.

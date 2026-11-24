@@ -1,6 +1,8 @@
 ---
 title: Install the chat
 description: Put the widget on your site with one line of code.
+seo_title: Add AI chat to your website
+seo_description: Add the whileisleep chat widget to any website with one script tag. Steps for HTML, WordPress, Shopify, Google Tag Manager and Next.js.
 ---
 
 ## Add the script

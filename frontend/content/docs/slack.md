@@ -1,6 +1,8 @@
 ---
 title: Slack
 description: Chats that need a person become threads in your channel. Replies there reach the visitor.
+seo_title: Answer website chats from Slack
+seo_description: Turn website chats that need a person into Slack threads. Reply in the thread and the visitor gets it, with notes, resolve and back-to-AI.
 ---
 
 ## Connect it

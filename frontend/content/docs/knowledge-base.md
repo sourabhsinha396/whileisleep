@@ -1,6 +1,8 @@
 ---
 title: Knowledge base
 description: Write articles that visitors can read and the AI answers from.
+seo_title: Build an AI knowledge base
+seo_description: Write help articles that visitors read in the chat widget and the AI agent answers from. How to structure them so the right part is found.
 ---
 
 Articles do two jobs: visitors read them in the widget's **Help** tab, and the AI searches them before it answers.

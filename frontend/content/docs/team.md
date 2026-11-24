@@ -1,6 +1,8 @@
 ---
 title: Your team
 description: Add teammates, and who may do what.
+seo_title: Add teammates and roles
+seo_description: Add people to your whileisleep workspace, set your photo, and see what agents, workspace owners and organization owners are allowed to do.
 ---
 
 ## Add a teammate

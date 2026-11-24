@@ -4,6 +4,9 @@ import GithubSlugger from "github-slugger";
 export interface DocFile {
   title: string;
   description: string;
+  /** What search engines show. */
+  seoTitle: string;
+  seoDescription: string;
   body: string;
 }
 
@@ -18,7 +21,9 @@ export function readDocFile(text: string): DocFile {
   const match = /^---\n([\s\S]*?)\n---\n+([\s\S]*)$/.exec(text.replace(/\r\n?/g, "\n"));
   if (!match) throw new Error("A page of the docs starts with its title and description between two --- lines.");
   const field = (name: string) => new RegExp(`^${name}:\\s*(.+)$`, "m").exec(match[1])?.[1].trim() ?? "";
-  return { title: field("title"), description: field("description"), body: match[2].trim() };
+  const title = field("title");
+  const description = field("description");
+  return { title, description, seoTitle: field("seo_title") || title, seoDescription: field("seo_description") || description, body: match[2].trim() };
 }
 
 /** The headings for "On this page", with the ids they get in the page. */

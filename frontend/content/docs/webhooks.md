@@ -1,6 +1,8 @@
 ---
 title: Webhooks
 description: Tell any system what happens in your chats, and let it answer. Works with your own server, Zapier, Make and n8n.
+seo_title: Chat webhooks and reply API
+seo_description: Send signed chat events to your server, Zapier, Make or n8n, and reply to visitors from code. Payloads, retries and signature checks.
 ---
 
 Connect one in **Integrations › Webhooks**: enter an `https://` address, choose what to send, and save. Saving sends a `test` event; if your endpoint doesn't answer with a 2xx status, nothing is saved. A workspace can have five endpoints, each with its own events and secret.

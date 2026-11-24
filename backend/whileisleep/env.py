@@ -6,6 +6,7 @@ non-empty. Empty optional values count as unset.
 """
 
 from pathlib import Path
+from typing import Literal
 
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
@@ -42,6 +43,14 @@ class EnvFile(BaseModel):
     STORAGE_PUBLIC_BASE_URL: str | None = Field(None, pattern=r"^https?://")
     # The provider's region; "auto" (Cloudflare R2) when unset.
     S3_REGION: str | None = None
+    # Selling the hosted plan (apps.billing). Leave all of it out on your own server: billing
+    # is off and everything is free. The last three come from `manage.py billing_setup`.
+    PAYMENT_PROVIDER: Literal["dodo"] | None = None
+    DODO_BASE_URL: str | None = Field(None, pattern=r"^https://")
+    DODO_API_KEY: str | None = None
+    DODO_PRODUCT_MONTHLY: str | None = Field(None, pattern=r"^pdt_")
+    DODO_PRODUCT_YEARLY: str | None = Field(None, pattern=r"^pdt_")
+    DODO_WEBHOOK_KEY: str | None = Field(None, pattern=r"^whsec_")
     # "false" closes account creation.
     SIGNUP_ENABLED: bool | None = None
     # Only `manage.py seed_demo` reads these. The running app takes each organization's

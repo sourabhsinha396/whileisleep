@@ -64,3 +64,13 @@ def test_all_problems_listed_at_once(tmp_path):
         validate_env_file(write(tmp_path, "TYPO_KEY=1\n"))
     message = str(error.value)
     assert "TYPO_KEY" in message and "POSTGRES_DB: required" in message and "POSTGRES_PORT: required" in message
+
+
+def test_payment_settings(tmp_path):
+    good = "PAYMENT_PROVIDER=dodo\nDODO_BASE_URL=https://test.dodopayments.com\nDODO_PRODUCT_MONTHLY=pdt_1\n"
+    assert validate_env_file(write(tmp_path, REQUIRED + good)).PAYMENT_PROVIDER == "dodo"
+    # A provider we don't have, and two values swapped.
+    bad = "PAYMENT_PROVIDER=stripe\nDODO_PRODUCT_YEARLY=whsec_1\nDODO_WEBHOOK_KEY=pdt_1\n"
+    with pytest.raises(EnvError) as error:
+        validate_env_file(write(tmp_path, REQUIRED + bad))
+    assert all(key in str(error.value) for key in ("PAYMENT_PROVIDER", "DODO_PRODUCT_YEARLY", "DODO_WEBHOOK_KEY"))

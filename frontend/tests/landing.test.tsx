@@ -1,13 +1,30 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { Faq } from "@/components/landing/faq";
 import { PricingPlans } from "@/components/landing/pricing-plans";
 import { Ripple } from "@/components/landing/ripple";
+import { HOME_QUESTIONS, PRICING_QUESTIONS } from "@/lib/faq";
 
 function render(node: React.ReactNode): HTMLElement {
   const root = document.createElement("div");
   root.innerHTML = renderToStaticMarkup(node);
   return root;
 }
+
+describe("homepage FAQ", () => {
+  it("renders every question closed, with its answer", () => {
+    const items = [...render(<Faq />).querySelectorAll("details")];
+    expect(items.map((d) => d.querySelector("summary")?.textContent)).toEqual(HOME_QUESTIONS.map(({ q }) => q));
+    expect(items.map((d) => d.querySelector("p")?.textContent)).toEqual(HOME_QUESTIONS.map(({ a }) => a));
+    expect(items.some((d) => d.open)).toBe(false);
+  });
+
+  it("asks nothing twice", () => {
+    for (const list of [HOME_QUESTIONS, PRICING_QUESTIONS]) {
+      expect(new Set(list.map(({ q }) => q)).size).toBe(list.length);
+    }
+  });
+});
 
 describe("pricing plans", () => {
   const headings = (node: React.ReactNode, tag: string) => [...render(node).querySelectorAll(tag)].map((h) => h.textContent);

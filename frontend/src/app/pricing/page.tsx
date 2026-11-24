@@ -2,26 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PricingPlans } from "@/components/landing/pricing-plans";
 import { Logo, ThemeToggle } from "@/components/ui";
+import { PRICING_QUESTIONS } from "@/lib/faq";
 
 export const metadata: Metadata = {
   title: "Pricing",
   description: "Self-host whileisleep for free, or let us host it from $1 a month. Your AI runs on your own key, with no markup.",
 };
-
-const QUESTIONS = [
-  {
-    q: "What does the AI cost?",
-    a: "You add your own OpenRouter key and pick a model, so you pay your provider directly, at their price. We add nothing on top. Rules and help center answers don't call the model at all.",
-  },
-  {
-    q: "Is the cloud version the same software?",
-    a: "Yes. It's the same open-source code you can run yourself, hosted, updated and backed up by us.",
-  },
-  {
-    q: "Why is it so cheap?",
-    a: "It's our launch price for the first customers.",
-  },
-];
 
 export default function PricingPage() {
   return (
@@ -60,7 +46,7 @@ export default function PricingPage() {
             Questions
           </h2>
           <dl className="mt-6 divide-y border-y">
-            {QUESTIONS.map(({ q, a }) => (
+            {PRICING_QUESTIONS.map(({ q, a }) => (
               <div key={q} className="py-5">
                 <dt className="font-semibold">{q}</dt>
                 <dd className="mt-1.5 text-muted-foreground">{a}</dd>

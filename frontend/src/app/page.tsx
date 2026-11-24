@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { HeroVisual } from "@/components/landing/hero-visual";
 import { Demo } from "@/components/landing/demo";
+import { Faq } from "@/components/landing/faq";
 import { PricingPlans } from "@/components/landing/pricing-plans";
 import { Ripple } from "@/components/landing/ripple";
 import { Logo, ThemeToggle } from "@/components/ui";
@@ -118,6 +119,8 @@ export default function Home() {
             <PricingPlans heading="h3" />
           </div>
         </section>
+
+        <Faq />
       </main>
 
       <footer className="border-t">

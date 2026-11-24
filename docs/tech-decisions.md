@@ -4,6 +4,15 @@ Technical decisions made by the project owner, newest first. Each says what was 
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Product decisions are in [product-decisions.md](product-decisions.md).
 
+## 2026-11-24: A2UI stays, with our own catalog and blocks
+
+**Decision.** A2UI stays in the chat. The AI doesn't write layouts: it picks from a few blocks (details, list,
+timeline, later choices and confirmations) that the server checks and builds, from a small catalog of our own.
+Values come from the tool's real result. A button with consequences carries only a reference, and the server
+checks permission again.
+
+**Why.** The AI can't make up an order number or an amount, and the chat stays reliable and on brand.
+
 ## 2026-11-24: One Docker Compose file, behind a Cloudflare tunnel
 
 **Decision.** `docker-compose.yaml`, at the top of the repository because it is not only for the backend, runs development

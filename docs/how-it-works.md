@@ -54,8 +54,12 @@ The technical reference: integration, security and internals. For what the produ
   person is a thread, and replies there reach the visitor. [Webhooks](../frontend/content/docs/webhooks.md): signed events to any system, which can
   answer. [Build your own](plugins.md).
 - **A2UI**: bot replies carry [A2UI](https://a2ui.org) v1.0 surfaces (article buttons, "Talk to a person",
-  forms). The server builds them from templates; the widget renders them with a small safe renderer
+  forms, cards). The server builds them from templates, with only the components in
+  [our catalog](../frontend/public/a2ui/v1/catalog.json); the widget renders them with a small safe renderer
   (`frontend/src/lib/a2ui`), and button events come back to `POST /api/v1/widget/{key}/actions`.
+- **Cards**: details, a list or a timeline from a tool's JSON result. The model names the result and where each
+  value is; the server reads the values from what the tool returned, so the model can't make one up. The
+  text reply makes sense without the card, as Slack shows only the text.
 
 ## The reply pipeline (`backend/apps/agent/pipeline.py`)
 

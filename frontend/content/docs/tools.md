@@ -35,6 +35,10 @@ Return only what helps to answer, as JSON. Short answers are cheaper and read be
 }
 ```
 
+## Cards
+
+When a tool answers with JSON, the agent can show a card under its reply: details such as an order's status, a short list, or the steps of a delivery. There is nothing to set up. The values come straight from your tool's answer, so write them the way a visitor should read them: `"89.00 EUR"` rather than `8900`. Answers longer than 8,000 characters get no card.
+
 ## A visitor's own data
 
 To look up someone's orders, the tool must know who is asking. Put it in the URL, where the AI can't change it:

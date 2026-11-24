@@ -1,9 +1,9 @@
 /**
- * Turns message text into DOM nodes without innerHTML: paragraphs, line breaks, **bold**,
- * [markdown](links) and bare URLs. Links open in a new tab and must be http(s) or relative.
+ * Turns message text into DOM nodes without innerHTML (lib/chat-text.ts says what it can have).
+ * Links open in a new tab and must be http(s) or relative.
  */
 
-const TOKEN = /\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*|(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])/g;
+import { type Inline, parse, parsePlain } from "@/lib/chat-text";
 
 export function safeHref(href: string, base?: string): string | null {
   try {
@@ -15,46 +15,40 @@ export function safeHref(href: string, base?: string): string | null {
   }
 }
 
-function link(text: string, href: string, base?: string): Node {
-  const safe = safeHref(href, base);
-  if (!safe) return document.createTextNode(text);
-  const a = document.createElement("a");
-  a.href = safe;
+/** `base` resolves relative links (the workspace website), so "/exams/x" works in the widget.
+ * `plain` is for what the visitor typed: shown as typed. */
+export function formatText(text: string, base?: string, plain = false): HTMLElement[] {
+  return (plain ? parsePlain(text) : parse(text)).map((block) => {
+    if (block.type === "paragraph") return filled("p", block.content, base);
+    const list = document.createElement(block.ordered ? "ol" : "ul");
+    if (block.ordered && block.start !== 1) list.setAttribute("start", String(block.start));
+    list.append(...block.items.map((item) => filled("li", item, base)));
+    return list;
+  });
+}
+
+function filled(tag: string, content: Inline[], base?: string): HTMLElement {
+  const node = document.createElement(tag);
+  node.append(...content.map((piece) => inline(piece, base)));
+  return node;
+}
+
+function inline(piece: Inline, base?: string): Node {
+  if (piece.type === "break") return document.createElement("br");
+  let node: Node = document.createTextNode(piece.text);
+  if (piece.italic) node = wrapped("em", node);
+  if (piece.bold) node = wrapped("strong", node);
+  const href = piece.href && safeHref(piece.href, base);
+  if (!href) return node;
+  const a = wrapped("a", node) as HTMLAnchorElement;
+  a.href = href;
   a.target = "_blank";
   a.rel = "noopener noreferrer";
-  a.textContent = text;
   return a;
 }
 
-function inline(line: string, base?: string): Node[] {
-  const nodes: Node[] = [];
-  let last = 0;
-  for (const match of line.matchAll(TOKEN)) {
-    if (match.index! > last) nodes.push(document.createTextNode(line.slice(last, match.index)));
-    const [whole, linkText, linkHref, bold, url] = match;
-    if (linkText !== undefined) nodes.push(link(linkText, linkHref, base));
-    else if (bold !== undefined) {
-      const strong = document.createElement("strong");
-      strong.textContent = bold;
-      nodes.push(strong);
-    } else nodes.push(link(url, url, base));
-    last = match.index! + whole.length;
-  }
-  if (last < line.length) nodes.push(document.createTextNode(line.slice(last)));
-  return nodes;
-}
-
-/** `base` resolves relative links (the workspace website), so "/exams/x" works in the widget. */
-export function formatText(text: string, base?: string): HTMLElement[] {
-  return text
-    .split(/\n{2,}/)
-    .filter((p) => p.trim())
-    .map((paragraph) => {
-      const p = document.createElement("p");
-      paragraph.split("\n").forEach((line, i) => {
-        if (i > 0) p.appendChild(document.createElement("br"));
-        p.append(...inline(line.replace(/^\s*[-*]\s+/, "• "), base));
-      });
-      return p;
-    });
+function wrapped(tag: string, child: Node): HTMLElement {
+  const node = document.createElement(tag);
+  node.appendChild(child);
+  return node;
 }

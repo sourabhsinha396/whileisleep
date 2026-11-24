@@ -3,9 +3,10 @@
 import clsx from "clsx";
 import { Plus } from "lucide-react";
 import { useCallback, useState } from "react";
+import { ArticleEditor } from "@/components/article-editor";
 import { Button, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
-import { api, type Article } from "@/lib/api";
+import { api, type Article, upload } from "@/lib/api";
 import { ago } from "@/lib/format";
 import { usePoll } from "@/lib/use-poll";
 
@@ -16,7 +17,28 @@ export default function KnowledgePage() {
   const base = `/workspaces/${workspace.id}/articles`;
   const { data, reload } = usePoll(useCallback(() => api<Article[]>(base), [base]), 60000);
   const [draft, setDraft] = useState<Draft | null>(null);
+  // Changes when another article is opened, so the editor starts over with its text.
+  const [opened, setOpened] = useState(0);
   const [error, setError] = useState("");
+
+  function open(next: Draft) {
+    setDraft(next);
+    setOpened((n) => n + 1);
+    setError("");
+  }
+
+  /** Stores an image in the article's folder, so the article has to exist first: a new one is
+   * saved as a draft. */
+  async function uploadImage(file: File) {
+    let id = draft?.id;
+    if (!id) {
+      if (!draft?.title.trim()) throw new Error("Give the article a title first, then add images.");
+      id = (await api<Article>(base, { method: "POST", body: { title: draft.title, body: draft.body, published: false } })).id;
+      setDraft((current) => current && { ...current, id });
+      reload();
+    }
+    return (await upload<{ url: string }>(`${base}/${id}/images`, file)).url;
+  }
 
   async function save() {
     if (!draft) return;
@@ -43,7 +65,7 @@ export default function KnowledgePage() {
   return (
     <>
       <PageHeader title="Knowledge base" description="Articles show in the widget's Help tab, and the AI agent searches them to answer questions.">
-        <Button onClick={() => setDraft({ title: "", body: "", published: true })}>
+        <Button onClick={() => open({ title: "", body: "", published: true })}>
           <Plus size={16} /> New article
         </Button>
       </PageHeader>
@@ -52,7 +74,7 @@ export default function KnowledgePage() {
           {(data ?? []).map((a) => (
             <button
               key={a.id}
-              onClick={() => setDraft(a)}
+              onClick={() => open(a)}
               className={clsx(
                 "block w-full rounded-lg border bg-surface p-3 text-left shadow-sm transition-colors",
                 draft?.id === a.id ? "border-primary ring-2 ring-ring/30" : "hover:border-primary/40",
@@ -71,9 +93,18 @@ export default function KnowledgePage() {
             <Field label="Title">
               <input className={inputClass} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
             </Field>
-            <Field label="Body" hint="Markdown: **bold**, [links](https://…), blank line between paragraphs.">
-              <textarea className={clsx(inputClass, "min-h-80 font-mono")} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
-            </Field>
+            {/* Not a <Field>: its <label> would pass clicks in the text to the first button. */}
+            <div>
+              <span className="mb-1.5 block text-sm font-medium">Body</span>
+              <ArticleEditor
+                key={opened}
+                value={draft.body}
+                onChange={(body) => setDraft((current) => current && { ...current, body })}
+                onUpload={uploadImage}
+                uploadsEnabled={workspace.uploads_enabled}
+              />
+              <p className="mt-1.5 text-xs text-muted-foreground">Paste or drop images into the text. PNG, JPEG or WebP, up to 5 MB each.</p>
+            </div>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={draft.published} onChange={(e) => setDraft({ ...draft, published: e.target.checked })} />
               Published (visible in the widget and to the AI agent)

@@ -85,6 +85,36 @@ def test_paths_to_nothing_showable_are_dropped(path):
     assert build(details(("X", path))) == []
 
 
+@pytest.mark.parametrize(
+    "label,path", [("Amount (cents)", "/amount"), ("Total", "/total_cents"), ("Total", "/amount_minor")]
+)
+def test_amounts_in_cents_are_not_shown(label, path):
+    data = {"amount": 4250, "total_cents": 4250, "amount_minor": 4250, "items": [{"name": "Pro", "cents": 4250}]}
+    assert build(details((label, path)), data=data) == []
+    spec = {"type": "list", "result": "r1", "items_path": "/items", "title_path": "/name", "detail_path": "/cents"}
+    assert build(spec, data=data)[0]["rows"][0]["detail"] == ""
+
+
+@pytest.mark.parametrize("value", [4250, "4250", -4250])
+def test_money_without_a_currency_or_decimals_is_not_shown(value):
+    assert build(details(("Paid", "/amount")), data={"amount": value}) == []
+
+
+@pytest.mark.parametrize("value", ["42.50 EUR", 42.5, "Free", "$42"])
+def test_readable_money_is_shown(value):
+    assert build(details(("Paid", "/amount")), data={"amount": value})[0]["rows"][0]["value"] == str(value)
+
+
+def test_other_whole_numbers_are_shown():
+    assert build(details(("Quantity", "/qty")), data={"qty": 3})[0]["rows"][0]["value"] == "3"
+
+
+def test_words_that_only_contain_cent_are_shown():
+    data = {"percent": 5, "center": "Oslo"}
+    [card] = build(details(("Recent percent", "/percent"), ("Center", "/center")), data=data)
+    assert len(card["rows"]) == 2
+
+
 def test_timeline_and_list():
     steps = {"type": "timeline", "result": "r1", "items_path": "/steps", "title_path": "/name"}
     [card] = build({**steps, "detail_path": "/at", "done_path": "/done"})

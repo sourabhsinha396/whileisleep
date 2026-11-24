@@ -23,7 +23,12 @@ MAX_VALUE = 200
 MAX_SUMMARY = 600
 
 NUMBER = re.compile(r"\d+")
+WHOLE = re.compile(r"^-?\d+$")
 ISO_TIME = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d")
+# A label or key that says an amount isn't the one a person reads: 4250 for 42.50.
+CENTS = re.compile(r"(?<![a-z])(cents?|minor)(?![a-z])", re.IGNORECASE)
+# Keys of money. A whole number in one may be cents, and nothing in the data says which.
+MONEY = re.compile(r"amount|price|total|cost|fee(?![a-z])|balance|charge|refund|paid|due", re.IGNORECASE)
 # How a card looks in the history the AI reads.
 NOTE = re.compile(r"^\[Card shown: .*\]$", re.MULTILINE)
 SURFACE_PREFIX = "card_"
@@ -33,9 +38,11 @@ CARDS_SCHEMA = {
     "description": (
         "Optional cards under your reply, showing facts from a tool result whose content starts with a "
         "label like [result r1]. Use one for an order, a booking, a few products, or delivery steps; not "
-        "for a single fact. You give JSON Pointers and the values are read from the result. Leave out "
-        "internal ids, amounts in cents, and anything the visitor didn't ask about. Your reply must "
-        "still make sense without the card."
+        "for a single fact. You give JSON Pointers and the values are shown exactly as they are in the "
+        "result, so leave out what reads badly that way: an amount in cents (no card, if that is the "
+        "point of it), a Unix time, an internal id. Also leave out what the visitor didn't ask about. "
+        "One result can fill two cards: the details of an order, then a timeline of its steps. Your "
+        "reply must still make sense without the card."
     ),
     "items": {
         "type": "object",
@@ -97,8 +104,10 @@ def _get(data, path):
 
 
 def _value(data, path) -> str:
-    """The text of one value. Empty for nothing, and for objects and lists."""
+    """The text of one value. Empty for nothing, for objects and lists, and for money that may be in cents."""
     found = _get(data, path)
+    if MONEY.search(str(path).rsplit("/", 1)[-1]) and WHOLE.match(str(found)):
+        return ""
     if isinstance(found, bool):
         return "Yes" if found else "No"
     if isinstance(found, int | float):
@@ -134,6 +143,8 @@ def _details(spec: dict, data) -> list[dict]:
     for row in spec["rows"] if isinstance(spec.get("rows"), list) else []:
         if not isinstance(row, dict):
             continue
+        if CENTS.search(f"{row.get('label')} {row.get('path')}"):
+            continue
         label, value = _label(row.get("label"), data, 60), _value(data, row.get("path"))
         if label and value:
             rows.append({"label": label, "value": value})
@@ -148,7 +159,8 @@ def _items(spec: dict, data) -> list[dict]:
         title = _value(item, spec.get("title_path") or "")
         if not title:
             continue
-        detail = _value(item, spec["detail_path"]) if spec.get("detail_path") else ""
+        path = spec.get("detail_path")
+        detail = _value(item, path) if path and not CENTS.search(str(path)) else ""
         done = _get(item, spec["done_path"]) if spec.get("done_path") else None
         items.append({"title": title, "detail": detail, "done": done if isinstance(done, bool) else None})
         if len(items) == MAX_ITEMS:

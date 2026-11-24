@@ -1,8 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Faq } from "@/components/landing/faq";
-import { NightPanel } from "@/components/landing/night-panel";
 import { PricingPlans } from "@/components/landing/pricing-plans";
+import { FlickeringGrid } from "@/components/magicui/flickering-grid";
+import { ShineBorder } from "@/components/magicui/shine-border";
 import { HOME_QUESTIONS, PRICING_QUESTIONS } from "@/lib/faq";
 
 function render(node: React.ReactNode): HTMLElement {
@@ -39,17 +40,14 @@ describe("pricing plans", () => {
   });
 });
 
-describe("night panel", () => {
-  const panel = render(<NightPanel><p>inbox</p></NightPanel>);
-
-  it("shows what it frames", () => {
-    expect(panel.textContent).toBe("inbox");
-    expect(panel.querySelector("p")?.closest("[aria-hidden]")).toBeNull();
+describe("hero decoration", () => {
+  it("renders on the server", () => {
+    expect(render(<FlickeringGrid aria-hidden />).querySelector("[aria-hidden] canvas")).not.toBeNull();
   });
 
-  it("keeps the sky away from assistive tech and clicks", () => {
-    for (const svg of panel.querySelectorAll("svg")) {
-      expect(svg.closest("[aria-hidden=true].pointer-events-none")).not.toBeNull();
-    }
+  it("never takes clicks from the inbox under it, and stands still for reduced motion", () => {
+    const border = render(<ShineBorder />).firstElementChild;
+    expect(border?.className).toContain("pointer-events-none");
+    expect(border?.className).toContain("motion-safe:animate-shine");
   });
 });

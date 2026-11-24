@@ -2,10 +2,9 @@
 
     docker compose exec -T web python manage.py seed_demo
 
-Login: DEMO_EMAIL / DEMO_PASSWORD from .env. If OPENROUTER_API_KEY is set there, it goes into
-the demo organization; pick the model in Settings, AI model. The first workspace's tools call a site's
-public API (EXAMGRILL_API_URL, default the examgrill dev backend on the host); the
-second is a plain knowledge-base-only shop.
+Login: DEMO_EMAIL / DEMO_PASSWORD from .env. Add an AI key and pick the model in Settings, AI
+model. The first workspace's tools call a site's public API (the examgrill dev backend on the
+host); the second is a plain knowledge-base-only shop.
 """
 
 import os
@@ -15,10 +14,10 @@ from django.core.management.base import BaseCommand, CommandError
 
 from apps.agent.models import Playbook, Rule, Tool
 from apps.knowledge.models import Article
-from apps.workspaces.models import Provider, Workspace
-from apps.workspaces.services import create_workspace, organization_for
+from apps.workspaces.models import Workspace
+from apps.workspaces.services import create_workspace
 
-EXAM_API = os.environ.get("EXAMGRILL_API_URL", "http://host.docker.internal:8006")
+EXAM_API = "http://host.docker.internal:8006"
 
 WORKSPACES = [
     {
@@ -134,13 +133,6 @@ class Command(BaseCommand):
         if created:
             user.set_password(password)
             user.save()
-
-        organization = organization_for(user)
-        key = os.environ.get("OPENROUTER_API_KEY", "").strip()
-        if key and not organization.provider_keys.get(Provider.OPENROUTER):
-            organization.provider_keys[Provider.OPENROUTER.value] = key
-            organization.save(update_fields=["provider_keys"])
-            self.stdout.write(f"OpenRouter key from .env saved to {organization.name}. Pick a model on its page.")
 
         for spec in WORKSPACES:
             spec = dict(spec)

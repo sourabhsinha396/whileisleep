@@ -49,8 +49,8 @@ def test_empty_required_key_counts_as_missing(tmp_path):
 
 
 def test_empty_optional_values_are_unset(tmp_path):
-    env = validate_env_file(write(tmp_path, REQUIRED + "DEMO_EMAIL=\nOPENROUTER_API_KEY=  \n"))
-    assert env.DEMO_EMAIL is None and env.OPENROUTER_API_KEY is None
+    env = validate_env_file(write(tmp_path, REQUIRED + "DEMO_EMAIL=\nDEMO_PASSWORD=  \n"))
+    assert env.DEMO_EMAIL is None and env.DEMO_PASSWORD is None
 
 
 def test_bad_values(tmp_path):

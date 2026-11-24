@@ -58,8 +58,6 @@ class EnvFile(BaseModel):
     # Plain pattern: reserved test domains (demo@whileisleep.test) are fine here.
     DEMO_EMAIL: str | None = Field(None, pattern=r"^[^@\s]+@[^@\s]+$")
     DEMO_PASSWORD: str | None = None
-    OPENROUTER_API_KEY: str | None = None
-    EXAMGRILL_API_URL: str | None = None
 
     @field_validator("*", mode="before")
     @classmethod

@@ -21,7 +21,9 @@ def at_0008(transactional_db):
     """Organization as it was. Whatever the test does, the newest schema is back after it."""
     newest = MigrationExecutor(connection).loader.graph.leaf_nodes()
     yield migrate(BEFORE)
-    get_user_model().objects.all().delete()
+    with connection.cursor() as cursor:
+        # Not through the models: they know tables of other apps that went with the rollback.
+        cursor.execute(f"TRUNCATE {get_user_model()._meta.db_table} CASCADE")
     MigrationExecutor(connection).migrate(newest)
 
 

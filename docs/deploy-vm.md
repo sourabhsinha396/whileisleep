@@ -1,4 +1,4 @@
-# Deploy whileisleep on a VM (before your Maggi is ready 🍜)
+# Deploy whileisleep on a VM (before your Noodles is ready 🍜)
 
 One small virtual machine, from any provider, runs everything with Docker Compose: Caddy (HTTPS), the Django API, the
 stream process that sends live updates to the widget and the inbox, a Celery worker that

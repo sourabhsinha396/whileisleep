@@ -7,7 +7,8 @@ a Turn that says which stage that was:
    call, the same answer every time. Other rule actions (tag, hand-off, an instruction for
    the AI) still apply and the message moves on.
 2. If the AI is off or a person has the conversation, nothing replies (Stage.NONE).
-3. Limits: past the daily AI cap the conversation goes to a person (Stage.GUARD).
+3. Limits: past the daily AI cap, or when the trial is over and nobody pays, the
+   conversation goes to a person (Stage.GUARD).
 4. The AI answers (Stage.AI), or a help center search does when the model is unavailable
    (Stage.FALLBACK). See apps.agent.bot.
 
@@ -24,6 +25,7 @@ import logging
 from django.conf import settings
 from django.db import transaction
 
+from apps.billing import services as billing
 from apps.conversations import limits
 from apps.conversations.models import Conversation, Message
 from apps.conversations.services import add_message
@@ -56,14 +58,24 @@ def handle(conversation: Conversation, message: Message, instruction: str = "", 
         recorder.finish(Turn.Stage.NONE, rule=rule)
         return
 
-    if conversation.workspace.organization.llm_ready and not limits.allow_ai_reply(conversation):
-        # Daily AI cap reached for this visitor or workspace: a person takes it from here.
-        bot.request_human(conversation, "daily AI reply limit reached")
+    if blocked := why_blocked(conversation):
+        # A person takes it from here.
+        bot.request_human(conversation, blocked)
         sent = add_message(conversation, Message.Sender.BOT, "Thanks! A teammate will reply here soon.")
         recorder.finish(Turn.Stage.GUARD, reply=sent, rule=rule)
         return
 
     answer_later(conversation.pk, instruction, message.pk, rule.pk if rule else None)
+
+
+def why_blocked(conversation: Conversation) -> str:
+    """Why the AI may not answer this conversation now, for the team to read. Empty: it may."""
+    organization = conversation.workspace.organization
+    if not billing.ai_allowed(organization):
+        return "the AI is paused until a plan is active (Settings › Billing)"
+    if organization.llm_ready and not limits.allow_ai_reply(conversation):
+        return "daily AI reply limit reached"
+    return ""
 
 
 def answer_later(conversation_id: int, instruction: str, trigger_id: int, rule_id: int | None) -> None:

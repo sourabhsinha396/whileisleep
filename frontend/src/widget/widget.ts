@@ -1,5 +1,6 @@
 import { renderSurface } from "@/lib/a2ui/render";
 import { applyMessages, type ActionEvent } from "@/lib/a2ui/surface";
+import { inkOf, isBright, textOn } from "@/lib/contrast";
 import { openLiveStream, throttle, type LiveStream } from "@/lib/live-stream";
 import { WidgetApi, type ChatMessage, type Identity, type Intent, type StreamEvent, type WidgetConfig } from "./api";
 import { styles } from "./styles";
@@ -236,7 +237,11 @@ export class Widget {
     style.textContent = styles;
     const wrap = document.createElement("div");
     wrap.className = "od";
-    wrap.style.setProperty("--od-color", /^#[0-9a-f]{3,8}$/i.test(this.config.color) ? this.config.color : "#2563eb");
+    const color = /^#[0-9a-f]{3,8}$/i.test(this.config.color) ? this.config.color : "#2563eb";
+    wrap.classList.toggle("bright", isBright(color));
+    wrap.style.setProperty("--od-color", color);
+    wrap.style.setProperty("--od-on", textOn(color));
+    wrap.style.setProperty("--od-ink", inkOf(color));
 
     const launcher = button("launcher", "", () => this.toggle());
     launcher.innerHTML = ICONS.chat;

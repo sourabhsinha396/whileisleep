@@ -11,13 +11,17 @@ export const WIDGET_COLORS: WidgetColor[] = [
   { value: "#4f46e5", name: "Indigo" },
   { value: "#7c3aed", name: "Violet" },
   { value: "#a21caf", name: "Plum" },
-  { value: "#be185d", name: "Pink" },
+  { value: "#be185d", name: "Rose" },
   { value: "#dc2626", name: "Red" },
   { value: "#c2410c", name: "Orange" },
   { value: "#b45309", name: "Amber" },
   { value: "#15803d", name: "Green" },
   { value: "#0f766e", name: "Teal" },
   { value: "#1f2937", name: "Charcoal" },
+  { value: "#22d3ee", name: "Cyan" },
+  { value: "#86efac", name: "Light green" },
+  { value: "#f472b6", name: "Pink" },
+  { value: "#39ff14", name: "Neon green" },
 ];
 
 /** The choices to show: the list, after the workspace's own color when that predates it. */

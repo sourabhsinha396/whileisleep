@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Avatar, Logo, Spinner, ThemeToggle } from "@/components/ui";
 import { WorkspaceContext } from "@/components/workspace-context";
 import { api, getToken, setToken, type User, type Workspace } from "@/lib/api";
+import { textOn } from "@/lib/contrast";
 import { usePoll } from "@/lib/use-poll";
 
 const NAV = [
@@ -29,8 +30,8 @@ const NAV = [
 function WorkspaceBadge({ workspace, size = 36 }: { workspace: Workspace; size?: number }) {
   return (
     <span
-      className="grid shrink-0 place-items-center rounded-md text-xs font-bold text-white shadow-sm"
-      style={{ background: workspace.color, width: size, height: size }}
+      className="grid shrink-0 place-items-center rounded-md text-xs font-bold shadow-sm"
+      style={{ background: workspace.color, color: textOn(workspace.color), width: size, height: size }}
     >
       {workspace.name.slice(0, 2).toUpperCase()}
     </span>

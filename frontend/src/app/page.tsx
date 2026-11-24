@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { HeroVisual } from "@/components/landing/hero-visual";
 import { Demo } from "@/components/landing/demo";
+import { Faq } from "@/components/landing/faq";
+import { PricingPlans } from "@/components/landing/pricing-plans";
+import { FlickeringGrid } from "@/components/magicui/flickering-grid";
+import { ShineBorder } from "@/components/magicui/shine-border";
 import { Logo, ThemeToggle } from "@/components/ui";
 import { getToken } from "@/lib/api";
 
@@ -44,30 +48,41 @@ export default function Home() {
 
       <main>
         {/* Hero */}
-        <section className="mx-auto grid max-w-7xl items-center gap-12 px-4 pt-8 pb-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:pt-14">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full border bg-surface px-3 py-1 text-xs font-semibold text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-success" /> Open source · Bring your own LLM
-            </p>
-            <h1 className="mt-5 text-4xl leading-[1.08] font-extrabold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-              AI answers.
-              <span className="block text-primary-text">While you sleep.</span>
-            </h1>
-            <p className="mt-5 max-w-lg text-lg text-muted-foreground">
-              We answer from your APIs, MCP, and other data sources, only waking you for chats that need a human.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href={signedIn ? "/app" : "/login"} className={`${cta} bg-primary text-primary-foreground hover:bg-primary-hover`}>
-                {signedIn ? "Open your inbox" : "Start for free"} <ArrowRight size={16} />
-              </Link>
-              <a href="#demo" className={`${cta} border bg-surface hover:bg-muted`}>
-                Try it yourself
-              </a>
+        <section className="relative isolate">
+          <FlickeringGrid
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 -top-20 bottom-0 -z-10 !h-auto [mask-image:radial-gradient(ellipse_90%_38%_at_50%_72%,black_50%,transparent)] lg:[mask-image:radial-gradient(ellipse_50%_62%_at_75%_54%,black_40%,transparent)] motion-reduce:hidden"
+            color="rgb(38, 120, 220)"
+            squareSize={4}
+            gridGap={6}
+            flickerChance={0.12}
+            maxOpacity={0.35}
+          />
+          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 pt-8 pb-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:pt-14">
+            <div>
+              <p className="inline-flex items-center gap-2 rounded-full border bg-surface px-3 py-1 text-xs font-semibold text-muted-foreground">
+                <span className="size-1.5 rounded-full bg-success" /> Open source · Bring your own LLM
+              </p>
+              <h1 className="mt-5 text-4xl leading-[1.08] font-extrabold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+                AI answers.
+                <span className="block text-primary-text">While you sleep.</span>
+              </h1>
+              <p className="mt-5 max-w-lg text-lg text-muted-foreground">
+                We answer from your APIs, MCP, and other data sources, only waking you for chats that need a human.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link href={signedIn ? "/app" : "/login"} className={`${cta} bg-primary text-primary-foreground hover:bg-primary-hover`}>
+                  {signedIn ? "Open your inbox" : "Start for free"} <ArrowRight size={16} />
+                </Link>
+                <a href="#demo" className={`${cta} border bg-surface hover:bg-muted`}>
+                  Try it yourself
+                </a>
+              </div>
             </div>
-          </div>
-          <div className="relative">
-            <div className="pointer-events-none absolute -inset-8 -z-10 rounded-[48px] bg-primary/10 blur-3xl" />
-            <HeroVisual handoff={handoff} />
+            <div className="relative rounded-2xl">
+              <HeroVisual handoff={handoff} />
+              <ShineBorder className="opacity-50" duration={24} shineColor="#7cb4f0" />
+            </div>
           </div>
         </section>
 
@@ -100,6 +115,23 @@ export default function Home() {
             ))}
           </ul>
         </section>
+
+        {/* Pricing */}
+        <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-6 border-y bg-muted/40">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+            <div className="mx-auto mb-10 max-w-2xl text-center">
+              <h2 id="pricing-title" className="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+                Pay for the inbox, not for every answer
+              </h2>
+              <p className="mt-3 text-balance text-muted-foreground">
+                Your AI runs on your own key, at your provider&apos;s price. Host it yourself for free, or let us run it.
+              </p>
+            </div>
+            <PricingPlans heading="h3" />
+          </div>
+        </section>
+
+        <Faq />
       </main>
 
       <footer className="border-t">

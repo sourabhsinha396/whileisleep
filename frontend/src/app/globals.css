@@ -148,6 +148,15 @@
   75% { transform: rotate(6deg); }
 }
 
+/* Magic UI shine border: a light that travels round the hero inbox. */
+@theme inline {
+  --animate-shine: shine var(--duration) infinite linear;
+}
+@keyframes shine {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .land-in, .land-typing span, .land-shake { animation: none; opacity: 1; }
 }

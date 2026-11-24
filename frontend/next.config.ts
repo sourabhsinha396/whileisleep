@@ -17,6 +17,15 @@ const nextConfig: NextConfig = {
       { source: "/api/:path*", destination: `${API_URL}/api/:path*` },
     ];
   },
+  // Areas open on their first page, and links from before the settings were grouped still work.
+  async redirects() {
+    return [
+      { source: "/w/:slug/ai", destination: "/w/:slug/ai/behavior", permanent: false },
+      { source: "/w/:slug/settings", destination: "/w/:slug/settings/general", permanent: false },
+      { source: "/w/:slug/automation", destination: "/w/:slug/ai/rules", permanent: false },
+      { source: "/w/:slug/organization", destination: "/w/:slug/settings/ai-model", permanent: false },
+    ];
+  },
   async headers() {
     // widget.js is loaded by other sites.
     return [{ source: "/widget.js", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] }];

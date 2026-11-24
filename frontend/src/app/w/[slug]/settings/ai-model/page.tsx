@@ -3,22 +3,18 @@
 import clsx from "clsx";
 import { CheckCircle2, KeyRound, XCircle } from "lucide-react";
 import { useCallback, useState } from "react";
+import { OrganizationOnly } from "@/components/organization-only";
 import { Button, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, type KeyCheck, type Organization } from "@/lib/api";
 import { usePoll } from "@/lib/use-poll";
 
-/** Your organization: its name and the OpenRouter key and model every workspace's AI agent uses. */
-export default function OrganizationPage() {
-  const { data: org, setData } = usePoll(useCallback(() => api<Organization>("/organization"), []), 60000);
-  if (!org) return null;
+/** The OpenRouter key and model every workspace's AI agent uses. */
+export default function AiModelPage() {
   return (
     <>
-      <PageHeader title="Organization & LLM" description="The model and API key every workspace in this organization shares." />
-      <div className="mx-auto max-w-3xl space-y-8 p-8">
-        <LlmSettings key={org.id} org={org} onSaved={setData} />
-        <NameForm org={org} onSaved={setData} />
-      </div>
+      <PageHeader title="AI model" description="The model and API key every workspace in this organization shares." />
+      <OrganizationOnly>{(org, setOrg) => <LlmSettings key={org.id} org={org} onSaved={setOrg} />}</OrganizationOnly>
     </>
   );
 }
@@ -56,7 +52,7 @@ function LlmSettings({ org, onSaved }: { org: Organization; onSaved: (org: Organ
   return (
     <section className="space-y-5 rounded-lg border bg-surface p-6 shadow-sm">
       <div>
-        <h2 className="text-base font-bold tracking-tight">AI model (OpenRouter)</h2>
+        <h2 className="text-base font-bold tracking-tight">OpenRouter</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Every workspace in <strong>{org.name}</strong> ({org.workspace_count}) answers visitors with this key and model. Create a key at{" "}
           <a className="text-primary-text hover:underline" href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">
@@ -160,29 +156,5 @@ function LlmSettings({ org, onSaved }: { org: Organization; onSaved: (org: Organ
       <p className="text-sm text-success">{message}</p>
       <ErrorText>{error}</ErrorText>
     </section>
-  );
-}
-
-function NameForm({ org, onSaved }: { org: Organization; onSaved: (org: Organization) => void }) {
-  const [name, setName] = useState(org.name);
-  const [saved, setSaved] = useState(false);
-  return (
-    <form
-      className="space-y-3 rounded-lg border bg-surface p-6 shadow-sm"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        onSaved(await api<Organization>("/organization", { method: "PATCH", body: { name } }));
-        setSaved(true);
-      }}
-    >
-      <h2 className="text-base font-bold tracking-tight">Organization</h2>
-      <Field label="Name">
-        <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
-      </Field>
-      <div className="flex items-center gap-3">
-        <Button>Save</Button>
-        {saved && <span className="text-sm text-success">Saved.</span>}
-      </div>
-    </form>
   );
 }

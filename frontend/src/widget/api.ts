@@ -7,6 +7,10 @@ export interface WidgetConfig {
   website: string;
   max_message_length: number;
   color: string;
+  /** The pattern behind the messages. */
+  background?: string;
+  /** "light", "dark", or "auto" for what the visitor's device is set to. */
+  color_mode?: string;
   /** Empty without one; initials show instead. */
   logo_url: string;
   greeting: string;

@@ -15,6 +15,12 @@ export const styles = `
 }
 /* Bright colours carry dark text, so what sits behind it is lightened instead of darkened. */
 .od.bright { --od-deep: color-mix(in srgb, var(--od-color) 75%, #fff); --od-track: rgba(255,255,255,.3); }
+.od { --od-danger: #b91c1c; --od-idle: #e9edf3; --od-wash: rgba(15,23,42,.06); }
+/* Dark: the same tokens, and the workspace's colour lightened where it is text. Important,
+   because the light one is set on the element itself. */
+.od.dark { --od-soft: color-mix(in srgb, var(--od-color) 24%, #1c2230); --od-ink: color-mix(in srgb, var(--od-color) 45%, #fff) !important;
+  --od-fg: #e8ebf2; --od-muted: #9aa5b8; --od-border: #2c3546; --od-bg: #11151d; --od-surface: #1c2230; --od-danger: #f87171; --od-idle: #2a3344;
+  --od-wash: rgba(255,255,255,.09); color-scheme: dark; }
 button { font: inherit; }
 
 /* Launcher */
@@ -73,10 +79,19 @@ button { font: inherit; }
   border-radius: 999px; background: none; cursor: pointer; color: color-mix(in srgb, var(--od-on) 85%, transparent); font-size: 13px; font-weight: 600; transition: background .15s, color .15s; }
 .tabs button svg { width: 15px; height: 15px; }
 .tabs button:hover { color: var(--od-on); }
-.tabs button[aria-selected="true"] { background: #fff; color: var(--od-fg); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.tabs button[aria-selected="true"] { background: #fff; color: #1b2333; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* Patterns: on the header in its text colour, behind the messages in the workspace's. */
+.body { --p: color-mix(in srgb, var(--od-ink) 8%, transparent); }
+.head::before { --p: color-mix(in srgb, var(--od-on) 13%, transparent); content: ""; position: absolute; inset: 0; pointer-events: none; }
+.bg-dots .body, .bg-dots .head::before { background: radial-gradient(var(--p) 1.4px, transparent 1.8px) 0 0 / 18px 18px; }
+.bg-grid .body, .bg-grid .head::before { background: linear-gradient(var(--p) 1px, transparent 1px) 0 0 / 22px 22px, linear-gradient(90deg, var(--p) 1px, transparent 1px) 0 0 / 22px 22px; }
+.bg-stripes .body, .bg-stripes .head::before { background: repeating-linear-gradient(45deg, var(--p) 0 1.5px, transparent 1.5px 12px); }
+.bg-bubbles .body, .bg-bubbles .head::before { background: radial-gradient(circle, transparent 6px, var(--p) 6.5px 8px, transparent 8.5px) 0 0 / 44px 44px,
+  radial-gradient(circle, var(--p) 4px, transparent 4.5px) 22px 22px / 44px 44px; }
 
 /* Messages */
-.body { flex: 1; overflow-y: auto; padding: 16px 14px 8px; scrollbar-width: thin; scrollbar-color: rgba(15,23,42,.18) transparent; overscroll-behavior: contain; }
+.body { flex: 1; overflow-y: auto; padding: 16px 14px 8px; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--od-muted) 40%, transparent) transparent; overscroll-behavior: contain; }
 .msg { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 3px; }
 .msg.last { margin-bottom: 14px; }
 .msg.new { animation: od-in .2s ease-out; }
@@ -110,7 +125,7 @@ button { font: inherit; }
 .file-card strong { display: block; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-card small { display: block; font-size: 11.5px; color: var(--od-muted); }
 .system { text-align: center; margin: 4px 0 14px; }
-.system span { display: inline-block; max-width: 85%; font-size: 12px; color: var(--od-muted); background: rgba(15,23,42,.05);
+.system span { display: inline-block; max-width: 85%; font-size: 12px; color: var(--od-muted); background: var(--od-wash);
   padding: 4px 12px; border-radius: 999px; }
 .typing { display: inline-flex; gap: 4px; padding: 14px 16px; }
 .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--od-muted); animation: od-blink 1.2s infinite; }
@@ -135,7 +150,7 @@ button { font: inherit; }
   display: grid; place-items: center; transition: transform .15s, background .15s, color .15s; }
 .send svg { width: 17px; height: 17px; }
 .send:hover:not(:disabled) { transform: scale(1.06); }
-.send:disabled { background: #e9edf3; color: #8b95a5; cursor: default; }
+.send:disabled { background: var(--od-idle); color: var(--od-muted); cursor: default; }
 .emoji { position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 3; display: grid; grid-template-columns: repeat(8, 34px); padding: 8px;
   background: var(--od-surface); border-radius: 16px; box-shadow: 0 12px 32px -8px rgba(15,23,42,.28), 0 0 0 1px var(--od-border); animation: od-in .15s ease-out; }
 .emoji[hidden] { display: none; }
@@ -148,7 +163,7 @@ button { font: inherit; }
 .file img { flex: none; width: 28px; height: 28px; border-radius: 7px; object-fit: cover; }
 .file-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .file-remove { flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 7px; background: none; color: var(--od-muted); cursor: pointer; display: grid; place-items: center; }
-.file-remove:hover { background: rgba(15,23,42,.07); color: var(--od-fg); }
+.file-remove:hover { background: var(--od-wash); color: var(--od-fg); }
 .file-remove svg { width: 13px; height: 13px; }
 .uploading img, .uploading > svg, .uploading .file-name { animation: od-wait 1.1s ease-in-out infinite; }
 @keyframes od-wait { 50% { opacity: .35; } }
@@ -157,12 +172,17 @@ button { font: inherit; }
 .drop[hidden] { display: none; }
 .counter { font-size: 11px; color: var(--od-muted); text-align: right; padding: 0 14px 6px; }
 .counter:empty { display: none; }
-.counter.full { color: #b91c1c; }
-.error { color: #b91c1c; font-size: 12px; padding: 0 18px 4px; }
+.counter.full { color: var(--od-danger); }
+.error { color: var(--od-danger); font-size: 12px; padding: 0 18px 4px; }
 .error:empty { display: none; }
 .powered { text-align: center; font-size: 11px; color: var(--od-muted); padding: 0 0 8px; opacity: .8; }
 .powered a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
-.powered a:hover { color: var(--od-text, inherit); }
+.powered a:hover { color: var(--od-fg); }
+
+/* In the dashboard's settings: the panel where it is put, without the launcher. */
+.preview { height: 100%; }
+.preview .launcher { display: none; }
+.preview .panel { position: relative; inset: auto; width: 100%; height: 100%; z-index: 0; animation: none; border-radius: 16px; }
 
 /* Help center */
 .search-wrap { position: relative; margin-bottom: 14px; }

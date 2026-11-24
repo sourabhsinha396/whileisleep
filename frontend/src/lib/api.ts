@@ -77,6 +77,9 @@ export interface User {
   photo_url: string;
 }
 
+export type WidgetBackground = "plain" | "dots" | "grid" | "stripes" | "bubbles";
+export type ColorMode = "light" | "dark" | "auto";
+
 export interface Workspace {
   id: number;
   name: string;
@@ -85,6 +88,9 @@ export interface Workspace {
   public_key: string;
   website: string;
   color: string;
+  /** The widget's pattern, and light, dark or the visitor's own setting. */
+  background: WidgetBackground;
+  color_mode: ColorMode;
   logo_url: string;
   greeting: string;
   /** IANA name; rules read the local hour and weekday in it. */

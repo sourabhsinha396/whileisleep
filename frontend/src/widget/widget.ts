@@ -41,6 +41,9 @@ const TYPING_TIMEOUT_MS = 45000;
 const TYPING_SEND_MS = 3000;
 const AGENT_TYPING_MS = 6000;
 
+// Patterns the styles draw; "plain" needs none.
+const BACKGROUNDS = ["dots", "grid", "stripes", "bubbles"];
+
 type Tab = "chat" | "help";
 /** The greeting is shown like a message, but was never sent. */
 type Shown = Omit<ChatMessage, "id" | "created_at"> & { created_at?: string };
@@ -99,6 +102,19 @@ export class Widget {
     // Polls until the stream connects; the open stream also keeps the visitor online.
     this.schedulePoll();
     this.connect();
+  }
+
+  /** The panel alone, to look at in the dashboard: nothing is fetched, sent or kept. */
+  showPreview(config: WidgetConfig, messages: ChatMessage[]) {
+    this.config = config;
+    this.messages = messages;
+    this.lastId = this.shownId = messages[messages.length - 1]?.id ?? 0;
+    this.build();
+    this.root.querySelector(".od")!.classList.add("preview");
+    this.open = true;
+    this.el.panel.hidden = false;
+    this.composer.refresh();
+    this.renderBody(true);
   }
 
   /** (Re)opens the live stream, e.g. after identify() switched to another visitor. */
@@ -248,6 +264,8 @@ export class Widget {
     wrap.className = "od";
     const color = /^#[0-9a-f]{3,8}$/i.test(this.config.color) ? this.config.color : "#2563eb";
     wrap.classList.toggle("bright", isBright(color));
+    if (BACKGROUNDS.includes(this.config.background ?? "")) wrap.classList.add(`bg-${this.config.background}`);
+    this.applyMode(wrap);
     wrap.style.setProperty("--od-color", color);
     wrap.style.setProperty("--od-on", textOn(color));
     wrap.style.setProperty("--od-ink", inkOf(color));
@@ -321,6 +339,19 @@ export class Widget {
     this.el = { launcher, panel, tabs, body, error, compose, restart };
     stayAtEnd(body);
     this.switchTab("chat");
+  }
+
+  /** Light, dark, or whichever the visitor's device is set to, also when that changes. */
+  private applyMode(wrap: HTMLElement) {
+    const mode = this.config.color_mode;
+    if (mode !== "auto") {
+      wrap.classList.toggle("dark", mode === "dark");
+      return;
+    }
+    const device = window.matchMedia("(prefers-color-scheme: dark)");
+    const follow = () => wrap.classList.toggle("dark", device.matches);
+    device.addEventListener("change", follow);
+    follow();
   }
 
   /** The workspace's logo, with the photos of a few teammates tucked behind it. */

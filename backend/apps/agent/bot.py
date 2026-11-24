@@ -30,7 +30,7 @@ from apps.conversations.services import add_message, request_human
 from apps.knowledge.models import Article
 from apps.knowledge.search import passages, search
 
-from . import a2ui, cards, forms, http_tools, mcp_tools
+from . import a2ui, cards, choices, forms, http_tools, mcp_tools
 from .llm import Chain
 from .models import Playbook, Rule, Tool, Turn
 from .providers import ProviderError, parse_arguments
@@ -70,6 +70,7 @@ REPLY_SCHEMA = {
         },
         "form": forms.FORM_SCHEMA,
         "cards": cards.CARDS_SCHEMA,
+        "choices": choices.CHOICES_SCHEMA,
     },
     "required": ["reply", "article_ids", "offer_human"],
 }
@@ -119,13 +120,16 @@ about the business.
 Write like a helpful person in a chat: short (one to four sentences), plain words, no headings. \
 Use the visitor's language. Include links from tool results when they help, as markdown [text](url).
 
-When you need details from the visitor (an email to notify them, an order number, a choice between \
-options), add a form to reply_to_visitor instead of asking them to type it. Their answers come back \
-as their next message.
+When you need details from the visitor (an email to notify them, an order number), add a form to \
+reply_to_visitor instead of asking them to type it. Their answers come back as their next message.
+
+When your reply asks them to pick one of a few answers, add choices to reply_to_visitor: a button \
+for each. The question must be in the reply too. If you also need details, use only a form.
 
 When a tool result has several facts worth seeing at once, add a card to reply_to_visitor and keep \
 the text short: the main point, not a repeat of the card. A line like [Card shown: ...] in an earlier \
-reply says what its card held. Never write such a line yourself.
+reply says what its card held, and [Choices shown: ...] which buttons it had. Never write such a \
+line yourself.
 
 A line like [Attached: photo.png] means files were sent. You can't open them: never guess what is in \
 one. If the answer depends on it, ask what it shows or offer a teammate, who can open it.
@@ -204,8 +208,10 @@ def reply(
         f"reply_{uuid.uuid4().hex[:12]}", articles, result["offer_human"] and not conversation.human_requested
     )
     form_ui, form_meta = forms.attach(result["form"]) if result.get("form") else ([], None)
+    if not form_meta and result.get("choices"):
+        form_ui, form_meta = choices.attach(result["choices"])
     if form_meta and instruction:
-        # The form serves this instruction; its answers continue it (see actions.submit_form).
+        # The form serves this instruction; its answers continue it (see apps.agent.actions).
         form_meta["instruction"] = instruction
     # Several surfaces can ride on one message; the widget renders each.
     surfaces = [*cards.attach(result.get("cards") or []), *(surface or []), *form_ui] or None
@@ -253,7 +259,7 @@ def chat_history(conversation: Conversation) -> list[dict]:
     turns: list[dict] = []
     for message in recent_messages(conversation):
         message.body = clip(attachments.text_for_ai(message), settings.HISTORY_MESSAGE_CHARS)
-        if shown := cards.note(message.a2ui):
+        for shown in filter(None, (cards.note(message.a2ui), choices.note(message.form))):
             message.body = f"{message.body}\n\n{shown}".strip()
         role = "user" if message.sender == Message.Sender.VISITOR else "assistant"
         if not message.body:
@@ -309,7 +315,7 @@ def conversation_facts(conversation: Conversation) -> list[str]:
         )
 
     last_bot = conversation.messages.filter(sender=Message.Sender.BOT).order_by("-id").first()
-    if last_bot and last_bot.form and not last_bot.form.get("submitted"):
+    if last_bot and last_bot.form and "fields" in last_bot.form and not last_bot.form.get("submitted"):
         title = f' ("{last_bot.form["title"]}")' if last_bot.form.get("title") else ""
         facts.append(f"Your last message showed a form{title} the visitor hasn't sent yet.")
     if conversation.tags:
@@ -398,16 +404,22 @@ def tool_definitions(tools: list[Tool], with_playbooks: bool = False) -> list[di
     ]
 
 
-def final_answer(arguments: dict, results: dict) -> dict:
-    """`results` holds what the tools returned, by label: the only values a card can show."""
+def without_notes(text: str) -> str:
+    return choices.without_notes(cards.without_notes(text))
+
+
+def final_answer(arguments: dict, results: dict, known: str) -> dict:
+    """`results` holds what the tools returned, by label: the only values a card can show.
+    `known` is all the text the model was given."""
     ids = arguments.get("article_ids") or []
     return {
-        "reply": cards.without_notes(str(arguments.get("reply", ""))),
+        "reply": without_notes(str(arguments.get("reply", ""))),
         "article_ids": [int(i) for i in ids if isinstance(i, int | str) and str(i).isdigit()],
         "offer_human": bool(arguments.get("offer_human")),
         # None when absent or unusable: a bad form is dropped, never shown broken.
         "form": forms.normalize(arguments.get("form")),
         "cards": cards.normalize(arguments.get("cards"), results),
+        "choices": choices.normalize(arguments.get("choices"), known),
     }
 
 
@@ -455,7 +467,7 @@ def run_agent(
         calls = message.get("tool_calls") or []
         if not calls:
             # Plain text instead of reply_to_visitor: still a usable answer.
-            text = cards.without_notes(message.get("content") or "")
+            text = without_notes(message.get("content") or "")
             result = {"reply": text, "article_ids": [], "offer_human": False} if text else None
             break
         # Kept as the model wrote it too, so its next step continues its own reasoning.
@@ -464,7 +476,9 @@ def run_agent(
             name = (call.get("function") or {}).get("name", "")
             arguments = parse_arguments((call.get("function") or {}).get("arguments"))
             if name == REPLY_TOOL:
-                result = final_answer(arguments, results)
+                # Not what it wrote itself while making this answer.
+                known = "\n".join(m["content"] for m in messages if "native" not in m)
+                result = final_answer(arguments, results, known)
                 content, is_error = "Sent.", False
             else:
                 recorder.doing("tool", name)

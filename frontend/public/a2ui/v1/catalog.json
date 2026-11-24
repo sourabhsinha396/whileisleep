@@ -67,7 +67,8 @@
           "type": "string",
           "enum": [
             "detail",
-            "step"
+            "step",
+            "choices"
           ]
         }
       },

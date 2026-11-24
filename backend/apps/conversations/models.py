@@ -117,8 +117,8 @@ class Message(models.Model):
     # as untrusted input.
     intent = models.CharField(max_length=64, blank=True)
     intent_data = models.JSONField(default=dict, blank=True)
-    # A bot message's form (apps.agent.forms spec) plus {"surface_id", "submitted"}, to check
-    # the visitor's answers and stop a second submission.
+    # A bot message's choices (apps.agent.choices), or its form (apps.agent.forms spec) plus
+    # {"surface_id", "submitted"}, to check the visitor's answers and stop a second submission.
     form = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

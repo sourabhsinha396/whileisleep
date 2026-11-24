@@ -191,6 +191,9 @@ def action(request, key: str, payload: WidgetActionIn):
     """An A2UI action event: the visitor pressed a button in a bot message."""
     workspace = get_workspace(key)
     visitor = get_visitor(request, workspace)
+    if payload.name == "choose" and not limits.allow_message(visitor.id, client_ip(request)):
+        # It sends a message.
+        raise HttpError(429, "You're sending messages too quickly. Please wait a minute.")
     conversation = current_conversation(visitor)
     if conversation is None:
         raise HttpError(400, "No conversation yet.")

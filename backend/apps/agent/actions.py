@@ -1,11 +1,13 @@
 """Handles A2UI action events the widget sends back when a visitor presses a button."""
 
+from django.db import transaction
+
 from apps.conversations import signals
 from apps.conversations.models import Conversation, Message
 from apps.conversations.services import add_message, request_human
 from apps.knowledge.models import Article
 
-from . import a2ui, forms, pipeline
+from . import a2ui, choices, forms, pipeline
 from .bot import will_reply
 
 
@@ -37,7 +39,39 @@ def handle(conversation: Conversation, name: str, context: dict, surface_id: str
         submit_form(conversation, surface_id, context.get("fields"))
         return {}
 
+    if name == "choose":
+        choose(conversation, surface_id, context.get("choice"))
+        return {}
+
     raise ActionError(f"Unknown action {name}.")
+
+
+def choose(conversation: Conversation, surface_id: str, index) -> None:
+    """The visitor pressed one of the bot's choices: its words become their next message."""
+    with transaction.atomic():
+        # One press at a time, so that two quick ones can't both answer the question.
+        locked = Conversation.objects.select_for_update().get(pk=conversation.pk)
+        messages = locked.messages.filter(is_note=False)
+        message = messages.filter(form__surface_id=surface_id).first() if surface_id else None
+        label = choices.picked(message.form, index) if message else None
+        if label is None:
+            raise ActionError("This choice isn't here anymore.")
+        people = (Message.Sender.VISITOR, Message.Sender.AGENT)
+        if messages.filter(sender__in=people, pk__gt=message.pk).exists():
+            raise ActionError("The chat has moved on. Please write your answer instead.")
+        answer = add_message(conversation, Message.Sender.VISITOR, label)
+    if instruction := message.form.get("instruction"):
+        # The question was part of following this, so rules don't get a second look.
+        pipeline.handle(conversation, answer, choice_instruction(instruction), run_rules=False)
+    else:
+        pipeline.handle(conversation, answer)
+
+
+def choice_instruction(instruction: str) -> str:
+    return (
+        "The visitor just picked one of the choices from your previous message. You showed them while "
+        f"following this instruction from the business, which still applies:\n{instruction}"
+    )
 
 
 def submit_form(conversation: Conversation, surface_id: str, values) -> None:
@@ -52,7 +86,7 @@ def submit_form(conversation: Conversation, surface_id: str, values) -> None:
         if surface_id
         else None
     )
-    if message is None or not message.form:
+    if message is None or "fields" not in message.form:
         raise ActionError("This form isn't here anymore.")
     form = message.form
     if form.get("submitted"):

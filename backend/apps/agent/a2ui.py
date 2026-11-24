@@ -1,7 +1,8 @@
 """Builders for A2UI v1.0 surfaces (https://a2ui.org) that bot messages carry.
 
 The server writes these from templates; the model only chooses the text, the articles,
-a form's fields (apps.agent.forms) and what a card shows (apps.agent.cards).
+a form's fields (apps.agent.forms), what a card shows (apps.agent.cards) and the answers to pick
+from (apps.agent.choices).
 A message's `a2ui` field holds the list of A2UI messages (createSurface, then
 updateComponents) that the widget renders under the text.
 A button's `action.event` comes back to POST /widget/{key}/actions.
@@ -60,6 +61,13 @@ def reply_actions(surface_id: str, articles: list, offer_human: bool) -> list[di
     if not children:
         return None
     return surface(surface_id, [column("root", children), *components])
+
+
+def choices(surface_id: str, options: list[str]) -> list[dict]:
+    """Buttons that answer the bot's question. The widget hides them once it is answered."""
+    buttons = [button(f"choice_{i}", label, "choose", {"choice": i}) for i, label in enumerate(options)]
+    root = {"id": "root", "component": "Row", "variant": "choices", "children": [b[0]["id"] for b in buttons]}
+    return surface(surface_id, [root, *(part for b in buttons for part in b)])
 
 
 # A step's mark: done, not done, or no such thing.

@@ -4,6 +4,13 @@ Product decisions made by the project owner, newest first. Each says what was de
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Technical decisions are in [tech-decisions.md](tech-decisions.md).
 
+## 2026-11-24: A visitor's country comes from the website
+
+**Decision.** The country is the `country` attribute the website sends with identify(); unsigned is fine. The inbox shows
+a small flag, as Crisp does, and the panel on the right shows the flag and the country's name.
+
+**Why.** It isn't a big feature, and a paid lookup would add to expenses. The right panel has more space.
+
 ## 2026-11-24: Slack and webhooks are the first integrations
 
 **Decision.** Slack comes first, then webhooks: like Slack, but general, for any system. No Telegram. Later ones are

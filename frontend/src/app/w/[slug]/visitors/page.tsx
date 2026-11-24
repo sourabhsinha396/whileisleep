@@ -4,10 +4,12 @@ import { Eye, MessageSquare, Search, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CountryFlag } from "@/components/country-flag";
 import { LiveProvider, useLive, useLiveEvents } from "@/components/live-context";
 import { Avatar, Button, EmptyState, PageHeader, Segmented } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, type ConversationRow, type Visitor } from "@/lib/api";
+import { countryOf } from "@/lib/country";
 import { ago, browserName } from "@/lib/format";
 import { usePoll } from "@/lib/use-poll";
 
@@ -128,7 +130,10 @@ function Visitors() {
                       <span className="flex items-center gap-3">
                         <Avatar name={v.name} online={v.online} size={34} />
                         <span className="min-w-0">
-                          <span className="block font-semibold">{v.name}</span>
+                          <span className="flex items-center gap-2 font-semibold">
+                            {v.name}
+                            <CountryFlag country={countryOf(v.attributes)} />
+                          </span>
                           <span className="block text-xs text-muted-foreground">{v.email || "Anonymous"}</span>
                         </span>
                       </span>

@@ -11,6 +11,7 @@ import {
   Hash,
   Inbox as InboxIcon,
   Mail,
+  MapPin,
   MessageSquare,
   Monitor,
   RotateCcw,
@@ -24,12 +25,14 @@ import { Fragment, Suspense, useCallback, useEffect, useMemo, useRef, useState }
 import { A2uiPreview } from "@/components/a2ui-preview";
 import { ChatFiles, ChatText } from "@/components/chat-message";
 import { Composer, type Draft } from "@/components/composer";
+import { CountryFlag } from "@/components/country-flag";
 import { LiveProvider, useLive, useLiveEvents } from "@/components/live-context";
 import { Avatar, Badge, Button, Segmented } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, type ConversationDetail, type ConversationRow, type Message, upload } from "@/lib/api";
 import type { ChatFile } from "@/lib/chat-file";
 import { plainText } from "@/lib/chat-text";
+import { countryOf } from "@/lib/country";
 import { ago, browserName, clock } from "@/lib/format";
 import { addMessage, applyConversation, setOnline, withPresence, type Filter } from "@/lib/inbox";
 import { throttle } from "@/lib/live-stream";
@@ -138,6 +141,7 @@ function Inbox() {
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className={clsx("truncate text-sm", row.unread ? "font-bold" : "font-semibold")}>{row.visitor.name}</span>
+                    <CountryFlag country={countryOf(row.visitor.attributes)} />
                     <span className="ml-auto shrink-0 text-xs text-muted-foreground">{ago(row.last_message_at)}</span>
                   </span>
                   <span className="mt-0.5 flex items-center gap-2">
@@ -265,6 +269,7 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
   }
 
   const v = data.visitor;
+  const country = countryOf(v.attributes);
   const handler = data.human_requested ? "Your team is handling it" : workspace.ai_enabled ? "AI agent answering" : "Waiting for your team";
 
   return (
@@ -340,6 +345,14 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
         </div>
         <Section title="Visitor">
           <Detail icon={Mail} label="Email">{v.email || <span className="text-muted-foreground">Not shared yet</span>}</Detail>
+          {country && (
+            <Detail icon={MapPin} label="Country">
+              <span className="flex items-center gap-2">
+                <CountryFlag country={country} label={false} />
+                {country.name}
+              </span>
+            </Detail>
+          )}
           <Detail icon={Globe} label="Current page">
             {v.current_url ? (
               <a className="break-all text-primary-text hover:underline" href={v.current_url} target="_blank" rel="noreferrer">

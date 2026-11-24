@@ -26,7 +26,8 @@ export default function InstallPage() {
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">
-            Signed-in users? Call <code>window.whileisleep.identify({"{ name, email }"})</code> so conversations show who they are. To let
+            Signed-in users? Call <code>window.whileisleep.identify({"{ name, email, attributes: { country } }"})</code> so conversations show who they are; a country
+            (&quot;IN&quot; or &quot;India&quot;) shows as a flag. To let
             tools look up a user&apos;s own data, prove who they are with a{" "}
             {workspace.role === "owner" ? (
               <Link className="font-medium text-primary-text hover:underline" href={`/w/${workspace.slug}/settings/identity`}>

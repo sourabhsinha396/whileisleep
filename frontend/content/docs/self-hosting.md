@@ -61,7 +61,7 @@ In Cloudflare, create a tunnel and run its connector on the VM. Add three routes
 
 | Path | Service |
 |---|---|
-| `^/api/v1/(widget/[^/]+\|workspaces/[0-9]+)/stream$` | `http://localhost:8009` |
+| `^/api/v1/(widget/[^/]+\|workspaces/[0-9]+)/stream$` | `http://localhost:8104` |
 | `^/(api\|admin\|static)/` | `http://localhost:8004` |
 | *(empty)* | `http://localhost:3004` |
 

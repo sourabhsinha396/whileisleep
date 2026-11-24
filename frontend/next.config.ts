@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const API_URL = process.env.API_URL ?? "http://localhost:8004";
 // The live streams run on Django's ASGI process (the `stream` service in docker-compose.yaml).
-const STREAM_URL = process.env.STREAM_URL ?? "http://localhost:8009";
+const STREAM_URL = process.env.STREAM_URL ?? "http://localhost:8104";
 
 const nextConfig: NextConfig = {
   // A self-contained server in .next/standalone, for the Docker image.

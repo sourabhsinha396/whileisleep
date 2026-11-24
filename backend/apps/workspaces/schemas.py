@@ -3,7 +3,7 @@ from typing import Literal
 from ninja import Schema
 from pydantic import EmailStr, Field
 
-from .models import Provider
+from .models import ColorMode, Provider, WidgetBackground
 
 
 class WorkspaceIn(Schema):
@@ -17,6 +17,8 @@ class WorkspacePatch(Schema):
     slug: str | None = Field(None, min_length=2, max_length=60, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     website: str | None = None
     color: str | None = Field(None, max_length=16)
+    background: WidgetBackground | None = None
+    color_mode: ColorMode | None = None
     greeting: str | None = Field(None, max_length=300)
     timezone: str | None = Field(None, max_length=64)
     ai_enabled: bool | None = None
@@ -30,6 +32,8 @@ class WorkspaceOut(Schema):
     public_key: str
     website: str
     color: str
+    background: str
+    color_mode: str
     logo_url: str
     greeting: str
     timezone: str

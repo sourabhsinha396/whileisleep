@@ -130,6 +130,22 @@ def unique_slug(name: str, exclude_pk: int | None = None) -> str:
     return slug
 
 
+class WidgetBackground(models.TextChoices):
+    """The pattern behind the widget's messages. The widget draws it (frontend/src/widget)."""
+
+    PLAIN = "plain"
+    DOTS = "dots"
+    GRID = "grid"
+    STRIPES = "stripes"
+    BUBBLES = "bubbles"
+
+
+class ColorMode(models.TextChoices):
+    LIGHT = "light"
+    DARK = "dark"
+    AUTO = "auto"  # what the visitor's device is set to
+
+
 class Workspace(models.Model):
     """One website or product. Visitors, conversations and articles belong to a workspace."""
 
@@ -145,6 +161,10 @@ class Workspace(models.Model):
     # to owners only, and encrypted in the database.
     identity_secret = EncryptedTextField(default=new_identity_secret)
     color = models.CharField(max_length=16, default="#2563eb")
+    background = models.CharField(
+        max_length=16, choices=WidgetBackground, default=WidgetBackground.PLAIN, db_default=WidgetBackground.PLAIN
+    )
+    color_mode = models.CharField(max_length=8, choices=ColorMode, default=ColorMode.LIGHT, db_default=ColorMode.LIGHT)
     # Shown in the widget's header instead of the workspace's initials.
     logo = models.FileField(upload_to=workspace_logo, max_length=200, blank=True)
     greeting = models.CharField(max_length=300, default="Hi! How can we help?")

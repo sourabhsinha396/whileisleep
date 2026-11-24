@@ -118,6 +118,9 @@ class WidgetConfigOut(Schema):
     name: str
     website: str
     color: str
+    # The pattern behind the messages, and light, dark or the visitor's own setting.
+    background: str
+    color_mode: str
     logo_url: str
     greeting: str
     ai_enabled: bool

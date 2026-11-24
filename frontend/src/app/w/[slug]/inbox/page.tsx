@@ -16,7 +16,6 @@ import {
   RotateCcw,
   Search,
   SendHorizontal,
-  Sparkles,
   StickyNote,
   Tag,
   UserRound,
@@ -282,7 +281,7 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
           <div className="min-w-0 flex-1">
             <h2 className="truncate font-bold tracking-tight">{v.name}</h2>
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              {data.human_requested ? <UserRound size={12} /> : workspace.ai_enabled ? <Sparkles size={12} className="text-primary-text" /> : <Clock size={12} />}
+              {data.human_requested ? <UserRound size={12} /> : workspace.ai_enabled ? <Bot size={12} className="text-primary-text" /> : <Clock size={12} />}
               {handler} · opened {ago(data.messages[0]?.created_at ?? data.last_message_at)} ago
             </p>
           </div>
@@ -319,7 +318,7 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
           })}
           {(botStatus || visitorTypingUntil > 0) && (
             <p className="flex items-center gap-2 px-1 text-xs text-muted-foreground" aria-live="polite">
-              {botStatus ? <Sparkles size={12} className="text-primary-text" /> : <UserRound size={12} />}
+              {botStatus ? <Bot size={12} className="text-primary-text" /> : <UserRound size={12} />}
               {botStatus ? `AI agent: ${botStatus}…` : `${v.name} is typing…`}
             </p>
           )}
@@ -478,7 +477,7 @@ function MessageBubble({ message: m, visitorName }: { message: Message; visitorN
     <div className={clsx("flex gap-2.5", mine ? "flex-row-reverse" : "flex-row")}>
       {m.sender === "bot" ? (
         <span className="grid size-8 shrink-0 place-items-center self-end rounded-full bg-primary-soft text-primary-text">
-          <Sparkles size={15} />
+          <Bot size={15} />
         </span>
       ) : (
         <span className="self-end">
@@ -491,7 +490,7 @@ function MessageBubble({ message: m, visitorName }: { message: Message; visitorN
           <span className="text-muted-foreground">{clock(m.created_at)}</span>
           {m.sender === "bot" && (
             <Badge tone="success">
-              <Sparkles size={10} /> AI reply
+              <Bot size={10} /> AI reply
             </Badge>
           )}
           {m.is_note && (

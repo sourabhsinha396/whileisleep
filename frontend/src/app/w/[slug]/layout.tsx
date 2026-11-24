@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Check, ChevronsUpDown, LogOut, Plus, Sparkles } from "lucide-react";
+import { Check, ChevronsUpDown, LogOut, Plus, Bot } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -164,7 +164,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                 className="block rounded-lg border bg-surface p-3 text-xs shadow-sm transition-colors hover:border-primary/40"
               >
                 <span className="flex items-center gap-2 font-semibold">
-                  <Sparkles size={14} className="text-primary-text" />
+                  <Bot size={14} className="text-primary-text" />
                   AI agent
                   <span
                     className={clsx(

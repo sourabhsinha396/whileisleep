@@ -114,6 +114,8 @@ button { font: inherit; }
 .error { color: #b91c1c; font-size: 12px; padding: 0 18px 4px; }
 .error:empty { display: none; }
 .powered { text-align: center; font-size: 11px; color: var(--od-muted); padding: 2px 0 10px; opacity: .8; }
+.powered a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.powered a:hover { color: var(--od-text, inherit); }
 
 /* Help center */
 .search-wrap { position: relative; margin-bottom: 14px; }

@@ -321,7 +321,13 @@ export class Widget {
     });
     compose.append(input, send);
     const powered = div("powered");
-    powered.textContent = "Powered by whileisleep";
+    powered.append("Powered by ");
+    const poweredLink = document.createElement("a");
+    poweredLink.href = "https://whileisleep.chat";
+    poweredLink.target = "_blank";
+    poweredLink.rel = "noopener";
+    poweredLink.textContent = "whileisleep";
+    powered.append(poweredLink);
 
     panel.append(head, body, error, counter, compose, powered);
     wrap.append(launcher, panel);
@@ -497,9 +503,11 @@ export class Widget {
     const node = div("msg-main");
     if (!mine) row.appendChild(this.avatar(message.sender, message.author_name, message.author_photo));
     row.appendChild(node);
-    if (!mine) {
+    {
       const who = div("who");
-      if (message.sender === "bot") {
+      if (mine) {
+        who.textContent = "You";
+      } else if (message.sender === "bot") {
         const tag = document.createElement("span");
         tag.className = "ai-tag";
         tag.textContent = "AI";

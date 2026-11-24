@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Check, ChevronsUpDown, LogOut, Plus, Bot } from "lucide-react";
+import { Check, ChevronsUpDown, CircleHelp, LogOut, Plus, Bot } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -166,6 +166,13 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
               {bottomNav(workspace).map((item) => (
                 <SidebarLink key={item.href} item={item} slug={slug} pathname={pathname} />
               ))}
+              <a
+                href="/docs"
+                target="_blank"
+                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <CircleHelp size={17} /> Docs
+              </a>
             </div>
           </nav>
 

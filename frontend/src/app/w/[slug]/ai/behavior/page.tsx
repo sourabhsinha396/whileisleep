@@ -11,7 +11,7 @@ export default function BehaviorPage() {
   const { workspace } = useWorkspace();
   return (
     <>
-      <PageHeader title="Behavior" description="Whether the agent answers visitors, and how." />
+      <PageHeader title="Behavior" docs="how-it-works" description="Whether the agent answers visitors, and how." />
       <div className="mx-auto max-w-3xl p-8">
         <AgentSettings key={workspace.id} canEdit={workspace.role === "owner"} />
       </div>

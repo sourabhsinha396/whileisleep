@@ -10,7 +10,7 @@ export default function IdentityPage() {
   const { workspace } = useWorkspace();
   return (
     <>
-      <PageHeader title="Verified identity" description="Prove to the agent's tools who your signed-in visitors are." />
+      <PageHeader title="Verified identity" docs="verified-identity" description="Prove to the agent's tools who your signed-in visitors are." />
       <div className="mx-auto max-w-3xl p-8">
         {workspace.role === "owner" ? <IdentitySecret /> : <Notice>Only the workspace&apos;s owners can see this secret.</Notice>}
       </div>

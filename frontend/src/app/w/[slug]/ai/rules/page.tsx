@@ -21,7 +21,7 @@ export default function RulesPage() {
 
   return (
     <>
-      <PageHeader title="Rules" description="Route, tag and answer conversations automatically.">
+      <PageHeader title="Rules" docs="rules" description="Route, tag and answer conversations automatically.">
         {canEdit && (
           <Button onClick={() => setDraft({ ...NEW_RULE, position: rules.length })}>
             <Plus size={16} /> Add rule

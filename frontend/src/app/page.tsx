@@ -39,6 +39,9 @@ export default function Home() {
           <Link href="/pricing" className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
             Pricing
           </Link>
+          <Link href="/docs" className="hidden rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground sm:block">
+            Docs
+          </Link>
           <ThemeToggle />
           <Link href={signedIn ? "/app" : "/login"} className={`${cta} bg-primary px-4 py-2 text-primary-foreground hover:bg-primary-hover`}>
             {signedIn ? "Open inbox" : "Log in"}
@@ -137,6 +140,9 @@ export default function Home() {
       <footer className="border-t">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted-foreground sm:px-6">
           <Logo />
+          <Link href="/docs" className="hover:text-foreground">
+            Docs
+          </Link>
           <span>Open source. Self-host it, bring your own LLM. Get some sleep.</span>
         </div>
       </footer>

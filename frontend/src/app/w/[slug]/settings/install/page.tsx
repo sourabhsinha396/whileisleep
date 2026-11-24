@@ -15,7 +15,7 @@ export default function InstallPage() {
 
   return (
     <>
-      <PageHeader title="Install" description="Put the chat widget on your site." />
+      <PageHeader title="Install" docs="install" description="Put the chat widget on your site." />
       <div className="mx-auto max-w-3xl p-8">
         <section className="space-y-3 rounded-lg border bg-surface p-6 shadow-sm">
           <p className="text-sm text-muted-foreground">Paste this before <code>&lt;/body&gt;</code> on every page of your site.</p>

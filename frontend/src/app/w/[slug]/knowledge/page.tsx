@@ -65,7 +65,7 @@ export default function KnowledgePage() {
 
   return (
     <>
-      <PageHeader title="Knowledge base" description="Articles show in the widget's Help tab, and the AI agent searches them to answer questions.">
+      <PageHeader title="Knowledge base" docs="knowledge-base" description="Articles show in the widget's Help tab, and the AI agent searches them to answer questions.">
         <Button onClick={() => open({ title: "", body: "", published: true })}>
           <Plus size={16} /> New article
         </Button>

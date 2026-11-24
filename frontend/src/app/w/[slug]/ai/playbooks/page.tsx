@@ -41,7 +41,7 @@ export default function PlaybooksPage() {
 
   return (
     <>
-      <PageHeader title="Playbooks" description="Teach the agent how to handle tricky conversations.">
+      <PageHeader title="Playbooks" docs="playbooks" description="Teach the agent how to handle tricky conversations.">
         {canEdit && (
           <Button onClick={() => setDraft({ title: "", when_to_use: "", instructions: "", enabled: true })}>
             <Plus size={16} /> Add playbook

@@ -11,7 +11,7 @@ export default function TeamPage() {
   const { workspace } = useWorkspace();
   return (
     <>
-      <PageHeader title="Team" description="Who can answer conversations in this workspace." />
+      <PageHeader title="Team" docs="team" description="Who can answer conversations in this workspace." />
       <div className="mx-auto max-w-3xl p-8">
         <TeamSettings canEdit={workspace.role === "owner"} />
       </div>

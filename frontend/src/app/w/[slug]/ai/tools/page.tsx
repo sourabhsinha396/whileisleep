@@ -57,7 +57,7 @@ export default function ToolsPage() {
 
   return (
     <>
-      <PageHeader title="Tools" description="APIs on your own systems the agent can call to look things up.">
+      <PageHeader title="Tools" docs="tools" description="APIs on your own systems the agent can call to look things up.">
         {canEdit && (
           <Button onClick={() => setDraft({ ...EMPTY })}>
             <Plus size={16} /> Add tool

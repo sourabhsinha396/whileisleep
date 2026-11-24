@@ -151,12 +151,35 @@ export function Avatar({ name, src = "", online, size = 40 }: { name: string; sr
   );
 }
 
-export function PageHeader({ title, description, children }: { title: string; description?: React.ReactNode; children?: React.ReactNode }) {
+export function PageHeader({
+  title,
+  description,
+  docs,
+  children,
+}: {
+  title: string;
+  description?: React.ReactNode;
+  /** The page of the docs about this. */
+  docs?: string;
+  children?: React.ReactNode;
+}) {
   return (
     <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b bg-background/90 px-8 py-5 backdrop-blur">
       <div>
         <h1 className="text-xl font-bold tracking-tight">{title}</h1>
-        {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
+        {description && (
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {description}
+            {docs && (
+              <>
+                {" "}
+                <a href={`/docs/${docs}`} target="_blank" className="font-medium whitespace-nowrap text-primary-text hover:underline">
+                  Learn how
+                </a>
+              </>
+            )}
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>

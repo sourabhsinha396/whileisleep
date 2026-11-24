@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui";
 export default function AiModelPage() {
   return (
     <>
-      <PageHeader title="AI model" description="The model, its fallback and the API keys every workspace in this organization shares." />
+      <PageHeader title="AI model" docs="connect-ai" description="The model, its fallback and the API keys every workspace in this organization shares." />
       <OrganizationOnly>{(org, setOrg) => <LlmSettings key={org.id} org={org} onSaved={setOrg} />}</OrganizationOnly>
     </>
   );

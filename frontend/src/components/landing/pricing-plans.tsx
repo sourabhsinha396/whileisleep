@@ -15,7 +15,7 @@ const SELF_HOSTED = [
 ];
 
 const CLOUD = [
-  "Your bring Openrouter key: AI at your provider's price",
+  "Bring your OpenRouter key: AI at your provider's price",
   "Email support",
 ];
 

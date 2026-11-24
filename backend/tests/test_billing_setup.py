@@ -5,6 +5,7 @@ from io import StringIO
 import pytest
 from django.core.management import CommandError, call_command
 
+from apps.billing import dodo
 from apps.billing.apps import half_configured
 
 from .fake_dodo import SECRET
@@ -50,6 +51,15 @@ def test_setup_without_a_public_address_makes_no_webhook(billing, settings):
     settings.SITE_URL = "http://localhost:3004"
     assert "skipped" in run_setup("--create")
     assert billing.sent("/webhooks") == []
+
+
+def test_a_key_that_may_not_read_webhooks_is_enough(billing, monkeypatch):
+    def refuse():
+        raise dodo.DodoError("Dodo Payments refused: Forbidden", 403)
+
+    monkeypatch.setattr(dodo, "list_webhooks", refuse)
+    out = run_setup("--create")
+    assert "DODO_PRODUCT_YEARLY=pdt_yearly" in out and "Webhook (optional): Dodo Payments refused" in out
 
 
 def test_setup_needs_a_key(settings):

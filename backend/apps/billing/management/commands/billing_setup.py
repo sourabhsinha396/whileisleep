@@ -63,9 +63,13 @@ class Command(BaseCommand):
         mode = "test" if "//test." in settings.DODO_BASE_URL else "LIVE"
         self.stdout.write(f"Dodo account, {mode} mode.")
         try:
-            lines = self.products(**options) + self.webhook(**options)
+            lines = self.products(**options)
         except dodo.DodoError as error:
             raise CommandError(str(error)) from error
+        try:
+            lines += self.webhook(**options)
+        except dodo.DodoError as error:
+            self.stdout.write(self.style.WARNING(f"Webhook (optional): {error}"))
         if lines:
             self.stdout.write("\nPut these in .env:")
             for line in lines:
@@ -94,13 +98,13 @@ class Command(BaseCommand):
 
     def webhook(self, create: bool, **options) -> list[str]:
         if not settings.SITE_URL.startswith("https://"):
-            self.stdout.write("Webhook: skipped, Dodo can't reach this machine. Plans update when someone returns.")
+            self.stdout.write("Webhook (optional): skipped, Dodo can't reach this machine.")
             return []
         url = settings.SITE_URL + WEBHOOK_PATH
         webhook_id = next((w["id"] for w in dodo.list_webhooks() if w.get("url") == url), None)
         if webhook_id is None:
             if not create:
-                self.stdout.write(f"Webhook to {url}: missing (--create makes it)")
+                self.stdout.write(f"Webhook (optional) to {url}: missing (--create makes it)")
                 return []
             webhook_id = dodo.create_webhook(url, EVENTS)
         self.stdout.write(f"Webhook to {url}: {webhook_id}")

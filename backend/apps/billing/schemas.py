@@ -36,8 +36,9 @@ class PortalIn(Schema):
 
 
 class SyncIn(Schema):
-    # Goes into an address at Dodo, so nothing but an id.
-    subscription_id: str = Field(pattern=r"^sub_[A-Za-z0-9]+$", max_length=64)
+    # What checkout came back with; without it, whatever this organization has at Dodo. Goes into
+    # an address at Dodo, so nothing but an id.
+    subscription_id: str | None = Field(None, pattern=r"^sub_[A-Za-z0-9]+$", max_length=64)
 
 
 class LinkOut(Schema):

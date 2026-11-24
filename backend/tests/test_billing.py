@@ -205,6 +205,117 @@ def test_other_products_in_the_same_dodo_account_are_ignored(account, billing, f
     assert not Subscription.objects.exists()
 
 
+# --- Never came back from checkout ---
+
+
+def open_checkout(api, workspace):
+    response = api.post("/billing/checkout", {"interval": "monthly", "workspace": workspace.slug})
+    assert response.status_code == 200
+
+
+def lookups(billing):
+    return [path for method, path, _ in billing.requests if method == "GET"]
+
+
+@pytest.fixture
+def no_webhook(billing, settings):
+    settings.DODO_WEBHOOK_KEY = ""
+
+
+def test_a_job_finds_the_payment(api, account, billing, workspace, no_webhook):
+    open_checkout(api, workspace)
+    assert tasks.find_payments() == 0
+    billing.subscribe(account)
+    end_trial(account)
+    assert tasks.find_payments() == 1
+    assert state(account) == "active"
+    # And then it stops asking.
+    billing.requests.clear()
+    assert tasks.find_payments() == 0 and billing.requests == []
+
+
+def test_so_does_opening_the_billing_page(api, account, billing, workspace, no_webhook):
+    open_checkout(api, workspace)
+    billing.subscribe(account, product_id="pdt_y")
+    result = api.post("/billing/sync", {}).json()
+    assert result["state"] == "active" and result["subscription"]["interval"] == "yearly"
+
+
+def test_nobody_pays_twice(api, account, billing, workspace, no_webhook):
+    open_checkout(api, workspace)
+    billing.subscribe(account)
+    response = api.post("/billing/checkout", {"interval": "yearly", "workspace": workspace.slug})
+    assert response.status_code == 409 and len(billing.sent("/checkouts")) == 1
+    assert api.get("/billing").json()["state"] == "active"
+
+
+def test_nobody_pays_twice_while_dodo_cannot_be_asked(api, account, billing, workspace):
+    open_checkout(api, workspace)
+    billing.down = True
+    response = api.post("/billing/checkout", {"interval": "yearly", "workspace": workspace.slug})
+    assert response.status_code == 502
+
+
+def test_dodo_is_only_asked_after_a_recent_checkout(api, account, billing, workspace):
+    assert tasks.find_payments() == 0
+    open_checkout(api, workspace)
+    assert lookups(billing) == []
+    BillingAccount.objects.update(last_checkout_at=timezone.now() - timedelta(hours=26))
+    assert tasks.find_payments() == 0
+    api.post("/billing/sync", {})
+    assert lookups(billing) == []
+
+
+def test_only_payments_for_these_accounts_count(api, account, billing, workspace):
+    open_checkout(api, workspace)
+    other = services.account_for(OrganizationFactory())
+    billing.subscribe(other, "sub_other")
+    billing.subscribe(account, "sub_stranger", metadata={"whileisleep_account": "acc_x"})
+    billing.subscribe(account, "sub_none", metadata=None)
+    billing.subscribe(account, "sub_old", created_at=(timezone.now() - timedelta(days=3)).isoformat())
+    assert tasks.find_payments() == 0 and not Subscription.objects.exists()
+
+
+def test_a_payment_that_failed_is_looked_at_again_only_when_it_changes(api, account, billing, workspace):
+    open_checkout(api, workspace)
+    billing.subscribe(account, status="failed")
+    assert tasks.find_payments() == 1
+    assert tasks.find_payments() == 0
+    billing.subscribe(account)
+    assert tasks.find_payments() == 1
+    assert Subscription.objects.get().status == "active"
+
+
+def test_it_is_found_among_many(api, account, billing, workspace):
+    open_checkout(api, workspace)
+    for number in range(130):
+        billing.subscribe(account, f"sub_x{number}", metadata={"whileisleep_account": "acc_x"})
+    billing.subscribe(account, "sub_mine")
+    assert tasks.find_payments() == 1
+
+
+def test_looking_for_payments_survives_dodo_being_down(api, account, billing, workspace):
+    open_checkout(api, workspace)
+    billing.down = True
+    assert tasks.find_payments() == 0
+
+
+def test_looking_for_payments_does_nothing_without_billing():
+    assert tasks.find_payments() == 0
+
+
+def test_opening_the_billing_page_shows_what_changed_in_the_portal(api, account, billing, no_webhook):
+    billing.subscribe(account, status="on_hold")
+    services.sync("sub_1")
+    billing.subscribe(account)
+    assert api.post("/billing/sync", {}).json()["subscription"]["status"] == "active"
+    billing.subscribe(account, cancel_at_next_billing_date=True)
+    assert api.post("/billing/sync", {}).json()["subscription"]["cancels_at_period_end"] is True
+
+
+# --- Ids ---
+
+
 @pytest.mark.parametrize("bad", ["", "cus_1", "sub_1/../../customers", "sub_1?x=1"])
 def test_only_an_id_reaches_dodos_address(api, account, billing, bad):
     assert api.post("/billing/sync", {"subscription_id": bad}).status_code == 422
@@ -317,6 +428,17 @@ def test_refresh_asks_about_what_should_have_changed(account, billing):
     assert tasks.refresh_subscriptions() == 2
     assert sorted(path for _, path, _ in billing.requests) == ["/subscriptions/sub_hold", "/subscriptions/sub_over"]
     assert Subscription.objects.get(provider_id="sub_over").status == "expired"
+
+
+def test_every_plan_is_looked_at_once_a_day(account, billing):
+    """It may have been refunded, which ends it early."""
+    billing.subscribe(account)
+    services.sync("sub_1")
+    assert tasks.refresh_subscriptions() == 0
+    Subscription.objects.update(updated_at=timezone.now() - timedelta(hours=25))
+    billing.subscribe(account, status="expired")
+    assert tasks.refresh_subscriptions() == 1
+    assert Subscription.objects.get().status == "expired"
 
 
 def test_refresh_survives_dodo_being_down(account, billing):

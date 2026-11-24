@@ -80,8 +80,9 @@ Open `https://YOUR_DOMAIN`, sign up (the first account owns its organization), t
 Skip this on your own server: without it nothing is limited. With it, the AI pauses 14 days after
 someone starts unless they subscribe, and **Billing** appears in the sidebar for the organization's owner.
 
-1. Make an API key in Dodo Payments that can read and write products, checkouts, customers,
-   subscriptions and webhooks.
+1. Make an API key in Dodo Payments that can read and write products, checkouts, customers and
+   subscriptions, and webhooks if you want them. They are optional: without them, a change made at Dodo
+   (such as a refund) gets here within a day.
 2. Make the two plans and the webhook, and print the settings (`PAYMENT_PROVIDER` stays empty until
    the end: the server refuses to start half-configured). Set `DODO_BASE_URL`
    (`https://live.dodopayments.com`) and `DODO_API_KEY` in `.env`, then:
@@ -92,7 +93,7 @@ docker compose exec web python manage.py billing_setup            # shows what i
 docker compose exec web python manage.py billing_setup --create   # makes it
 ```
 
-3. Put the three printed lines in `.env`, set `PAYMENT_PROVIDER=dodo`, and run `docker compose up -d`.
+3. Put the printed lines in `.env`, set `PAYMENT_PROVIDER=dodo`, and run `docker compose up -d`.
 
 Organizations that already exist get a full 14 days from that moment. Try it first with a test key and
 `https://test.dodopayments.com`.

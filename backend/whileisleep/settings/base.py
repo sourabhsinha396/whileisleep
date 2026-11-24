@@ -195,7 +195,8 @@ CELERY_BEAT_SCHEDULE = {
     "sweep-unanswered": {"task": "apps.agent.tasks.sweep_unanswered", "schedule": 60.0},
     # Files visitors and teammates attached but never sent; see apps/conversations/tasks.py.
     "delete-unsent-files": {"task": "apps.conversations.tasks.delete_unsent_files", "schedule": 3600.0},
-    # Catches what a lost payment webhook would have said; see apps/billing/tasks.py.
+    # Plans, for whoever paid and never came back, and what changed at Dodo; see apps/billing/tasks.py.
+    "find-payments": {"task": "apps.billing.tasks.find_payments", "schedule": 300.0},
     "refresh-subscriptions": {"task": "apps.billing.tasks.refresh_subscriptions", "schedule": 3600.0},
     # Events for integrations that no job is coming for; see apps/integrations/tasks.py.
     "sweep-deliveries": {"task": "apps.integrations.tasks.sweep_deliveries", "schedule": 60.0},
@@ -205,8 +206,7 @@ CELERY_BEAT_SCHEDULE = {
 SITE_URL = (os.environ.get("SITE_URL") or "http://localhost:3004").rstrip("/")
 
 # Selling the hosted plan (apps.billing). Off unless all of it is set: on your own server
-# everything is free. The webhook key may be missing in development, where Dodo can't
-# reach this machine anyway; production requires it.
+# everything is free. Only the webhook key is optional: payments work without it.
 PAYMENT_PROVIDER = os.environ.get("PAYMENT_PROVIDER", "")
 DODO_BASE_URL = os.environ.get("DODO_BASE_URL", "")
 DODO_API_KEY = os.environ.get("DODO_API_KEY", "")

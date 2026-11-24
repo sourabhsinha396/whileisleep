@@ -28,6 +28,8 @@ class BillingAccount(models.Model):
     trial_ends_at = models.DateTimeField(default=trial_end)
     # The customer at Dodo, once someone has paid.
     customer_id = models.CharField(max_length=64, blank=True)
+    # When they last opened a payment page, so we know to look for a payment they didn't come back from.
+    last_checkout_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -85,17 +85,22 @@ def portal(request, payload: PortalIn):
 
 @router.post("/billing/sync", response=BillingOut, auth=token_auth)
 def sync(request, payload: SyncIn):
-    """Back from checkout: look the new subscription up now instead of waiting for the webhook.
-    It counts only for the account it was bought for, whoever sends its id."""
+    """Asks Dodo now: about the subscription that checkout came back with, which counts only for the
+    account it was bought for, whoever sends its id; or else about all this organization has."""
     require_billing()
+    organization = organization_for(request.auth)
     try:
-        services.sync(payload.subscription_id)
+        if payload.subscription_id:
+            services.sync(payload.subscription_id)
+        else:
+            services.refresh(organization)
     except dodo.DodoError as error:
         raise unavailable(error) from error
     # Read it again: the account may have been made by this very request.
-    return billing_out(Organization.objects.get(pk=organization_for(request.auth).pk))
+    return billing_out(Organization.objects.get(pk=organization.pk))
 
 
+# Optional: payments work without it, see services.py. It brings changes here sooner.
 @router.post("/billing/webhooks/dodo", auth=None, include_in_schema=False)
 def webhook(request):
     if not settings.BILLING_ENABLED or not settings.DODO_WEBHOOK_KEY:

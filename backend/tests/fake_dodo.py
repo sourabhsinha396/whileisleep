@@ -1,7 +1,7 @@
 """A stand-in for Dodo Payments, and helpers for billing tests."""
 
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import httpx
 from django.utils import timezone
@@ -41,6 +41,15 @@ class FakeDodo:
             return 200, {"session_id": "cks_1", "checkout_url": "https://checkout.example.com/cks_1"}
         if path.endswith("/customer-portal/session"):
             return 200, {"link": "https://portal.example.com/p"}
+        if path == "/subscriptions":
+            listed = [
+                s
+                for s in self.subscriptions.values()
+                if s["product_id"] == body["product_id"]
+                and datetime.fromisoformat(s["created_at"]) >= datetime.fromisoformat(body["created_at_gte"])
+            ]
+            first = int(body["page_number"]) * int(body["page_size"])
+            return 200, {"items": listed[first : first + int(body["page_size"])]}
         if path.startswith("/subscriptions/"):
             found = self.subscriptions.get(path.rsplit("/", 1)[1])
             return (200, found) if found else (404, {"code": "NOT_FOUND", "message": "No such thing"})
@@ -64,6 +73,7 @@ class FakeDodo:
             "product_id": "pdt_m",
             "metadata": {"whileisleep_account": account.reference},
             "customer": {"customer_id": "cus_1", "email": "a@example.com", "name": "A"},
+            "created_at": timezone.now().isoformat(),
             "cancel_at_next_billing_date": False,
             "next_billing_date": (timezone.now() + timedelta(days=30)).isoformat(),
         } | fields
@@ -72,7 +82,7 @@ class FakeDodo:
 
 def end_trial(account):
     account.trial_ends_at = timezone.now() - timedelta(minutes=1)
-    account.save()
+    account.save(update_fields=["trial_ends_at"])
 
 
 def state(account) -> str:

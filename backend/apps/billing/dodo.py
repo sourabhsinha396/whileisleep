@@ -11,6 +11,7 @@ import binascii
 import hashlib
 import hmac
 import time
+from datetime import datetime
 
 import httpx
 from django.conf import settings
@@ -51,6 +52,17 @@ def call(method: str, path: str, **kwargs) -> dict:
         raise DodoError("Dodo Payments sent a response that isn't JSON.") from error
 
 
+def pages(path: str, **params) -> list[dict]:
+    """Everything in a list that comes in pages."""
+    found, page = [], 0
+    while True:
+        items = call("GET", path, params={"page_size": 100, "page_number": page, **params}).get("items") or []
+        found += items
+        if len(items) < 100:
+            return found
+        page += 1
+
+
 # --- Selling ---
 
 
@@ -83,6 +95,10 @@ def get_subscription(subscription_id: str) -> dict:
     return call("GET", f"/subscriptions/{subscription_id}")
 
 
+def list_subscriptions(product_id: str, since: datetime) -> list[dict]:
+    return pages("/subscriptions", product_id=product_id, created_at_gte=since.isoformat())
+
+
 def portal_link(customer_id: str, return_url: str) -> str:
     """A short-lived link where the customer changes their card, reads invoices and cancels."""
     data = call("POST", f"/customers/{customer_id}/customer-portal/session", params={"return_url": return_url})
@@ -95,13 +111,7 @@ def portal_link(customer_id: str, return_url: str) -> str:
 
 
 def list_products() -> list[dict]:
-    products, page = [], 0
-    while True:
-        items = call("GET", "/products", params={"page_size": 100, "page_number": page}).get("items") or []
-        products += items
-        if len(items) < 100:
-            return products
-        page += 1
+    return pages("/products")
 
 
 def create_product(body: dict) -> str:

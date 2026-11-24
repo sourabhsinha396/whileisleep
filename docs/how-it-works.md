@@ -156,7 +156,8 @@ claims become verified attributes.
 - Rate limits read the client address only from proxies you declare (`TRUSTED_PROXY_COUNT`).
 - `SIGNUP_ENABLED=false` closes account creation on a private installation.
 - Plans (only where they are sold) are paid on Dodo Payments' own pages; no card detail reaches this server. A
-  signed webhook only says which subscription changed, and its state is then read from Dodo.
+  plan's state is always read from Dodo: when someone comes back from checkout or opens Billing, every 5 minutes for anyone
+  who paid and never came back, and at least once a day. A signed webhook is optional; it only says which plan changed.
 
 ## Layout
 

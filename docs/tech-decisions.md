@@ -4,6 +4,13 @@ Technical decisions made by the project owner, newest first. Each says what was 
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Product decisions are in [product-decisions.md](product-decisions.md).
 
+## 2026-11-24: Payments work without webhooks
+
+**Decision.** Payments work without a webhook key, locally and in production. When someone comes back from checkout, we ask
+Dodo. Webhooks are only for odd cases, such as a lost connection after paying.
+
+**Why.** Depending completely on webhooks is not good.
+
 ## 2026-11-24: Country flags load from flagcdn.com
 
 **Decision.** The flag images come from flagcdn.com, instead of copies on our own server.

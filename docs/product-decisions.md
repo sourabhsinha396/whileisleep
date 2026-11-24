@@ -4,6 +4,25 @@ Product decisions made by the project owner, newest first. Each says what was de
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Technical decisions are in [tech-decisions.md](tech-decisions.md).
 
+## 2026-11-24: The widget has a background and a color mode
+
+**Decision.** Owners pick the chatbox background, as in Crisp, and one more important option. Color mode (light, dark
+or the visitor's own) was chosen for it.
+
+## 2026-11-24: The widget is clean, with minimal text
+
+**Decision.** The header shows the workspace's logo and the team's photos, overlapping and centered, without the
+workspace's name or a line of text. The bot icon alone marks the AI's messages: no "AI" label beside the name.
+
+**Why.** People already understand what the bot icon means.
+
+## 2026-11-24: A small editor in the inbox, files in the widget
+
+**Decision.** Teammates write replies in a minimal what-you-see-is-what-you-get box that takes less height, without
+hints such as "Enter to send". Visitors get file upload, and no formatting.
+
+**Why.** People know how Enter works.
+
 ## 2026-11-24: Short, opinionated lists of models
 
 **Decision.** The OpenRouter dropdown offers at most 20 models, low and mid tier, with one high-tier model each from

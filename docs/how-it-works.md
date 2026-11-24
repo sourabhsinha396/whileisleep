@@ -5,7 +5,14 @@ The technical reference: integration, security and internals. For what the produ
 ## What it does
 
 - **Workspaces**: one per website, each with its own inbox, team, help center, AI tools and widget.
-- **Inbox**: conversations from the widget; reply, add internal notes, resolve, hand back to the AI.
+- **Inbox**: conversations from the widget; reply, add internal notes, resolve, hand back to the AI. Replies can have
+  bold, italic, links and lists, stored as Markdown (`frontend/src/lib/chat-text.ts`). What a visitor types is shown as typed.
+- **Files in chats**: pictures (checked and saved again), PDF, text, CSV, Word and Excel, up to 10 MB and five to a
+  message, from both sides. Only with your own storage connected. A file's address is random but public, so anyone who
+  has the link can open it. Documents open as downloads. One that is never sent is deleted after a day. The AI is told
+  a file's name and that it can't open it.
+- **Widget appearance**: color, logo, background pattern, and light, dark or the visitor's own mode. The header shows
+  the logo and up to three teammates who have a photo, owners first.
 - **Visitors**: who's on your site now, and what page they're on; message them first.
 - **Knowledge base**: articles in the widget's Help tab. They are split into passages and indexed with
   Postgres full-text search, so the AI reads the section that answers a question, not whole articles.
@@ -14,7 +21,7 @@ The technical reference: integration, security and internals. For what the produ
   in the customer's own. Every upload is checked and saved again as an image, in folders:
   `workspaces/<id>/logo`, `workspaces/<id>/articles/<article id>` and `users/<id>/photo`.
 - **Your own storage** (optional): an organization connects its S3-compatible bucket in Settings › Storage, and its
-  articles' images go there, under `whileisleep/`. Without one, articles are text. Connecting tries the bucket first
+  articles' images and its chats' files go there, under `whileisleep/`. Without one, both are text. Connecting tries the bucket first
   (write, open the public address, delete). Disconnecting leaves the files where they are.
 - **Get started**: a row in the sidebar with the next setup step. Each step is done when the thing itself is there.
 - **Organizations**: own workspaces and the LLM settings. In Settings › AI model the owner adds a key for

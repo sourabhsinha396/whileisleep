@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { HeroVisual } from "@/components/landing/hero-visual";
 import { Demo } from "@/components/landing/demo";
+import { PricingPlans } from "@/components/landing/pricing-plans";
 import { Ripple } from "@/components/landing/ripple";
 import { Logo, ThemeToggle } from "@/components/ui";
 import { getToken } from "@/lib/api";
@@ -101,6 +102,21 @@ export default function Home() {
               </li>
             ))}
           </ul>
+        </section>
+
+        {/* Pricing */}
+        <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-6 border-y bg-muted/40">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+            <div className="mx-auto mb-10 max-w-2xl text-center">
+              <h2 id="pricing-title" className="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+                Pay for the inbox, not for every answer
+              </h2>
+              <p className="mt-3 text-balance text-muted-foreground">
+                Your AI runs on your own key, at your provider&apos;s price. Host it yourself for free, or let us run it.
+              </p>
+            </div>
+            <PricingPlans heading="h3" />
+          </div>
         </section>
       </main>
 

@@ -10,9 +10,10 @@ from apps.accounts.models import photo_url
 from apps.accounts.security import token_auth
 from whileisleep import images
 
+from . import setup
 from .colors import WIDGET_COLORS
 from .models import Membership, Workspace, new_identity_secret
-from .schemas import IdentitySecretOut, MemberIn, MemberOut, WorkspaceIn, WorkspaceOut, WorkspacePatch
+from .schemas import IdentitySecretOut, MemberIn, MemberOut, SetupStepOut, WorkspaceIn, WorkspaceOut, WorkspacePatch
 from .services import create_workspace, member_workspace, owner_workspace
 
 router = Router(tags=["workspaces"], auth=token_auth)
@@ -93,6 +94,12 @@ def remove_logo(request, workspace_id: int):
     workspace = owner_workspace(request.auth, workspace_id)
     images.replace(workspace, "logo", None)
     return workspace_out(workspace, request.auth, Membership.Role.OWNER)
+
+
+@router.get("/workspaces/{workspace_id}/setup", response=list[SetupStepOut])
+def setup_steps(request, workspace_id: int):
+    """The steps of the "Get started" guide, in order, and which are done."""
+    return setup.steps(member_workspace(request.auth, workspace_id))
 
 
 @router.get("/workspaces/{workspace_id}/identity-secret", response=IdentitySecretOut)

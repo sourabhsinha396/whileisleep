@@ -42,6 +42,11 @@ class WorkspaceOut(Schema):
     article_uploads_enabled: bool = False
 
 
+class SetupStepOut(Schema):
+    key: str
+    done: bool
+
+
 class IdentitySecretOut(Schema):
     secret: str
 

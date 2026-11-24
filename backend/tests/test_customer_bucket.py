@@ -282,3 +282,8 @@ def test_a_bucket_that_is_down_does_not_stop_an_article_being_deleted(api, conne
     connected.answers = {"DELETE": 500}
     assert api.delete(f"/workspaces/{article.workspace_id}/articles/{article.id}").status_code == 200
     assert not Article.objects.filter(pk=article.pk).exists()
+
+
+def test_the_guide_counts_a_connected_bucket(api, connected, workspace):
+    steps = api.get(f"/workspaces/{workspace.id}/setup").json()
+    assert {"key": "storage", "done": True} in steps

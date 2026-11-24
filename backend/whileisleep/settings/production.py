@@ -34,7 +34,8 @@ required("POSTGRES_PASSWORD")
 SITE_URL = required("SITE_URL").rstrip("/")
 if not SITE_URL.startswith("https://"):
     raise ImproperlyConfigured("SITE_URL must start with https://.")
-ALLOWED_HOSTS = [SITE_URL.removeprefix("https://")]
+# "web" is what the dashboard's server calls this one inside the Compose network, to render the docs.
+ALLOWED_HOSTS = [SITE_URL.removeprefix("https://"), "web"]
 CSRF_TRUSTED_ORIGINS = [SITE_URL]
 
 # The proxy tells us the visitor's scheme and address.

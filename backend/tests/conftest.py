@@ -3,6 +3,7 @@ import sys
 
 import httpx
 import pytest
+from botocore.httpsession import URLLib3Session
 from django.core.cache import cache
 from django.db import transaction
 from django.test import Client
@@ -41,7 +42,11 @@ def no_real_http(monkeypatch):
     def refuse(self, request):
         raise RuntimeError(f"Test tried a real HTTP request: {request.method} {request.url}. Mock it.")
 
+    def refuse_s3(self, request):
+        raise RuntimeError(f"Test tried a real S3 request: {request.method} {request.url}. Mock it.")
+
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", refuse)
+    monkeypatch.setattr(URLLib3Session, "send", refuse_s3)
 
 
 @pytest.fixture

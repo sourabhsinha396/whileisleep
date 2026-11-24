@@ -7,6 +7,8 @@ from urllib.parse import urlsplit, urlunsplit
 from corsheaders.defaults import default_headers
 from dotenv import load_dotenv
 
+from whileisleep.storage import default_storage_config
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Host runs read .env; in Docker, compose already set these (and they win).
@@ -83,6 +85,11 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STORAGES = {
+    # Uploaded files: the S3 bucket, if one is configured.
+    "default": default_storage_config(os.environ),
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # The dashboard and the widget both send bearer tokens, never cookies, so the

@@ -34,6 +34,14 @@ class EnvFile(BaseModel):
     REDIS_URL: str | None = None
     # Only to put the job queue on a different server than the cache.
     CELERY_BROKER_URL: str | None = None
+    # Where uploaded files go (whileisleep/storage.py): set all five, or none.
+    S3_ENDPOINT_URL: str | None = Field(None, pattern=r"^https?://")
+    S3_ACCESS_KEY_ID: str | None = None
+    S3_SECRET_ACCESS_KEY: str | None = None
+    STORAGE_BUCKET: str | None = None
+    STORAGE_PUBLIC_BASE_URL: str | None = Field(None, pattern=r"^https?://")
+    # The provider's region; "auto" (Cloudflare R2) when unset.
+    S3_REGION: str | None = None
     # "false" closes account creation.
     SIGNUP_ENABLED: bool | None = None
     # Only `manage.py seed_demo` reads these. The running app takes each organization's

@@ -34,13 +34,15 @@ export class ApiError extends Error {
 
 /** Calls /api/v1 with the dashboard token. 401 sends you to the login page. */
 export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+  // A form (a file upload) is sent as it is: the browser writes its content type.
+  const form = init.body instanceof FormData;
   const response = await fetch(`/api/v1${path}`, {
     method: init.method ?? "GET",
     headers: {
-      "Content-Type": "application/json",
+      ...(form ? {} : { "Content-Type": "application/json" }),
       ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
     },
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+    body: init.body === undefined ? undefined : form ? (init.body as FormData) : JSON.stringify(init.body),
   });
   const data = await response.json().catch(() => ({}));
   if (response.status === 401 && !path.startsWith("/auth/")) {
@@ -57,12 +59,20 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   return data as T;
 }
 
+/** Uploads one file. */
+export function upload<T>(path: string, file: File): Promise<T> {
+  const body = new FormData();
+  body.append("file", file);
+  return api<T>(path, { method: "POST", body });
+}
+
 // --- Types matching the Django schemas ---
 
 export interface User {
   id: number;
   name: string;
   email: string;
+  photo_url: string;
 }
 
 export interface Workspace {
@@ -73,6 +83,7 @@ export interface Workspace {
   public_key: string;
   website: string;
   color: string;
+  logo_url: string;
   greeting: string;
   /** IANA name; rules read the local hour and weekday in it. */
   timezone: string;
@@ -83,6 +94,8 @@ export interface Workspace {
   /** The organization has an OpenRouter key and model. */
   llm_ready: boolean;
   is_organization_owner: boolean;
+  /** The server has somewhere to store images. */
+  uploads_enabled: boolean;
 }
 
 export interface Organization {
@@ -131,6 +144,7 @@ export interface Message {
   id: number;
   sender: "visitor" | "agent" | "bot" | "system";
   author_name: string;
+  author_photo: string;
   body: string;
   a2ui: A2uiMessage[] | null;
   is_note: boolean;
@@ -220,4 +234,5 @@ export interface Member {
   name: string;
   email: string;
   role: string;
+  photo_url: string;
 }

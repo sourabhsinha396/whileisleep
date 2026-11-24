@@ -482,7 +482,7 @@ function MessageBubble({ message: m, visitorName }: { message: Message; visitorN
         </span>
       ) : (
         <span className="self-end">
-          <Avatar name={who} size={32} />
+          <Avatar name={who} src={m.author_photo} size={32} />
         </span>
       )}
       <div className={clsx("flex max-w-[72%] flex-col", mine ? "items-end" : "items-start")}>

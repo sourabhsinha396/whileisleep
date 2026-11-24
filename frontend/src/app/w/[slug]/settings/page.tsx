@@ -4,13 +4,14 @@ import { Copy, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { ColorPicker } from "@/components/color-picker";
-import { Button, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
+import { ImageUpload } from "@/components/image-upload";
+import { Avatar, Button, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
-import { api, type Member, type Workspace } from "@/lib/api";
+import { api, type Member, type User, type Workspace } from "@/lib/api";
 import { usePoll } from "@/lib/use-poll";
 
 export default function SettingsPage() {
-  const { workspace, reload } = useWorkspace();
+  const { me, workspace, reload } = useWorkspace();
   const router = useRouter();
   const owner = workspace.role === "owner";
   const [form, setForm] = useState({
@@ -66,6 +67,16 @@ export default function SettingsPage() {
 
         <form onSubmit={save} className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
           <h2 className="text-base font-bold tracking-tight">Workspace</h2>
+          <ImageUpload<Workspace>
+            label="Logo"
+            hint="Shown at the top of the widget. A square image works best; PNG, JPEG or WebP, up to 5 MB."
+            path={`/workspaces/${workspace.id}/logo`}
+            src={workspace.logo_url}
+            fallback={workspace.name}
+            disabled={!owner}
+            enabled={workspace.uploads_enabled}
+            onDone={reload}
+          />
           <Field label="Name">
             <input className={inputClass} disabled={!owner} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </Field>
@@ -99,6 +110,19 @@ export default function SettingsPage() {
             </div>
           )}
         </form>
+
+        <section className="space-y-4 rounded-lg border bg-surface p-6 shadow-sm">
+          <h2 className="text-base font-bold tracking-tight">Your profile</h2>
+          <ImageUpload<User>
+            label="Photo"
+            hint="Visitors see it next to your replies, in every workspace you belong to."
+            path="/auth/me/photo"
+            src={me.photo_url}
+            fallback={me.name}
+            enabled={workspace.uploads_enabled}
+            onDone={reload}
+          />
+        </section>
 
         {owner && <IdentitySecret />}
         <Members canEdit={owner} />
@@ -182,8 +206,9 @@ function Members({ canEdit }: { canEdit: boolean }) {
       <h2 className="text-base font-bold tracking-tight">Team</h2>
       <ul className="divide-y divide-border text-sm">
         {(data ?? []).map((m) => (
-          <li key={m.user_id} className="flex justify-between py-2">
-            <span>
+          <li key={m.user_id} className="flex items-center gap-3 py-2">
+            <Avatar name={m.name} src={m.photo_url} size={28} />
+            <span className="flex-1">
               {m.name} <span className="text-muted-foreground">{m.email}</span>
             </span>
             <span className="text-muted-foreground capitalize">{m.role}</span>

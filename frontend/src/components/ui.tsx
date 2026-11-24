@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useState } from "react";
 import { initials } from "@/lib/format";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "success";
@@ -109,8 +110,17 @@ export function Notice({ tone = "warning", children }: { tone?: "warning" | "dan
   );
 }
 
-/** A soft-coloured disc whose hue is stable for a given name. */
-export function Avatar({ name, online, size = 40 }: { name: string; online?: boolean; size?: number }) {
+/** An image over whatever is under it, which shows again if the image can't load. */
+export function CoverImage({ src, className }: { src: string; className?: string }) {
+  const [failed, setFailed] = useState("");
+  if (!src || failed === src) return null;
+  // Already small, and served by the CDN: next/image would only add a hop.
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" onError={() => setFailed(src)} className={clsx("absolute inset-0 size-full bg-white object-cover", className)} />;
+}
+
+/** A person's photo, or a soft-coloured disc whose hue is stable for a given name. */
+export function Avatar({ name, src = "", online, size = 40 }: { name: string; src?: string; online?: boolean; size?: number }) {
   let hash = 0;
   for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
   const hue = Math.abs(hash) % 360;
@@ -126,6 +136,7 @@ export function Avatar({ name, online, size = 40 }: { name: string; online?: boo
       }}
     >
       {initials(name)}
+      <CoverImage src={src} className="rounded-full" />
       {online !== undefined && (
         <span
           className={clsx(

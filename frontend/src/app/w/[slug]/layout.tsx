@@ -5,7 +5,7 @@ import { BookOpen, Bot, Building2, Check, ChevronsUpDown, Eye, Inbox, LogOut, Pl
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Avatar, Logo, Spinner, ThemeToggle } from "@/components/ui";
+import { Avatar, CoverImage, Logo, Spinner, ThemeToggle } from "@/components/ui";
 import { WorkspaceContext } from "@/components/workspace-context";
 import { api, getToken, setToken, type User, type Workspace } from "@/lib/api";
 import { textOn } from "@/lib/contrast";
@@ -30,10 +30,11 @@ const NAV = [
 function WorkspaceBadge({ workspace, size = 36 }: { workspace: Workspace; size?: number }) {
   return (
     <span
-      className="grid shrink-0 place-items-center rounded-md text-xs font-bold shadow-sm"
+      className="relative grid shrink-0 place-items-center rounded-md text-xs font-bold shadow-sm"
       style={{ background: workspace.color, color: textOn(workspace.color), width: size, height: size }}
     >
       {workspace.name.slice(0, 2).toUpperCase()}
+      <CoverImage src={workspace.logo_url} className="rounded-md" />
     </span>
   );
 }
@@ -213,7 +214,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                 aria-expanded={account}
                 aria-haspopup="menu"
               >
-                <Avatar name={me.name || me.email} online size={34} />
+                <Avatar name={me.name || me.email} src={me.photo_url} online size={34} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{me.name || "You"}</span>
                   <span className="block truncate text-xs text-muted-foreground">{me.email}</span>

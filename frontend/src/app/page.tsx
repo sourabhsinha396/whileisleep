@@ -81,7 +81,7 @@ export default function Home() {
             </div>
             <div className="relative rounded-2xl">
               <HeroVisual handoff={handoff} />
-              <ShineBorder borderWidth={2} shineColor={["#2678dc", "#7cc4ff", "#f2b84b"]} />
+              <ShineBorder className="opacity-50" duration={24} shineColor="#7cb4f0" />
             </div>
           </div>
         </section>

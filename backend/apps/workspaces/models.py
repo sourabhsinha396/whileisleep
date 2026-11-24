@@ -6,6 +6,7 @@ from django.db import models
 from django.utils.text import slugify
 
 from whileisleep.fields import EncryptedTextField
+from whileisleep.folders import workspace_logo
 
 
 def new_public_key() -> str:
@@ -73,6 +74,8 @@ class Workspace(models.Model):
     # to owners only, and encrypted in the database.
     identity_secret = EncryptedTextField(default=new_identity_secret)
     color = models.CharField(max_length=16, default="#2563eb")
+    # Shown in the widget's header instead of the workspace's initials.
+    logo = models.FileField(upload_to=workspace_logo, max_length=200, blank=True)
     greeting = models.CharField(max_length=300, default="Hi! How can we help?")
     # An IANA name ("Europe/Berlin"). Rules read the local hour and weekday in it.
     timezone = models.CharField(max_length=64, default="UTC")
@@ -88,6 +91,10 @@ class Workspace(models.Model):
         if not self.slug:
             self.slug = unique_slug(self.name, self.pk)
         super().save(*args, **kwargs)
+
+    @property
+    def logo_url(self) -> str:
+        return self.logo.url if self.logo else ""
 
 
 class Membership(models.Model):

@@ -19,6 +19,10 @@
 	# Django: the API, the admin, and the admin's static files.
 	@django path /api/* /admin/* /static/*
 	handle @django {
+		# An uploaded image is at most 5 MB (backend/whileisleep/images.py).
+		request_body {
+			max_size 10MB
+		}
 		reverse_proxy web:8000
 	}
 

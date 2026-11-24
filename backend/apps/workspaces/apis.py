@@ -1,11 +1,13 @@
 from zoneinfo import available_timezones
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
-from ninja import Router
+from ninja import File, Router, UploadedFile
 from ninja.errors import HttpError
 
 from apps.accounts.security import token_auth
+from whileisleep import images
 
 from .colors import WIDGET_COLORS
 from .models import Membership, Workspace, new_identity_secret
@@ -22,6 +24,7 @@ def workspace_out(workspace: Workspace, viewer, role: str, open_count: int = 0) 
         "open_count": open_count,
         "llm_ready": workspace.organization.llm_ready,
         "is_organization_owner": workspace.organization.owner_id == viewer.id,
+        "uploads_enabled": settings.UPLOADS_ENABLED,
     }
 
 
@@ -72,6 +75,21 @@ def update(request, workspace_id: int, payload: WorkspacePatch):
     for field, value in data.items():
         setattr(workspace, field, value)
     workspace.save()
+    return workspace_out(workspace, request.auth, Membership.Role.OWNER)
+
+
+@router.post("/workspaces/{workspace_id}/logo", response=WorkspaceOut)
+def upload_logo(request, workspace_id: int, file: UploadedFile = File(...)):  # noqa: B008
+    workspace = owner_workspace(request.auth, workspace_id)
+    images.require_storage()
+    images.replace(workspace, "logo", images.clean_image(file, images.AVATAR_SIDE, square=True))
+    return workspace_out(workspace, request.auth, Membership.Role.OWNER)
+
+
+@router.delete("/workspaces/{workspace_id}/logo", response=WorkspaceOut)
+def remove_logo(request, workspace_id: int):
+    workspace = owner_workspace(request.auth, workspace_id)
+    images.replace(workspace, "logo", None)
     return workspace_out(workspace, request.auth, Membership.Role.OWNER)
 
 

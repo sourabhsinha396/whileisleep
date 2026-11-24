@@ -26,6 +26,7 @@ class WorkspaceOut(Schema):
     public_key: str
     website: str
     color: str
+    logo_url: str
     greeting: str
     timezone: str
     ai_enabled: bool
@@ -35,6 +36,8 @@ class WorkspaceOut(Schema):
     # The organization has an OpenRouter key and model, so the AI agent can use an LLM.
     llm_ready: bool = False
     is_organization_owner: bool = False
+    # Whether this server can store images at all.
+    uploads_enabled: bool = False
 
 
 class IdentitySecretOut(Schema):

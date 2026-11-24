@@ -129,6 +129,10 @@ class Api:
     def post(self, path, data=None):
         return self.request("post", path, data if data is not None else {})
 
+    def upload(self, path, file):
+        """POSTs a file as a browser's form does."""
+        return self.client.post(f"/api/v1{path}", {"file": file}, headers=self._headers())
+
     def put(self, path, data):
         return self.request("put", path, data)
 

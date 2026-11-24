@@ -82,6 +82,7 @@ class WidgetConfigOut(Schema):
     name: str
     website: str
     color: str
+    logo_url: str
     greeting: str
     ai_enabled: bool
     max_message_length: int = settings.VISITOR_MESSAGE_MAX_CHARS

@@ -1,6 +1,7 @@
 "use client";
 
 import type { A2uiMessage } from "@/lib/a2ui/surface";
+import type { BillingState } from "@/lib/billing";
 import type { Action, Condition } from "@/lib/rules";
 
 const TOKEN_KEY = "whileisleep:token";
@@ -96,6 +97,9 @@ export interface Workspace {
   is_organization_owner: boolean;
   /** The server has somewhere to store images. */
   uploads_enabled: boolean;
+  /** Where the organization stands with its plan. */
+  billing_state: BillingState;
+  trial_days_left: number | null;
 }
 
 export interface Organization {

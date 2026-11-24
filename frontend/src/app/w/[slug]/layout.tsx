@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Avatar, CoverImage, Logo, Spinner, ThemeToggle } from "@/components/ui";
 import { WorkspaceContext } from "@/components/workspace-context";
 import { api, getToken, setToken, type User, type Workspace } from "@/lib/api";
+import { sidebarNotice } from "@/lib/billing";
 import { textOn } from "@/lib/contrast";
 import { isActive, MAIN_NAV, type NavItem, SETTINGS_LINK } from "@/lib/nav";
 import { usePoll } from "@/lib/use-poll";
@@ -30,6 +31,19 @@ function SidebarLink({ item, slug, pathname, count = 0 }: { item: NavItem; slug:
           {count}
         </span>
       )}
+    </Link>
+  );
+}
+
+/** The trial is nearly over, or the AI is paused. Only the organization's owner can act on it. */
+function BillingNotice({ workspace }: { workspace: Workspace }) {
+  const text = sidebarNotice(workspace);
+  if (!text) return null;
+  const look = clsx("block rounded-lg p-3 text-xs", workspace.billing_state === "paused" ? "bg-danger-soft text-danger" : "bg-warning-soft text-warning");
+  if (!workspace.is_organization_owner) return <p className={look}>{text} Ask your organization&apos;s owner.</p>;
+  return (
+    <Link href={`/w/${workspace.slug}/settings/billing`} className={look}>
+      {text} <span className="font-semibold underline">See plans</span>
     </Link>
   );
 }
@@ -168,6 +182,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           </nav>
 
           <div className="space-y-2 pt-3">
+            <BillingNotice workspace={workspace} />
             {/* Only when the agent needs attention: switched off, or on without an LLM. */}
             {(!workspace.ai_enabled || !workspace.llm_ready) && (
               <Link

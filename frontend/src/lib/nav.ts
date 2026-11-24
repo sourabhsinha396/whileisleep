@@ -4,6 +4,7 @@ import {
   Bot,
   Building2,
   Code2,
+  CreditCard,
   Cpu,
   Eye,
   Inbox,
@@ -64,8 +65,11 @@ export const AI_NAV: NavGroup[] = [
   },
 ];
 
-/** The settings this person can use: the identity secret is for workspace owners, the organization for its owner. */
-export function settingsNav(workspace: Pick<Workspace, "role" | "is_organization_owner">): NavGroup[] {
+/**
+ * The settings this person can use: the identity secret is for workspace owners, the organization
+ * for its owner, and billing only where this installation sells plans.
+ */
+export function settingsNav(workspace: Pick<Workspace, "role" | "is_organization_owner" | "billing_state">): NavGroup[] {
   const groups: NavGroup[] = [
     {
       label: "Workspace",
@@ -88,12 +92,14 @@ export function settingsNav(workspace: Pick<Workspace, "role" | "is_organization
     groups[1].items.push({ href: "settings/identity", label: "Verified identity", icon: ShieldCheck });
   }
   if (workspace.is_organization_owner) {
+    const billing: NavItem = { href: "settings/billing", label: "Billing", icon: CreditCard };
     groups.push({
       label: "Organization",
       icon: Building2,
       items: [
         { href: "settings/organization", label: "Details", icon: Building2 },
         { href: "settings/ai-model", label: "AI model", icon: Cpu },
+        ...(workspace.billing_state === "off" ? [] : [billing]),
       ],
     });
   }

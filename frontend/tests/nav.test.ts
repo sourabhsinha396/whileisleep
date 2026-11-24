@@ -7,9 +7,9 @@ import nextConfig from "../next.config";
 const hrefs = (groups: NavGroup[]) => groups.flatMap((g) => g.items.map((i) => i.href));
 const hasPage = (href: string) => existsSync(join(process.cwd(), "src/app/w/[slug]", href, "page.tsx"));
 
-const ORG_OWNER = { role: "owner", is_organization_owner: true } as const;
-const OWNER = { role: "owner", is_organization_owner: false } as const;
-const AGENT = { role: "agent", is_organization_owner: false } as const;
+const ORG_OWNER = { role: "owner", is_organization_owner: true, billing_state: "trial" } as const;
+const OWNER = { role: "owner", is_organization_owner: false, billing_state: "trial" } as const;
+const AGENT = { role: "agent", is_organization_owner: false, billing_state: "trial" } as const;
 
 describe("navigation", () => {
   it("only links to pages that exist", () => {
@@ -34,6 +34,12 @@ describe("settings by role", () => {
   it("shows the organization only to its owner", () => {
     expect(labels(settingsNav(ORG_OWNER))).toEqual(["Workspace", "Chat widget", "Organization"]);
     expect(labels(settingsNav(OWNER))).toEqual(["Workspace", "Chat widget"]);
+  });
+
+  it("shows billing to the organization's owner, where plans are sold", () => {
+    expect(hrefs(settingsNav(ORG_OWNER))).toContain("settings/billing");
+    expect(hrefs(settingsNav(OWNER))).not.toContain("settings/billing");
+    expect(hrefs(settingsNav({ ...ORG_OWNER, billing_state: "off" }))).not.toContain("settings/billing");
   });
 
   it("shows the identity secret only to workspace owners", () => {

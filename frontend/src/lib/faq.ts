@@ -18,6 +18,10 @@ const SAME_SOFTWARE: Question = {
 export const PRICING_QUESTIONS: Question[] = [
   AI_COST,
   SAME_SOFTWARE,
+  {
+    q: "Is there a free trial?",
+    a: "Yes, 14 days, without a card. After that the AI pauses until you pick a plan, and new chats go to you. Your inbox, widget, rules and data stay as they are.",
+  },
   { q: "Why is it so cheap?", a: "It's our launch price for the first customers." },
 ];
 

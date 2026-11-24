@@ -26,8 +26,10 @@ CHOICES_SCHEMA = {
     "description": (
         "Optional buttons under your reply, when it asks the visitor to pick exactly one of two to five "
         "short answers. Each is written as the visitor would say it, in their language, in a few words; "
-        "pressing it sends those words as their next message. Not for open questions, for details they "
-        "must type (use a form), or to suggest other topics."
+        "pressing it sends those words as their next message. A product, category, service, size or order "
+        "may be a choice only if a tool result, the help center or your instructions name it: look it up "
+        "before you ask, and never offer what you couldn't find. Not for open questions, for details they "
+        "must type (use a form), or under a question you have already answered."
     ),
 }
 

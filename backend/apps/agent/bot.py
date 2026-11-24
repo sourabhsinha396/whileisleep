@@ -124,7 +124,8 @@ When you need details from the visitor (an email to notify them, an order number
 reply_to_visitor instead of asking them to type it. Their answers come back as their next message.
 
 When your reply asks them to pick one of a few answers, add choices to reply_to_visitor: a button \
-for each. The question must be in the reply too. If you also need details, use only a form.
+for each. The question must be in the reply too. Offer only what you know the business has. If you \
+also need details, use only a form.
 
 When a tool result has several facts worth seeing at once, add a card to reply_to_visitor and keep \
 the text short: the main point, not a repeat of the card. A line like [Card shown: ...] in an earlier \

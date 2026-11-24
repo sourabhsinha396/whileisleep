@@ -4,12 +4,14 @@ transport is replaced, by a bucket in memory."""
 import io
 from urllib.parse import unquote, urlsplit
 
+import httpx
 import pytest
 from botocore.awsrequest import AWSResponse
 from botocore.httpsession import URLLib3Session
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
 from django.core.files.storage import InMemoryStorage, default_storage, storages
+from django.core.management import CommandError, call_command
 
 from whileisleep.env import EnvError, validate_env_file
 from whileisleep.storage import REQUIRED, default_storage_config
@@ -74,6 +76,16 @@ def bucket(monkeypatch, settings):
     monkeypatch.setattr(URLLib3Session, "send", lambda self, request: fake.send(request))
     settings.STORAGES = settings.STORAGES | {"default": default_storage_config(S3)}
     return fake
+
+
+def public_site(bucket, monkeypatch):
+    """The CDN in front of the bucket."""
+
+    def handle(self, request):
+        body = bucket.files.get("/uploads" + request.url.path)
+        return httpx.Response(404) if body is None else httpx.Response(200, content=body)
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", handle)
 
 
 # --- Settings ---
@@ -163,3 +175,38 @@ def test_public_address_with_a_path(settings):
     config = default_storage_config(S3 | {"STORAGE_PUBLIC_BASE_URL": "http://localhost:9000/uploads/"})
     settings.STORAGES = settings.STORAGES | {"default": config}
     assert default_storage.url("a.png") == "http://localhost:9000/uploads/a.png"
+
+
+# --- manage.py check_storage ---
+
+
+def test_check_storage_passes_and_cleans_up(bucket, monkeypatch, capsys):
+    public_site(bucket, monkeypatch)
+    call_command("check_storage")
+    assert "File storage works." in capsys.readouterr().out
+    assert bucket.files == {}
+
+
+def test_check_storage_without_a_bucket():
+    with pytest.raises(CommandError, match="No bucket is configured"):
+        call_command("check_storage")
+
+
+def test_check_storage_reports_a_key_that_cannot_write(bucket):
+    bucket.denied = {"PUT"}
+    with pytest.raises(CommandError, match="Can't write"):
+        call_command("check_storage")
+
+
+def test_check_storage_reports_a_key_that_cannot_delete(bucket, monkeypatch):
+    public_site(bucket, monkeypatch)
+    bucket.denied = {"DELETE"}
+    with pytest.raises(CommandError, match="is still there"):
+        call_command("check_storage")
+
+
+def test_check_storage_reports_a_wrong_public_address_and_cleans_up(bucket, monkeypatch):
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", lambda self, request: httpx.Response(404))
+    with pytest.raises(CommandError, match="answered 404"):
+        call_command("check_storage")
+    assert bucket.files == {}

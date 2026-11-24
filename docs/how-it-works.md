@@ -170,7 +170,7 @@ claims become verified attributes.
   Plugins in `backend/plugins/`. Tests in `backend/tests/`, with factories in `tests/factories.py`.
 - `frontend/`: Next.js App Router dashboard, plus the widget (`src/widget`, built by esbuild into
   `public/widget.js`). Tests in `frontend/tests/`.
-- `deploy/`: the production Docker Compose stack. [The self-hosting guide](../frontend/content/docs/self-hosting.md) walks through it.
+- `docker-compose.yaml`: the Docker Compose stack, for development and production. [The self-hosting guide](../frontend/content/docs/self-hosting.md) walks through it.
 
 ## The widget
 

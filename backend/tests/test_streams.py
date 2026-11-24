@@ -323,7 +323,7 @@ def test_replayed_and_live_messages_have_the_same_shape(conversation, fake_redis
 
 
 def test_stream_paths_are_async_views_ahead_of_the_rest_api():
-    """The paths Caddy sends to the ASGI process (deploy/Caddyfile) reach the async views."""
+    """The paths the proxy sends to the ASGI process (frontend/content/docs/self-hosting.md) reach the async views."""
     from inspect import iscoroutinefunction
 
     from django.urls import resolve

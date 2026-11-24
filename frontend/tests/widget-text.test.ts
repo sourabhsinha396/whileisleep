@@ -25,8 +25,8 @@ describe("formatText", () => {
   });
 
   it("resolves relative links against the workspace website", () => {
-    const node = html("Try [AZ-104](/exams/az-104)", "https://examgrill.com");
-    expect(node.querySelector("a")!.getAttribute("href")).toBe("https://examgrill.com/exams/az-104");
+    const node = html("Try [AZ-104](/exams/az-104)", "https://shop.example.com");
+    expect(node.querySelector("a")!.getAttribute("href")).toBe("https://shop.example.com/exams/az-104");
   });
 
   it("bolds", () => {

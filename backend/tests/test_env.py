@@ -28,12 +28,6 @@ def test_example_file_is_valid():
 def test_required_keys_are_enough(tmp_path):
     env = validate_env_file(write(tmp_path, REQUIRED))
     assert env.POSTGRES_PORT == 5448
-    assert env.WEB_PORT == 8004
-    assert env.STREAM_PORT == 8009
-
-
-def test_stream_port_can_be_changed(tmp_path):
-    assert validate_env_file(write(tmp_path, REQUIRED + "STREAM_PORT=8104")).STREAM_PORT == 8104
 
 
 def test_unknown_key_is_rejected(tmp_path):
@@ -60,8 +54,8 @@ def test_empty_optional_values_are_unset(tmp_path):
 
 def test_bad_values(tmp_path):
     with pytest.raises(EnvError) as error:
-        validate_env_file(write(tmp_path, REQUIRED + "WEB_PORT=abc\nDEMO_EMAIL=not-an-email\n"))
-    assert "WEB_PORT" in str(error.value) and "DEMO_EMAIL" in str(error.value)
+        validate_env_file(write(tmp_path, REQUIRED + "POSTGRES_PORT=abc\nDEMO_EMAIL=not-an-email\n"))
+    assert "POSTGRES_PORT" in str(error.value) and "DEMO_EMAIL" in str(error.value)
 
 
 def test_all_problems_listed_at_once(tmp_path):

@@ -123,7 +123,7 @@ MAX_SLUG = 60
 
 
 def unique_slug(name: str, exclude_pk: int | None = None) -> str:
-    """A slug for `name` that no other workspace has: "examgrill", then "examgrill-2"..."""
+    """A slug for `name` that no other workspace has: "acme", then "acme-2"..."""
     base = slugify(name)[: MAX_SLUG - 6].strip("-") or "workspace"
     slug, number = base, 2
     while Workspace.objects.filter(slug=slug).exclude(pk=exclude_pk).exists():
@@ -161,7 +161,7 @@ class Workspace(models.Model):
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="workspaces")
     name = models.CharField(max_length=120)
-    # How the workspace appears in dashboard URLs: /w/examgrill/inbox. Made from the name
+    # How the workspace appears in dashboard URLs: /w/acme/inbox. Made from the name
     # when left empty; owners can change it.
     slug = models.SlugField(max_length=MAX_SLUG, unique=True, blank=True, validators=[workspace_slug])
     # Goes in the widget snippet on the customer's site, so it is public.

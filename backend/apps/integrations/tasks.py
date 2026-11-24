@@ -1,7 +1,7 @@
 """Background jobs for integrations.
 
 They wait on outside services, so they have their own queues and worker (settings.CELERY_TASK_ROUTES,
-deploy/docker-compose.yml): however slow a service is, AI replies have their threads. Two queues, so
+docker-compose.yaml): however slow a service is, AI replies have their threads. Two queues, so
 events going out can't hold up what people wait for: their replies from the service, and the dashboard.
 
 Among themselves, deliveries may use only some of the worker's threads, and one integration only a few

@@ -24,9 +24,10 @@ class EnvFile(BaseModel):
     POSTGRES_PORT: int = Field(gt=0, lt=65536)
 
     # Optional
-    WEB_PORT: int = Field(8004, gt=0, lt=65536)
-    # Where docker compose publishes the stream service. Keep STREAM_URL in frontend/.env in step.
-    STREAM_PORT: int = Field(8009, gt=0, lt=65536)
+    SITE_URL: str | None = Field(None, pattern=r"^https?://")
+    TRUSTED_PROXY_COUNT: int | None = Field(None, ge=0)
+    OUTBOUND_ALLOW_PRIVATE_NETWORKS: bool | None = None
+    LOG_LEVEL: str | None = None
     DJANGO_SECRET_KEY: str | None = None
     DJANGO_DEBUG: bool | None = None
     ALLOWED_HOSTS: str | None = None

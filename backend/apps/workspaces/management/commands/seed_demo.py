@@ -3,7 +3,7 @@
     docker compose exec -T web python manage.py seed_demo
 
 Login: DEMO_EMAIL / DEMO_PASSWORD from .env. Add an AI key and pick the model in Settings, AI
-model. The first workspace's tools call a site's public API (the examgrill dev backend on the
+model. The first workspace's tools call a site's public API (a dev server on the
 host); the second is a plain knowledge-base-only shop.
 """
 
@@ -21,12 +21,12 @@ EXAM_API = "http://host.docker.internal:8006"
 
 WORKSPACES = [
     {
-        "name": "ExamGrill",
+        "name": "Acme Exams",
         "website": "http://localhost:3006",
         "color": "#2563eb",
         "greeting": "Hi! Looking for a practice exam? Ask me about any certification.",
         "ai_instructions": (
-            "ExamGrill sells practice tests for IT certification exams. When someone asks about an exam, "
+            "Acme Exams sells practice tests for IT certification exams. When someone asks about an exam, "
             "search the catalog with search_exams before answering, and link the exam page as "
             "/exams/{slug}. If it isn't in the catalog, check exams_in_preparation."
         ),

@@ -242,7 +242,7 @@ SIGNUP_ENABLED = os.environ.get("SIGNUP_ENABLED", "true").lower() != "false"
 # Make one with: python manage.py generate_encryption_key
 ENCRYPTION_KEYS = [k.strip() for k in os.environ.get("ENCRYPTION_KEYS", "").split(",") if k.strip()]
 
-# Reverse proxies between the internet and Django (Caddy, a load balancer...). Rate limits
+# Reverse proxies between the internet and Django (a tunnel, a load balancer...). Rate limits
 # read the visitor's address from X-Forwarded-For only as far as these can vouch for it
 # (whileisleep.client_ip). 0 ignores the header.
 TRUSTED_PROXY_COUNT = 0

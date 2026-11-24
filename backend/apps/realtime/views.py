@@ -2,7 +2,7 @@
 
 These are async views, served by the ASGI process (uvicorn), where one connection waiting
 on Redis costs a coroutine rather than a thread. Everything else stays on the WSGI
-process; Caddy sends only the two stream paths here.
+process; the proxy sends only the two stream paths here.
 
     GET /api/v1/widget/{key}/stream          X-Visitor-Token: vt_...
     GET /api/v1/workspaces/{id}/stream       Authorization: Bearer ...
@@ -133,7 +133,7 @@ async def event_stream(
 def sse_response(stream: AsyncIterator[str]) -> StreamingHttpResponse:
     response = StreamingHttpResponse(stream, content_type="text/event-stream")
     response["Cache-Control"] = "no-cache, no-transform"
-    # nginx and similar proxies: don't buffer. (Caddy flushes event streams by itself.)
+    # nginx and similar proxies: don't buffer.
     response["X-Accel-Buffering"] = "no"
     return response
 

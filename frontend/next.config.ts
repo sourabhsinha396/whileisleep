@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const API_URL = process.env.API_URL ?? "http://localhost:8004";
-// The live streams run on Django's ASGI process (the `stream` service in backend/docker-compose.yaml).
+// The live streams run on Django's ASGI process (the `stream` service in docker-compose.yaml).
 const STREAM_URL = process.env.STREAM_URL ?? "http://localhost:8009";
 
 const nextConfig: NextConfig = {
@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   // The dashboard and the widget call Django through this proxy, so one origin serves
   // both the widget script and its API.
   async rewrites() {
-    // In production Caddy routes /api itself (deploy/Caddyfile); these serve development.
+    // In production the proxy routes /api itself; these serve development.
     return [
       { source: "/api/v1/widget/:key/stream", destination: `${STREAM_URL}/api/v1/widget/:key/stream` },
       { source: "/api/v1/workspaces/:id/stream", destination: `${STREAM_URL}/api/v1/workspaces/:id/stream` },
@@ -32,8 +32,14 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
-    // widget.js is loaded by other sites.
-    const widget = { source: "/widget.js", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] };
+    // widget.js is loaded by other sites. Cached briefly, so a new release reaches them in minutes.
+    const widget = {
+      source: "/widget.js",
+      headers: [
+        { key: "Access-Control-Allow-Origin", value: "*" },
+        { key: "Cache-Control", value: "public, max-age=300" },
+      ],
+    };
     // The dashboard and the test page are nothing to find in a search engine.
     const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
     return [widget, ...["/w/:path*", "/app", "/new", "/demo", "/integrations/:path*"].map((source) => ({ source, headers: noindex }))];

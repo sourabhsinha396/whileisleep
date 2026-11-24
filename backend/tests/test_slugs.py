@@ -10,7 +10,7 @@ pytestmark = pytest.mark.django_db
 
 
 def test_a_new_workspace_gets_a_slug_from_its_name():
-    assert WorkspaceFactory(name="ExamGrill").slug == "examgrill"
+    assert WorkspaceFactory(name="BrightDesk").slug == "brightdesk"
     assert WorkspaceFactory(name="Little Fern Coffee!").slug == "little-fern-coffee"
 
 

@@ -4,6 +4,19 @@ Technical decisions made by the project owner, newest first. Each says what was 
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Product decisions are in [product-decisions.md](product-decisions.md).
 
+## 2026-11-24: One Docker Compose file, behind a Cloudflare tunnel
+
+**Decision.** `docker-compose.yaml`, at the top of the repository because it is not only for the backend, runs development
+and production, and picks the commands by the settings in `backend/.env`, which stays with the backend. There is no second stack in `deploy/`. Our own server is reached through a Cloudflare Tunnel instead of Caddy.
+
+**Why.** The tunnel is managed from Cloudflare's dashboard, which is simple.
+
+## 2026-11-24: No references to the owner's other projects
+
+**Decision.** Code and docs don't mention the owner's other projects.
+
+**Why.** whileisleep is open source.
+
 ## 2026-11-24: Payments work without webhooks
 
 **Decision.** Payments work without a webhook key, locally and in production. When someone comes back from checkout, we ask

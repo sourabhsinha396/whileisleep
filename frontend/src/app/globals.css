@@ -4,7 +4,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
-  Design tokens, shared with the ExamGrill frontend.
+  Design tokens.
   - primary is for filled backgrounds (white text on it); primary-text is for blue text,
     lighter in dark mode so it reads on navy.
   - success / warning / danger each have a soft background for badges and notices.

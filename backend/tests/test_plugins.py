@@ -291,7 +291,7 @@ def test_integrations_never_use_the_queue_of_ai_replies():
     assert queues.pop("apps.integrations.tasks.deliver") == "deliveries"
     assert set(queues.values()) == {"integrations"} and len(queues) == 4
     assert route({}, "apps.agent.tasks.answer")["queue"].name == "celery"
-    compose = (BACKEND.parent / "deploy/docker-compose.yml").read_text(encoding="utf-8")
+    compose = (BACKEND.parent / "docker-compose.yaml").read_text(encoding="utf-8")
     dev = (BACKEND / "apps/agent/management/commands/devworker.py").read_text(encoding="utf-8")
     assert "-Q integrations,deliveries" in compose and "celery,integrations,deliveries" in dev
 

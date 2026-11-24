@@ -1,8 +1,7 @@
-"""Production. Everything comes from environment variables (see deploy/.env.example); a
+"""Production. Everything comes from environment variables (see backend/.env.example); a
 missing or weak one stops the server at startup with a message saying which.
 
-Assumes a reverse proxy in front (Caddy in deploy/docker-compose.yml) that terminates TLS
-and forwards the original scheme and client address.
+Assumes a tunnel or reverse proxy in front that terminates TLS and forwards the original scheme and client address.
 """
 
 import os
@@ -67,8 +66,9 @@ if PAYMENT_PROVIDER:
 DATABASES["default"]["CONN_MAX_AGE"] = 60  # noqa: F405
 DATABASES["default"]["CONN_HEALTH_CHECKS"] = True  # noqa: F405
 
-# Django's own static files (the admin), served by the app itself.
-STATIC_ROOT = BASE_DIR / "staticfiles"  # noqa: F405
+# Django's own static files (the admin), served by the app itself. Outside the code, which is
+# mounted into the container.
+STATIC_ROOT = "/opt/static"
 MIDDLEWARE = [
     MIDDLEWARE[0],
     "django.middleware.security.SecurityMiddleware",

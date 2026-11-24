@@ -222,6 +222,7 @@ button { font: inherit; }
 .a2ui-row-step > :first-child, .a2ui-row-detail > .a2ui-text-label { flex: none; max-width: 50%; }
 .a2ui-text-label, .a2ui-text-todo { color: var(--od-muted); }
 .a2ui-text-done { color: var(--od-success); font-weight: 700; }
+.a2ui-row-choices .a2ui-button { border-color: var(--od-color); }
 .a2ui-divider { border: 0; border-top: 1px solid var(--od-border); margin: 4px 0; }
 .a2ui-image { max-width: 100%; border-radius: 10px; }
 .a2ui-button { cursor: pointer; border-radius: 999px; padding: 8px 14px; text-align: left; border: 1px solid var(--od-border);

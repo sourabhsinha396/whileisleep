@@ -6,8 +6,9 @@ import { Widget } from "@/widget/widget";
 const BASE = "https://chat.example.com/api/v1/widget/ws_1";
 
 /** The widget's API, with a live stream the test writes to. */
-function fakeServer({ streamStatus = 200, logo = "" } = {}) {
+function fakeServer({ streamStatus = 200, logo = "", actionStatus = 200 } = {}) {
   const calls: { method: string; path: string; headers: Record<string, string> }[] = [];
+  const actions: { name: string; surfaceId: string; context: unknown }[] = [];
   const encoder = new TextEncoder();
   let stream: ReadableStreamDefaultController<Uint8Array> | null = null;
   const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
@@ -21,6 +22,10 @@ function fakeServer({ streamStatus = 200, logo = "" } = {}) {
       if (path === "/messages") {
         return json({ conversation_id: 5, human_requested: false, messages: [message(10, "visitor", "Where is my order?")] });
       }
+      if (path === "/actions") {
+        actions.push(JSON.parse(String(init.body)));
+        return new Response(JSON.stringify({ detail: "Too quick." }), { status: actionStatus });
+      }
       if (path === "/typing") return json({ ok: true });
       if (path === "/stream") {
         if (streamStatus !== 200) return new Response("{}", { status: streamStatus });
@@ -31,6 +36,7 @@ function fakeServer({ streamStatus = 200, logo = "" } = {}) {
   );
   return {
     calls,
+    actions,
     send(event: string, data: unknown) {
       stream!.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
     },
@@ -39,6 +45,22 @@ function fakeServer({ streamStatus = 200, logo = "" } = {}) {
 
 function message(id: number, sender: string, body: string, author_name = "") {
   return { id, sender, body, author_name, a2ui: null, created_at: "2026-11-23T10:00:00Z" };
+}
+
+/** What the server's a2ui.choices builds. */
+function withChoices(id: number) {
+  const buttons = ["Return it", "Exchange it"].flatMap((text, i) => [
+    { id: `choice_${i}`, component: "Button", child: `l_${i}`, variant: "default", action: { event: { name: "choose", context: { choice: i } } } },
+    { id: `l_${i}`, component: "Text", text },
+  ]);
+  const root = { id: "root", component: "Row", variant: "choices", children: ["choice_0", "choice_1"] };
+  return {
+    ...message(id, "bot", "Return or exchange?"),
+    a2ui: [
+      { version: "1.0", createSurface: { surfaceId: "choices_1" } },
+      { version: "1.0", updateComponents: { surfaceId: "choices_1", components: [root, ...buttons] } },
+    ],
+  };
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 10));
@@ -145,5 +167,57 @@ describe("the widget on a live stream", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("choices", () => {
+  async function offered(options = {}) {
+    const server = fakeServer(options);
+    const { root, activity } = await startWidget();
+    server.send("message", { conversation_id: 5, message: withChoices(11) });
+    await settle();
+    const buttons = () => Array.from(root.querySelectorAll<HTMLButtonElement>(".a2ui-row-choices button"));
+    return { server, root, activity, buttons };
+  }
+
+  it("sends the position once, then goes away and waits for the reply", async () => {
+    const { server, root, buttons } = await offered();
+    expect(buttons().map((b) => b.textContent)).toEqual(["Return it", "Exchange it"]);
+    const second = buttons()[1];
+    second.click();
+    second.click();
+    expect(buttons()).toEqual([]);
+    expect(root.querySelector(".typing")).not.toBeNull();
+    await settle();
+    expect(server.actions).toHaveLength(1);
+    expect(server.actions).toMatchObject([{ name: "choose", surfaceId: "choices_1", context: { choice: 1 } }]);
+    server.send("message", { conversation_id: 5, message: message(12, "visitor", "Exchange it") });
+    server.send("message", { conversation_id: 5, message: message(13, "bot", "Which size?") });
+    await settle();
+    expect(root.querySelector(".typing")).toBeNull();
+    expect(buttons()).toEqual([]);
+  });
+
+  it.each(["visitor", "agent"])("goes away when the %s writes", async (sender) => {
+    const { server, buttons } = await offered();
+    server.send("message", { conversation_id: 5, message: message(12, sender, "Never mind") });
+    await settle();
+    expect(buttons()).toEqual([]);
+  });
+
+  it("stays when only the bot writes", async () => {
+    const { server, buttons } = await offered();
+    server.send("message", { conversation_id: 5, message: message(12, "bot", "Still there?") });
+    await settle();
+    expect(buttons()).toHaveLength(2);
+  });
+
+  it("comes back with the reason when it couldn't be sent", async () => {
+    const { root, buttons } = await offered({ actionStatus: 429 });
+    buttons()[0].click();
+    await settle();
+    expect(buttons()).toHaveLength(2);
+    expect(root.querySelector(".typing")).toBeNull();
+    expect(root.textContent).toContain("Too quick.");
   });
 });

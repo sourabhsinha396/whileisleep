@@ -1,5 +1,5 @@
 import { renderSurface } from "@/lib/a2ui/render";
-import { applyMessages, type ActionEvent } from "@/lib/a2ui/surface";
+import { applyMessages, type ActionEvent, type Surface } from "@/lib/a2ui/surface";
 import { type ChatFile, fitted, isPicture } from "@/lib/chat-file";
 import { inkOf, isBright, textOn } from "@/lib/contrast";
 import { openLiveStream, throttle, type LiveStream } from "@/lib/live-stream";
@@ -44,7 +44,13 @@ const AGENT_TYPING_MS = 6000;
 
 type Tab = "chat" | "help";
 /** The greeting is shown like a message, but was never sent. */
-type Shown = Omit<ChatMessage, "id" | "created_at"> & { created_at?: string };
+type Shown = Omit<ChatMessage, "id" | "created_at"> & { id?: number; created_at?: string };
+
+/** Buttons that answer the bot's question (apps/agent/choices.py on the server). */
+function isChoices(surface: Surface): boolean {
+  const root = surface.components.get("root");
+  return root?.component === "Row" && root.variant === "choices";
+}
 
 /** The chat bubble and panel. All DOM lives in a shadow root on `host`. */
 export class Widget {
@@ -494,8 +500,15 @@ export class Widget {
   }
 
   private async onAction(event: ActionEvent) {
+    const choosing = event.name === "choose";
+    if (choosing && this.usedSurfaces.has(event.surfaceId)) return; // a second, quick press
     this.usedSurfaces.add(event.surfaceId);
     this.el.error.textContent = "";
+    if (choosing) {
+      // Its words go out as a message: a reply is coming, as after sending one.
+      if (this.config.ai_enabled && !this.humanRequested) this.waitingForReply = Date.now();
+      this.renderBody(true);
+    }
     try {
       const result = await this.api.action(event);
       if (result.article) {
@@ -504,9 +517,10 @@ export class Widget {
         return;
       }
       await this.poll(false);
-      this.renderBody();
+      this.renderBody(choosing);
     } catch (error) {
       this.usedSurfaces.delete(event.surfaceId);
+      if (choosing) this.waitingForReply = 0;
       this.el.error.textContent = (error as Error).message;
       this.renderBody();
     }
@@ -592,15 +606,23 @@ export class Widget {
     for (const file of message.attachments ?? []) node.appendChild(isPicture(file) ? this.photo(file) : fileCard(file));
     if (message.a2ui?.length) {
       for (const surface of applyMessages(message.a2ui).values()) {
+        const used = this.usedSurfaces.has(surface.surfaceId);
+        // Choices go away once the question is answered.
+        if (isChoices(surface) && (used || this.answered(message))) continue;
         node.appendChild(
           renderSurface(surface, {
-            disabled: this.usedSurfaces.has(surface.surfaceId) || !!message.form_submitted,
+            disabled: used || !!message.form_submitted,
             onAction: (event) => this.onAction(event),
           }),
         );
       }
     }
     return row;
+  }
+
+  /** Whether the visitor or a teammate has written since. The server refuses a choice then too. */
+  private answered(message: Shown): boolean {
+    return this.messages.some((m) => m.id > (message.id ?? 0) && (m.sender === "visitor" || m.sender === "agent"));
   }
 
   /** A picture someone sent; opens full size. A site's own rules may block images from

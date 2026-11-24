@@ -22,8 +22,10 @@ export default function BillingPage() {
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Coming back from checkout: look the plan up until the payment has gone through. */
-function useReturnFromCheckout(onPlan: (billing: Billing) => void) {
+const ask = (body: object) => api<Billing>("/billing/sync", { method: "POST", body });
+
+/** Asks Dodo when the page opens. Coming back from checkout, until the payment has gone through. */
+function useFreshPlan(onPlan: (billing: Billing) => void) {
   // Read once, when the page opens: the address is cleaned below.
   const [result] = useState(() => checkoutResult(window.location.search));
   const id = result && !result.failed ? result.subscriptionId : "";
@@ -31,21 +33,24 @@ function useReturnFromCheckout(onPlan: (billing: Billing) => void) {
   useEffect(() => {
     // So reloading the page doesn't repeat it.
     if (result) window.history.replaceState(null, "", window.location.pathname);
-    if (!id) return;
     let gone = false;
     async function confirm() {
-      for (let attempt = 0; attempt < 6; attempt++) {
-        if (attempt) await pause(3000);
+      // The first tries are quick; after them it keeps asking for half an hour.
+      for (let attempt = 0; attempt < 66; attempt++) {
+        if (attempt) await pause(attempt < 6 ? 3000 : 30000);
         if (gone) return;
-        // A failed try isn't the end: the webhook also brings the plan here.
-        const billing = await api<Billing>("/billing/sync", { method: "POST", body: { subscription_id: id } }).catch(() => null);
+        // A failed try isn't the end.
+        const billing = await ask({ subscription_id: id }).catch(() => null);
         if (gone) return;
         if (billing) onPlan(billing);
         if (billing?.state === "active") return setMessage("");
+        if (attempt === 5) setMessage("slow");
       }
-      setMessage("slow");
     }
-    confirm();
+    if (id) confirm();
+    // They may have paid without coming back here, or changed something in the portal. If it can't
+    // be asked, what we know is shown.
+    else ask({}).then((billing) => !gone && onPlan(billing), () => {});
     return () => {
       gone = true;
     };
@@ -55,11 +60,11 @@ function useReturnFromCheckout(onPlan: (billing: Billing) => void) {
 
 function Plan() {
   const { workspace, reload } = useWorkspace();
-  const { data: billing, setData, error: loadError } = usePoll(useCallback(() => api<Billing>("/billing"), []), 30000);
+  const { data: billing, setData, error: loadError, reload: reread } = usePoll(useCallback(() => api<Billing>("/billing"), []), 30000);
   const [interval, setInterval] = useState<Interval>("yearly");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const back = useReturnFromCheckout(
+  const back = useFreshPlan(
     useCallback(
       (fresh: Billing) => {
         setData(fresh);
@@ -81,6 +86,8 @@ function Plan() {
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
+      // It may have found a plan they already paid for.
+      reread();
     }
   }
 

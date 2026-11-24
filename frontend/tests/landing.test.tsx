@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Faq } from "@/components/landing/faq";
+import { NightPanel } from "@/components/landing/night-panel";
 import { PricingPlans } from "@/components/landing/pricing-plans";
-import { Ripple } from "@/components/landing/ripple";
 import { HOME_QUESTIONS, PRICING_QUESTIONS } from "@/lib/faq";
 
 function render(node: React.ReactNode): HTMLElement {
@@ -39,11 +39,17 @@ describe("pricing plans", () => {
   });
 });
 
-describe("hero ripple", () => {
-  it("is hidden from assistive tech and never takes clicks", () => {
-    const ripple = render(<Ripple />).firstElementChild;
-    expect(ripple?.getAttribute("aria-hidden")).toBe("true");
-    expect(ripple?.className).toContain("pointer-events-none");
-    expect(ripple?.querySelectorAll(".land-ripple").length).toBeGreaterThan(0);
+describe("night panel", () => {
+  const panel = render(<NightPanel><p>inbox</p></NightPanel>);
+
+  it("shows what it frames", () => {
+    expect(panel.textContent).toBe("inbox");
+    expect(panel.querySelector("p")?.closest("[aria-hidden]")).toBeNull();
+  });
+
+  it("keeps the sky away from assistive tech and clicks", () => {
+    for (const svg of panel.querySelectorAll("svg")) {
+      expect(svg.closest("[aria-hidden=true].pointer-events-none")).not.toBeNull();
+    }
   });
 });

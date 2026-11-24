@@ -6,8 +6,8 @@ import { useState, useSyncExternalStore } from "react";
 import { HeroVisual } from "@/components/landing/hero-visual";
 import { Demo } from "@/components/landing/demo";
 import { Faq } from "@/components/landing/faq";
+import { NightPanel } from "@/components/landing/night-panel";
 import { PricingPlans } from "@/components/landing/pricing-plans";
-import { Ripple } from "@/components/landing/ripple";
 import { Logo, ThemeToggle } from "@/components/ui";
 import { getToken } from "@/lib/api";
 
@@ -47,7 +47,7 @@ export default function Home() {
 
       <main>
         {/* Hero */}
-        <section className="relative isolate mx-auto grid max-w-7xl items-center gap-12 px-4 pt-8 pb-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:pt-14">
+        <section className="mx-auto grid max-w-7xl items-center gap-12 px-4 pt-8 pb-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:pt-14">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border bg-surface px-3 py-1 text-xs font-semibold text-muted-foreground">
               <span className="size-1.5 rounded-full bg-success" /> Open source · Bring your own LLM
@@ -68,11 +68,9 @@ export default function Home() {
               </a>
             </div>
           </div>
-          <div className="relative">
-            <div className="pointer-events-none absolute -inset-8 -z-10 rounded-[48px] bg-primary/10 blur-3xl" />
-            <Ripple />
+          <NightPanel>
             <HeroVisual handoff={handoff} />
-          </div>
+          </NightPanel>
         </section>
 
         {/* Interactive demo */}

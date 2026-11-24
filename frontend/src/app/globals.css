@@ -148,14 +148,6 @@
   75% { transform: rotate(6deg); }
 }
 
-/* Hero ripple: the rings are centered by the transform, so it stays on without the animation. */
-.land-ripple { transform: translate(-50%, -50%); animation: land-ripple 4s ease-in-out infinite; }
-@keyframes land-ripple {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, -50%) scale(0.93); }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .land-ripple { animation: none; }
   .land-in, .land-typing span, .land-shake { animation: none; opacity: 1; }
 }

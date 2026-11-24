@@ -32,7 +32,7 @@ function row(id: number, last: string, status: "open" | "resolved" = "open", vis
 }
 
 function message(id: number): Message {
-  return { id, sender: "visitor", author_name: "", author_photo: "", body: `m${id}`, a2ui: null, is_note: false, intent: "", created_at: "" };
+  return { id, sender: "visitor", author_name: "", author_photo: "", body: `m${id}`, a2ui: null, is_note: false, intent: "", attachments: [], created_at: "" };
 }
 
 describe("applyConversation", () => {

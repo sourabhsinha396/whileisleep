@@ -35,6 +35,7 @@ describe("form", () => {
       key_hint: "…1234",
       public_base_url: "https://files.example.com",
       image_count: 0,
+      file_count: 0,
     };
     expect(formFor(saved)).toMatchObject({ bucket: "my-uploads", region: "", access_key_id: "", secret_access_key: "" });
   });

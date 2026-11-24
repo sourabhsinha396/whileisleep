@@ -15,7 +15,6 @@ import {
   Monitor,
   RotateCcw,
   Search,
-  SendHorizontal,
   StickyNote,
   Tag,
   UserRound,
@@ -23,10 +22,14 @@ import {
 import { useSearchParams } from "next/navigation";
 import { Fragment, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { A2uiPreview } from "@/components/a2ui-preview";
+import { ChatFiles, ChatText } from "@/components/chat-message";
+import { Composer, type Draft } from "@/components/composer";
 import { LiveProvider, useLive, useLiveEvents } from "@/components/live-context";
 import { Avatar, Badge, Button, Segmented } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
-import { api, type ConversationDetail, type ConversationRow, type Message } from "@/lib/api";
+import { api, type ConversationDetail, type ConversationRow, type Message, upload } from "@/lib/api";
+import type { ChatFile } from "@/lib/chat-file";
+import { plainText } from "@/lib/chat-text";
 import { ago, browserName, clock } from "@/lib/format";
 import { addMessage, applyConversation, setOnline, withPresence, type Filter } from "@/lib/inbox";
 import { throttle } from "@/lib/live-stream";
@@ -138,7 +141,7 @@ function Inbox() {
                   </span>
                   <span className="mt-0.5 flex items-center gap-2">
                     <span className={clsx("line-clamp-1 flex-1 text-sm", row.unread ? "text-foreground" : "text-muted-foreground")}>
-                      {row.preview || "…"}
+                      {plainText(row.preview) || "…"}
                     </span>
                     {row.unread ? (
                       <span className="size-2.5 shrink-0 rounded-full bg-primary" aria-label="Unread" />
@@ -197,9 +200,6 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
     useCallback(() => api<ConversationDetail>(path), [path]),
     live ? LIVE_POLL_MS : CONVERSATION_POLL_MS,
   );
-  const [mode, setMode] = useState<"reply" | "note">("reply");
-  const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
   // Live: what the AI is doing, and until when the visitor counts as typing.
   const [botStatus, setBotStatus] = useState("");
   const [visitorTypingUntil, setVisitorTypingUntil] = useState(0);
@@ -251,17 +251,10 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
 
   if (!data) return <div className="flex-1 bg-muted/30" />;
 
-  async function send() {
-    if (!draft.trim()) return;
-    setBusy(true);
-    try {
-      await api<Message>(`${path}/messages`, { method: "POST", body: { body: draft, is_note: mode === "note" } });
-      setDraft("");
-      await reload();
-      onChange();
-    } finally {
-      setBusy(false);
-    }
+  async function send(draft: Draft) {
+    await api<Message>(`${path}/messages`, { method: "POST", body: draft });
+    onChange();
+    await reload();
   }
 
   async function patch(body: object) {
@@ -312,7 +305,7 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
                     <span className="rounded-full border bg-surface px-3 py-0.5 text-[11px] font-semibold text-muted-foreground shadow-sm">{day}</span>
                   </div>
                 )}
-                <MessageBubble message={m} visitorName={v.name} />
+                <MessageBubble message={m} visitorName={v.name} website={workspace.website} />
               </Fragment>
             );
           })}
@@ -325,58 +318,14 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
           <div ref={end} />
         </div>
 
-        <div
-          className={clsx(
-            "mx-4 mb-4 rounded-xl border bg-surface shadow-sm transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20",
-            mode === "note" && "border-warning/40 bg-warning-soft focus-within:border-warning focus-within:ring-warning/20",
-          )}
-        >
-          <div className="flex gap-1 px-2 pt-2">
-            {(["reply", "note"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={clsx(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors",
-                  mode === m
-                    ? m === "note"
-                      ? "bg-warning/15 text-warning"
-                      : "bg-primary-soft text-primary-text"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                {m === "reply" ? <MessageSquare size={13} /> : <StickyNote size={13} />}
-                {m === "reply" ? "Reply" : "Internal note"}
-              </button>
-            ))}
-          </div>
-          <textarea
-            aria-label={mode === "reply" ? "Reply" : "Internal note"}
-            className="block w-full resize-none bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
-            rows={3}
-            placeholder={mode === "reply" ? `Reply to ${v.name}. The AI agent pauses once you answer.` : "Only your team sees notes"}
-            value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              // Only replies: the visitor never hears about notes.
-              if (mode === "reply" && e.target.value.trim()) sendTyping();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-              }
-            }}
-          />
-          <div className="flex items-center justify-between px-3 pb-3 text-xs text-muted-foreground">
-            <span className="pl-1">
-              <Kbd>Enter</Kbd> to send · <Kbd>Shift</Kbd> + <Kbd>Enter</Kbd> for a new line
-            </span>
-            <Button onClick={send} disabled={busy || !draft.trim()} size="sm" className={mode === "note" ? "bg-warning hover:bg-warning/90" : undefined}>
-              {mode === "reply" ? "Send" : "Add note"} <SendHorizontal size={14} />
-            </Button>
-          </div>
-        </div>
+        <Composer
+          visitorName={v.name}
+          aiEnabled={workspace.ai_enabled && !data.human_requested}
+          uploadsEnabled={workspace.article_uploads_enabled}
+          onUpload={(file) => upload<ChatFile>(`/workspaces/${workspace.id}/attachments`, file)}
+          onSend={send}
+          onTyping={sendTyping}
+        />
       </section>
 
       <aside className="w-80 shrink-0 overflow-y-auto border-l bg-surface">
@@ -431,10 +380,6 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
   );
 }
 
-function Kbd({ children }: { children: React.ReactNode }) {
-  return <kbd className="rounded border bg-background px-1 font-sans text-[10px]">{children}</kbd>;
-}
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
@@ -460,7 +405,7 @@ function Detail({ icon: Icon, label, children }: { icon: typeof Mail; label: str
   );
 }
 
-function MessageBubble({ message: m, visitorName }: { message: Message; visitorName: string }) {
+function MessageBubble({ message: m, visitorName, website }: { message: Message; visitorName: string; website: string }) {
   if (m.sender === "system") {
     return (
       <div className="flex justify-center">
@@ -504,19 +449,26 @@ function MessageBubble({ message: m, visitorName }: { message: Message; visitorN
             </Badge>
           )}
         </p>
-        <div
-          className={clsx(
-            "rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap shadow-sm",
-            m.is_note
-              ? "bg-warning-soft ring-1 ring-warning/30"
-              : mine
-                ? "rounded-br-md bg-primary text-primary-foreground"
-                : "rounded-bl-md border bg-surface",
-          )}
-        >
-          {m.body}
-          {m.a2ui && <A2uiPreview messages={m.a2ui} />}
-        </div>
+        {(m.body || m.a2ui) && (
+          <div
+            className={clsx(
+              "rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed shadow-sm",
+              m.is_note
+                ? "bg-warning-soft ring-1 ring-warning/30"
+                : mine
+                  ? "rounded-br-md bg-primary text-primary-foreground"
+                  : "rounded-bl-md border bg-surface",
+            )}
+          >
+            <ChatText text={m.body} plain={m.sender === "visitor"} base={website || undefined} />
+            {m.a2ui && <A2uiPreview messages={m.a2ui} />}
+          </div>
+        )}
+        {m.attachments.length > 0 && (
+          <div className={clsx("flex flex-col", mine ? "items-end" : "items-start", (m.body || m.a2ui) && "mt-1.5")}>
+            <ChatFiles files={m.attachments} />
+          </div>
+        )}
       </div>
     </div>
   );

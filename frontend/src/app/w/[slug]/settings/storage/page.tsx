@@ -13,7 +13,7 @@ import { usePoll } from "@/lib/use-poll";
 export default function StoragePage() {
   return (
     <>
-      <PageHeader title="Storage" description="Your own Cloudflare R2, AWS S3 or other S3-compatible bucket, for the images in your articles. Optional." />
+      <PageHeader title="Storage" description="Your own Cloudflare R2, AWS S3 or other S3-compatible bucket, for images in your articles and files in your chats. Optional." />
       <OrganizationOnly>{() => <Load />}</OrganizationOnly>
     </>
   );
@@ -67,7 +67,7 @@ function Connection({ saved, onChange }: { saved: StorageSettings; onChange: (sa
   }
 
   function disconnect() {
-    const question = "Disconnect this bucket? Images already in it stay there and keep showing. New articles are text only.";
+    const question = "Disconnect this bucket? Files already in it stay there and keep showing. New articles and chats are text only.";
     if (window.confirm(question)) run(() => api<StorageSettings>("/organization/storage", { method: "DELETE" }), "Disconnected.");
   }
 
@@ -76,8 +76,8 @@ function Connection({ saved, onChange }: { saved: StorageSettings; onChange: (sa
       <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${saved.connected ? "bg-success-soft text-success" : "bg-muted text-muted-foreground"}`}>
         {saved.connected ? <CheckCircle2 size={16} className="shrink-0" /> : <HardDrive size={16} className="shrink-0" />}
         {saved.connected
-          ? `Connected: article images go to ${saved.bucket}. ${saved.image_count} stored there so far.`
-          : "Your articles are text only. Connect a bucket to add images; they stay in your bucket, never in ours."}
+          ? `Connected: article images and chat files go to ${saved.bucket}. ${saved.image_count + saved.file_count} stored there so far.`
+          : "Your articles and chats are text only. Connect a bucket to add images and let visitors send files; they stay in your bucket, never in ours."}
       </div>
 
       <div className="space-y-2">
@@ -134,8 +134,8 @@ function Connection({ saved, onChange }: { saved: StorageSettings; onChange: (sa
       </div>
       <ErrorText>{error}</ErrorText>
       <p className="text-xs text-muted-foreground">
-        Testing writes one small file to the bucket, opens its public address and deletes it. Images in articles are public to anyone with
-        the link. Your logo and profile photos, which the chat shows everyone, stay in our storage.
+        Testing writes one small file to the bucket, opens its public address and deletes it. Article images and chat files can be opened by anyone
+        with the link. Your logo and profile photos, which the chat shows everyone, stay in our storage.
       </p>
     </form>
   );

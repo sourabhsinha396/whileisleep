@@ -2,6 +2,7 @@
 
 import type { A2uiMessage } from "@/lib/a2ui/surface";
 import type { BillingState } from "@/lib/billing";
+import type { ChatFile } from "@/lib/chat-file";
 import type { Action, Condition } from "@/lib/rules";
 
 const TOKEN_KEY = "whileisleep:token";
@@ -100,7 +101,7 @@ export interface Workspace {
   /** Where the organization stands with its plan. */
   billing_state: BillingState;
   trial_days_left: number | null;
-  /** Articles can have images: the organization connected its own bucket for them. */
+  /** Articles can have images and chats files: the organization connected its own bucket for them. */
   article_uploads_enabled: boolean;
 }
 
@@ -152,6 +153,8 @@ export interface StorageSettings {
   key_hint: string;
   public_base_url: string;
   image_count: number;
+  /** Files in chat messages. */
+  file_count: number;
 }
 
 export interface KeyCheck {
@@ -196,6 +199,7 @@ export interface Message {
   is_note: boolean;
   /** Label a host-site button attached (rules match on it). */
   intent: string;
+  attachments: ChatFile[];
   created_at: string;
 }
 

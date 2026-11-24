@@ -4,17 +4,19 @@ The workspace is named by its public key in the path. The visitor proves who the
 with the `X-Visitor-Token` header that POST /session hands out.
 """
 
+from django.db.models import Case, When
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import File, Router, UploadedFile
 from ninja.errors import HttpError
 
+from apps.accounts.models import photo_url
 from apps.agent import actions, pipeline
 from apps.knowledge.chunking import without_images
 from apps.knowledge.models import Article
 from apps.knowledge.search import search
 from apps.realtime import events, presence
-from apps.workspaces.models import Workspace
+from apps.workspaces.models import Membership, Workspace
 from whileisleep.client_ip import client_ip
 
 from . import attachments, identity, limits
@@ -35,6 +37,8 @@ from .services import add_message, current_conversation, is_stale, touch_visitor
 
 router = Router(tags=["widget"])
 
+TEAM_FACES = 3
+
 
 def get_workspace(key: str) -> Workspace:
     return get_object_or_404(Workspace, public_key=key)
@@ -48,10 +52,22 @@ def get_visitor(request, workspace: Workspace) -> Visitor:
     return visitor
 
 
+def team_faces(workspace: Workspace) -> list[dict]:
+    """The teammates the widget's header shows: those with a photo, owners first."""
+    members = (
+        workspace.memberships.filter(user__profile__photo__gt="")
+        .select_related("user__profile")
+        .order_by(Case(When(role=Membership.Role.OWNER, then=0), default=1), "pk")[:TEAM_FACES]
+    )
+    # Never an email here: anyone can read this.
+    return [{"name": m.user.first_name, "photo_url": photo_url(m.user)} for m in members]
+
+
 @router.get("/{key}/config", response=WidgetConfigOut)
 def config(request, key: str):
     workspace = get_object_or_404(Workspace.objects.select_related("organization__bucket"), public_key=key)
     workspace.uploads_enabled = workspace.organization.storage_bucket is not None
+    workspace.team = team_faces(workspace)
     return workspace
 
 

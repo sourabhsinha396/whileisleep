@@ -123,3 +123,35 @@ def test_more_authors_cost_no_more_queries(api, workspace, membership):
     for _ in range(4):
         reply_from_someone_new()
     assert queries() == one
+
+
+# --- The widget's header ---
+
+
+def team(workspace) -> list[dict]:
+    return Api().get(f"/widget/{workspace.public_key}/config").json()["team"]
+
+
+def test_the_widget_shows_teammates_who_have_a_photo_owners_first(api, membership):
+    workspace = membership.workspace
+    agent = MembershipFactory(workspace=workspace, role="agent", user__first_name="Ana").user
+    MembershipFactory(workspace=workspace, role="agent", user__first_name="No photo")
+    assert team(workspace) == []
+    ana = Api(token=AuthTokenFactory(user=agent).key).upload("/auth/me/photo", picture()).json()["photo_url"]
+    assert team(workspace) == [{"name": "Ana", "photo_url": ana}]
+    mine = api.upload("/auth/me/photo", picture()).json()["photo_url"]
+    assert [face["photo_url"] for face in team(workspace)] == [mine, ana]
+
+
+def test_the_widget_shows_at_most_three_teammates_and_no_emails(membership):
+    workspace = membership.workspace
+    for _ in range(4):
+        user = MembershipFactory(workspace=workspace, role="agent", user__first_name="").user
+        Api(token=AuthTokenFactory(user=user).key).upload("/auth/me/photo", picture())
+    faces = team(workspace)
+    assert len(faces) == 3 and all(face["name"] == "" for face in faces)
+
+
+def test_teammates_of_other_workspaces_are_not_shown(api, membership):
+    api.upload("/auth/me/photo", picture())
+    assert team(MembershipFactory().workspace) == []

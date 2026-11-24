@@ -109,6 +109,11 @@ class ConversationPatch(Schema):
 # --- Widget ---
 
 
+class TeamFaceOut(Schema):
+    name: str
+    photo_url: str
+
+
 class WidgetConfigOut(Schema):
     name: str
     website: str
@@ -118,6 +123,8 @@ class WidgetConfigOut(Schema):
     ai_enabled: bool
     # Visitors can send files: the organization connected its own bucket for them.
     uploads_enabled: bool = False
+    # A few teammates with photos, for the header.
+    team: list[TeamFaceOut] = []
     max_message_length: int = settings.VISITOR_MESSAGE_MAX_CHARS
 
 

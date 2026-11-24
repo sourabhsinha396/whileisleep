@@ -24,6 +24,7 @@ const nextConfig: NextConfig = {
       { source: "/w/:slug/settings", destination: "/w/:slug/settings/general", permanent: false },
       { source: "/w/:slug/automation", destination: "/w/:slug/ai/rules", permanent: false },
       { source: "/w/:slug/organization", destination: "/w/:slug/settings/ai-model", permanent: false },
+      { source: "/w/:slug/settings/billing", destination: "/w/:slug/billing", permanent: false },
     ];
   },
   async headers() {

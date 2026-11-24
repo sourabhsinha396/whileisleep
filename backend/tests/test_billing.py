@@ -102,7 +102,7 @@ def test_checkout(api, account, billing, workspace, interval, product):
     assert sent["product_cart"] == [{"product_id": product, "quantity": 1}]
     assert sent["metadata"] == {"whileisleep_account": account.reference}
     assert sent["customer"]["email"] == account.organization.owner.email
-    assert sent["return_url"] == f"https://chat.example.com/w/{workspace.slug}/settings/billing"
+    assert sent["return_url"] == f"https://chat.example.com/w/{workspace.slug}/billing"
 
 
 def test_checkout_never_joins_an_existing_dodo_customer_by_email(api, account, billing, workspace):

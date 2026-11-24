@@ -11,7 +11,7 @@ import { WorkspaceContext } from "@/components/workspace-context";
 import { api, getToken, setToken, type User, type Workspace } from "@/lib/api";
 import { sidebarNotice } from "@/lib/billing";
 import { textOn } from "@/lib/contrast";
-import { isActive, mainNav, type NavItem, SETTINGS_LINK } from "@/lib/nav";
+import { bottomNav, isActive, mainNav, type NavItem } from "@/lib/nav";
 import { useDismiss } from "@/lib/use-dismiss";
 import { usePoll } from "@/lib/use-poll";
 
@@ -44,7 +44,7 @@ function BillingNotice({ workspace }: { workspace: Workspace }) {
   const look = clsx("block rounded-lg p-3 text-xs", workspace.billing_state === "paused" ? "bg-danger-soft text-danger" : "bg-warning-soft text-warning");
   if (!workspace.is_organization_owner) return <p className={look}>{text} Ask your organization&apos;s owner.</p>;
   return (
-    <Link href={`/w/${workspace.slug}/settings/billing`} className={look}>
+    <Link href={`/w/${workspace.slug}/billing`} className={look}>
       {text} <span className="font-semibold underline">See plans</span>
     </Link>
   );
@@ -162,8 +162,10 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
             {mainNav(workspace).map((item) => (
               <SidebarLink key={item.href} item={item} slug={slug} pathname={pathname} count={item.href === "inbox" ? workspace.open_count : 0} />
             ))}
-            <div className="mt-auto pt-4">
-              <SidebarLink item={SETTINGS_LINK} slug={slug} pathname={pathname} />
+            <div className="mt-auto flex flex-col gap-0.5 pt-4">
+              {bottomNav(workspace).map((item) => (
+                <SidebarLink key={item.href} item={item} slug={slug} pathname={pathname} />
+              ))}
             </div>
           </nav>
 

@@ -46,7 +46,7 @@ def unavailable(error: dodo.DodoError) -> HttpError:
 def billing_page(organization: Organization, slug: str) -> str:
     """Where Dodo sends the customer back to: the billing page they came from."""
     workspace = get_object_or_404(Workspace, organization=organization, slug=slug)
-    return f"{settings.SITE_URL}/w/{workspace.slug}/settings/billing"
+    return f"{settings.SITE_URL}/w/{workspace.slug}/billing"
 
 
 @router.get("/billing", response=BillingOut, auth=token_auth)

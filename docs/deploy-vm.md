@@ -78,7 +78,7 @@ Open `https://YOUR_DOMAIN`, sign up (the first account owns its organization), t
 ## Selling plans (optional)
 
 Skip this on your own server: without it nothing is limited. With it, the AI pauses 14 days after
-someone starts unless they subscribe, and **Settings › Billing** appears for the organization's owner.
+someone starts unless they subscribe, and **Billing** appears in the sidebar for the organization's owner.
 
 1. Make an API key in Dodo Payments that can read and write products, checkouts, customers,
    subscriptions and webhooks.

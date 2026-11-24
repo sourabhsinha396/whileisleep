@@ -72,7 +72,7 @@ def why_blocked(conversation: Conversation) -> str:
     """Why the AI may not answer this conversation now, for the team to read. Empty: it may."""
     organization = conversation.workspace.organization
     if not billing.ai_allowed(organization):
-        return "the AI is paused until a plan is active (Settings › Billing)"
+        return "the AI is paused until a plan is active (see Billing)"
     if organization.llm_ready and not limits.allow_ai_reply(conversation):
         return "daily AI reply limit reached"
     return ""

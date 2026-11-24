@@ -4,6 +4,12 @@ Product decisions made by the project owner, newest first. Each says what was de
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Technical decisions are in [tech-decisions.md](tech-decisions.md).
 
+## 2026-11-24: Docs with videos, edited in place by a superuser
+
+**Decision.** The product has basic docs of how the platform works, with code snippets. A superuser can put a YouTube
+video on a page by pasting its link, and edit a page's text in a simple what-you-see-is-what-you-get editor. The text
+is written first; the owner makes and uploads the videos later.
+
 ## 2026-11-24: A visitor's country comes from the website
 
 **Decision.** The country is the `country` attribute the website sends with identify(); unsigned is fine. The inbox shows

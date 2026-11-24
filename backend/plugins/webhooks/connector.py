@@ -2,7 +2,7 @@
 
 Out: signed JSON to the owner's endpoints, for the events each chose (payload.py).
 In: a request signed with the same secret replies, writes a note, or changes a conversation.
-docs/webhooks.md is for the people on the other end.
+frontend/content/docs/webhooks.md is for the people on the other end.
 """
 
 import json

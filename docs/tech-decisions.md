@@ -38,7 +38,7 @@ call runs inside async code.
 
 ## 2026-11-24: The deploy guide is for any VM
 
-**Decision.** The guide is "Deploy on a VM (before your Noodles is ready)" (`docs/deploy-vm.md`), not tied to Hetzner.
+**Decision.** The guide is "Deploy on a VM (before your Noodles is ready)" (`frontend/content/docs/self-hosting.md`), not tied to Hetzner.
 
 ## 2026-11-24: Technical decisions are kept in this file
 

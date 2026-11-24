@@ -50,8 +50,8 @@ The technical reference: integration, security and internals. For what the produ
 - **Turns**: every visitor message leaves a record of the stage that answered it (rule, limit, AI or
   fallback), the model, tokens, cost, duration and each tool call. `GET /turns/summary` shows how much
   of your traffic never needed the model.
-- **Integrations**: plugins that connect a workspace to an outside service. [Slack](slack.md): a chat that needs a
-  person is a thread, and replies there reach the visitor. [Webhooks](webhooks.md): signed events to any system, which can
+- **Integrations**: plugins that connect a workspace to an outside service. [Slack](../frontend/content/docs/slack.md): a chat that needs a
+  person is a thread, and replies there reach the visitor. [Webhooks](../frontend/content/docs/webhooks.md): signed events to any system, which can
   answer. [Build your own](plugins.md).
 - **A2UI**: bot replies carry [A2UI](https://a2ui.org) v1.0 surfaces (article buttons, "Talk to a person",
   forms). The server builds them from templates; the widget renders them with a small safe renderer
@@ -170,7 +170,7 @@ claims become verified attributes.
   Plugins in `backend/plugins/`. Tests in `backend/tests/`, with factories in `tests/factories.py`.
 - `frontend/`: Next.js App Router dashboard, plus the widget (`src/widget`, built by esbuild into
   `public/widget.js`). Tests in `frontend/tests/`.
-- `deploy/`: the production Docker Compose stack. [deploy-vm.md](deploy-vm.md) walks through it.
+- `deploy/`: the production Docker Compose stack. [The self-hosting guide](../frontend/content/docs/self-hosting.md) walks through it.
 
 ## The widget
 

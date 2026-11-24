@@ -124,8 +124,9 @@ Open <http://localhost:3004>, create an account, and add your AI provider's key 
 
 | I want to… | Read |
 | --- | --- |
-| Run it on my own server | [Deploy on a VM (before your Maggi is ready 🍜)](docs/deploy-vm.md) |
-| Add the widget and identify my users | [How it works](docs/how-it-works.md) |
-| Answer chats from Slack, or connect any system | [Slack](docs/slack.md) and [webhooks](docs/webhooks.md) |
+| Run it on my own server | [Deploy on a VM (before your Maggi is ready 🍜)](frontend/content/docs/self-hosting.md) |
+| Add the widget and identify my users | [Install the chat](frontend/content/docs/install.md) and [verified identity](frontend/content/docs/verified-identity.md) |
+| Know how it works inside | [How it works](docs/how-it-works.md) |
+| Answer chats from Slack, or connect any system | [Slack](frontend/content/docs/slack.md) and [webhooks](frontend/content/docs/webhooks.md) |
 | Build an integration | [Build a plugin](docs/plugins.md) |
 | Know why it is built this way | [Product](docs/product-decisions.md) and [tech](docs/tech-decisions.md) decisions |

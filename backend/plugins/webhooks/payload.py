@@ -1,4 +1,4 @@
-"""What an endpoint is sent. People build on this (docs/webhooks.md): add to it, never change or
+"""What an endpoint is sent. People build on this (frontend/content/docs/webhooks.md): add to it, never change or
 remove what is there."""
 
 from apps.integrations.sdk import (

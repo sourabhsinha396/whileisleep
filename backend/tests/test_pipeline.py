@@ -95,9 +95,10 @@ def test_a_conversation_a_person_took_over_is_left_alone(llm):
 # --- Stage 3: limits ---
 
 
-def test_past_the_ai_cap_a_person_is_asked_for(llm, settings):
-    settings.RATE_LIMITS = {**settings.RATE_LIMITS, "ai_replies_per_visitor_per_day": 1}
+def test_past_the_ai_cap_a_person_is_asked_for(llm):
     workspace = workspace_with_llm()
+    workspace.ai_replies_per_visitor = 1
+    workspace.save()
     visitor = VisitorFactory(workspace=workspace)
     fake = llm(final("Yes."))
     send(visitor, "one")

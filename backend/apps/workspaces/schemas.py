@@ -23,6 +23,9 @@ class WorkspacePatch(Schema):
     timezone: str | None = Field(None, max_length=64)
     ai_enabled: bool | None = None
     ai_instructions: str | None = None
+    # AI replies a day: to one visitor, and to all of them together.
+    ai_replies_per_visitor: int | None = Field(None, ge=1, le=1_000_000)
+    ai_replies_per_day: int | None = Field(None, ge=1, le=1_000_000)
 
 
 class WorkspaceOut(Schema):
@@ -39,6 +42,8 @@ class WorkspaceOut(Schema):
     timezone: str
     ai_enabled: bool
     ai_instructions: str
+    ai_replies_per_visitor: int
+    ai_replies_per_day: int
     role: str = ""
     open_count: int = 0
     # The organization has a model and its provider's key, so the AI agent can use an LLM.
@@ -93,6 +98,8 @@ class OrganizationOut(Schema):
     # "" when there is no fallback.
     fallback_provider: str
     fallback_model: str
+    # AI replies a day in all workspaces together. None: no cap.
+    ai_replies_per_day: int | None
     llm_ready: bool
     workspace_count: int
 
@@ -104,6 +111,8 @@ class OrganizationPatch(Schema):
     # "" removes the fallback.
     fallback_provider: Provider | Literal[""] | None = None
     fallback_model: str | None = Field(None, max_length=200)
+    # Sent as null, it removes the cap.
+    ai_replies_per_day: int | None = Field(None, ge=1, le=1_000_000)
 
 
 class ProviderKeyIn(Schema):

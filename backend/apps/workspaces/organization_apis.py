@@ -40,6 +40,7 @@ def organization_out(organization: Organization) -> dict:
         "llm_model": organization.llm_model,
         "fallback_provider": organization.fallback_provider,
         "fallback_model": organization.fallback_model,
+        "ai_replies_per_day": organization.ai_replies_per_day,
         "llm_ready": organization.llm_ready,
         "workspace_count": organization.workspaces.count(),
     }
@@ -59,7 +60,10 @@ def get(request):
 @router.patch("/organization", response=OrganizationOut)
 def update(request, payload: OrganizationPatch):
     organization = organization_for(request.auth)
-    changes = {k: v.strip() for k, v in payload.dict(exclude_unset=True).items() if v is not None}
+    sent = payload.dict(exclude_unset=True)
+    changes = {k: v.strip() for k, v in sent.items() if isinstance(v, str)}
+    if "ai_replies_per_day" in sent:
+        changes["ai_replies_per_day"] = sent["ai_replies_per_day"]
     for field, value in changes.items():
         setattr(organization, field, value)
     if not organization.fallback_provider:

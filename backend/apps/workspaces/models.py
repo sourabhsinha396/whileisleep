@@ -60,6 +60,8 @@ class Organization(models.Model):
     # The model that takes over a reply when that one fails (apps.agent.llm). Empty: none.
     fallback_provider = models.CharField(max_length=20, choices=Provider, blank=True)
     fallback_model = models.CharField(max_length=200, blank=True)
+    # AI replies a day in all workspaces together, besides each workspace's own caps. Empty: no cap.
+    ai_replies_per_day = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -181,6 +183,9 @@ class Workspace(models.Model):
     ai_enabled = models.BooleanField(default=True)
     # Extra instructions for the AI agent: tone, scope, product facts.
     ai_instructions = models.TextField(blank=True)
+    # Past either one, the chat goes to the team. They cap what the organization's LLM key is charged.
+    ai_replies_per_visitor = models.PositiveIntegerField(default=50, db_default=50)
+    ai_replies_per_day = models.PositiveIntegerField(default=2000, db_default=2000)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

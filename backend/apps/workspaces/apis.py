@@ -79,7 +79,7 @@ def update(request, workspace_id: int, payload: WorkspacePatch):
         data.pop("slug", None)
     elif Workspace.objects.filter(slug=data["slug"]).exclude(pk=workspace.pk).exists():
         raise HttpError(400, "That address is taken. Try another.")
-    for field in ("background", "color_mode"):
+    for field in ("background", "color_mode", "ai_replies_per_visitor", "ai_replies_per_day"):
         if data.get(field) is None:
             data.pop(field, None)
     for field, value in data.items():

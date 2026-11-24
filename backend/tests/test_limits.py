@@ -7,6 +7,7 @@ from django.test import Client
 from django.utils import timezone
 
 from apps.agent import bot, forms
+from apps.conversations import limits
 from apps.conversations.models import Conversation, Message
 
 from .conftest import Api, final
@@ -21,8 +22,6 @@ def low_limits(settings):
         "messages_per_visitor_per_minute": 3,
         "messages_per_ip_per_minute": 5,
         "new_visitors_per_ip_per_hour": 2,
-        "ai_replies_per_visitor_per_day": 2,
-        "ai_replies_per_workspace_per_day": 3,
     }
 
 
@@ -75,8 +74,10 @@ def test_returning_visitor_is_not_a_new_visitor(low_limits):
     assert all(returning.post(f"/widget/{workspace.public_key}/session", {}).status_code == 200 for _ in range(5))
 
 
-def test_ai_cap_per_visitor_hands_off_to_a_person(low_limits, llm):
-    visitor = VisitorFactory(workspace__organization=OrganizationFactory(ready=True))
+def test_ai_cap_per_visitor_hands_off_to_a_person(llm):
+    visitor = VisitorFactory(
+        workspace__organization=OrganizationFactory(ready=True), workspace__ai_replies_per_visitor=2
+    )
     fake = llm(final("one"), final("two"))
     send(visitor, "q1")
     send(visitor, "q2")
@@ -88,16 +89,64 @@ def test_ai_cap_per_visitor_hands_off_to_a_person(low_limits, llm):
     assert conversation.messages.filter(is_note=True, body__contains="daily AI reply limit").exists()
 
 
-def test_ai_cap_per_workspace(low_limits, llm):
-    workspace = WorkspaceFactory(organization=OrganizationFactory(ready=True))
+def test_ai_cap_per_workspace(llm):
+    workspace = WorkspaceFactory(organization=OrganizationFactory(ready=True), ai_replies_per_day=3)
     fake = llm(final("a"), final("b"), final("c"))
     for _ in range(4):
         send(VisitorFactory(workspace=workspace))
     assert len(fake.requests) == 3
 
 
-def test_without_an_llm_there_is_no_ai_cap(low_limits):
-    visitor = VisitorFactory()
+def test_a_visitor_past_their_cap_uses_up_nothing_of_the_workspaces():
+    conversation = ConversationFactory(workspace__ai_replies_per_visitor=1, workspace__ai_replies_per_day=2)
+    assert [limits.allow_ai_reply(conversation) for _ in range(4)] == [True, False, False, False]
+    other = ConversationFactory(workspace=conversation.workspace)
+    assert limits.allow_ai_reply(other)
+
+
+def test_the_organizations_cap_counts_all_its_workspaces():
+    organization = OrganizationFactory(ai_replies_per_day=2)
+    allowed = [
+        limits.allow_ai_reply(ConversationFactory(workspace=WorkspaceFactory(organization=organization)))
+        for _ in range(3)
+    ]
+    assert allowed == [True, True, False]
+    assert limits.allow_ai_reply(ConversationFactory())
+
+
+def test_a_workspace_past_its_cap_uses_up_nothing_of_the_organizations():
+    organization = OrganizationFactory(ai_replies_per_day=2)
+    small = WorkspaceFactory(organization=organization, ai_replies_per_day=1)
+    assert [limits.allow_ai_reply(ConversationFactory(workspace=small)) for _ in range(4)] == [
+        True,
+        False,
+        False,
+        False,
+    ]
+    assert limits.allow_ai_reply(ConversationFactory(workspace=WorkspaceFactory(organization=organization)))
+
+
+def test_the_organizations_owner_sets_and_removes_its_cap(api):
+    assert api.get("/organization").json()["ai_replies_per_day"] is None
+    assert api.patch("/organization", {"ai_replies_per_day": 500}).json()["ai_replies_per_day"] == 500
+    # Saving something else leaves it.
+    assert api.patch("/organization", {"name": "Acme"}).json()["ai_replies_per_day"] == 500
+    assert api.patch("/organization", {"ai_replies_per_day": 0}).status_code == 422
+    assert api.patch("/organization", {"ai_replies_per_day": None}).json()["ai_replies_per_day"] is None
+
+
+def test_owners_set_the_ai_caps(api, workspace):
+    path = f"/workspaces/{workspace.id}"
+    assert (workspace.ai_replies_per_visitor, workspace.ai_replies_per_day) == (50, 2000)
+    saved = api.patch(path, {"ai_replies_per_visitor": 5, "ai_replies_per_day": 100}).json()
+    assert (saved["ai_replies_per_visitor"], saved["ai_replies_per_day"]) == (5, 100)
+    for bad in (0, -1, 1.5, "many", 1_000_001):
+        assert api.patch(path, {"ai_replies_per_day": bad}).status_code == 422
+    assert api.patch(path, {"ai_replies_per_day": None}).json()["ai_replies_per_day"] == 100
+
+
+def test_without_an_llm_there_is_no_ai_cap():
+    visitor = VisitorFactory(workspace__ai_replies_per_visitor=1)
     for i in range(3):
         assert send(visitor, f"q{i}").json()["messages"][-1]["sender"] == "bot"
     assert not Conversation.objects.get(visitor=visitor).human_requested

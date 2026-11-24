@@ -115,8 +115,6 @@ RATE_LIMITS = {
     "new_visitors_per_ip_per_hour": 30,
     "uploads_per_visitor_per_hour": 20,
     "uploads_per_ip_per_hour": 60,
-    "ai_replies_per_visitor_per_day": 50,
-    "ai_replies_per_workspace_per_day": 2000,
 }
 
 # What the AI sees of a conversation: recent turns up to this many characters (each message

@@ -44,10 +44,15 @@ def allow_upload(visitor_id: int, ip: str | None) -> bool:
 
 
 def allow_ai_reply(conversation) -> bool:
-    """Counts one LLM reply against the visitor's and the workspace's daily caps."""
-    limits = settings.RATE_LIMITS
-    by_visitor = hit("ai_visitor", str(conversation.visitor_id), limits["ai_replies_per_visitor_per_day"], 86400)
-    by_workspace = hit(
-        "ai_workspace", str(conversation.workspace_id), limits["ai_replies_per_workspace_per_day"], 86400
-    )
-    return by_visitor and by_workspace
+    """Counts one LLM reply against the visitor's, the workspace's and the organization's daily caps."""
+    workspace = conversation.workspace
+    organization = workspace.organization
+    # In this order, so that a visitor past their own cap uses up nothing of the workspace's, nor
+    # a workspace past its own anything of the organization's.
+    caps = [
+        ("ai_visitor", conversation.visitor_id, workspace.ai_replies_per_visitor),
+        ("ai_workspace", workspace.id, workspace.ai_replies_per_day),
+    ]
+    if organization.ai_replies_per_day is not None:
+        caps.append(("ai_organization", organization.id, organization.ai_replies_per_day))
+    return all(hit(name, str(key), cap, 86400) for name, key, cap in caps)

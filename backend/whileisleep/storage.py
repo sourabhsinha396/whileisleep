@@ -49,6 +49,8 @@ def default_storage_config(env: Mapping[str, str]) -> dict:
             "querystring_auth": False,
             # A second file with the same name gets another name instead of replacing the first.
             "file_overwrite": False,
+            # File names are random and never reused (whileisleep.folders).
+            "object_parameters": {"CacheControl": "public, max-age=31536000, immutable"},
             "client_config": Config(
                 signature_version="s3v4",
                 s3={"addressing_style": "path"},

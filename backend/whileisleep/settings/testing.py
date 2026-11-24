@@ -19,4 +19,8 @@ CELERY_TASK_EAGER_PROPAGATES = True
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 
 # Nor a real bucket: files stay in memory.
-STORAGES["default"] = {"BACKEND": "django.core.files.storage.InMemoryStorage"}  # noqa: F405
+STORAGES["default"] = {  # noqa: F405
+    "BACKEND": "django.core.files.storage.InMemoryStorage",
+    "OPTIONS": {"base_url": "https://cdn.example.com/"},
+}
+UPLOADS_ENABLED = True

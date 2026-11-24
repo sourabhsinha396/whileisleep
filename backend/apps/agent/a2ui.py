@@ -1,12 +1,15 @@
 """Builders for A2UI v1.0 surfaces (https://a2ui.org) that bot messages carry.
 
-The server writes these from templates; the model only chooses the text and which
-articles to show. A message's `a2ui` field holds the list of A2UI messages
-(createSurface, then updateComponents) that the widget renders under the text.
+The server writes these from templates; the model only chooses the text, the articles,
+a form's fields (apps.agent.forms) and what a card shows (apps.agent.cards).
+A message's `a2ui` field holds the list of A2UI messages (createSurface, then
+updateComponents) that the widget renders under the text.
 A button's `action.event` comes back to POST /widget/{key}/actions.
 """
 
-CATALOG_ID = "https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json"
+# Our own catalog: only what the widget renders (frontend/public/a2ui/v1/catalog.json). The id is a
+# name, the same on every server. Older messages name A2UI's basic catalog and still render.
+CATALOG_ID = "https://whileisleep.chat/a2ui/v1/catalog.json"
 VERSION = "1.0"
 
 
@@ -57,6 +60,40 @@ def reply_actions(surface_id: str, articles: list, offer_human: bool) -> list[di
     if not children:
         return None
     return surface(surface_id, [column("root", children), *components])
+
+
+# A step's mark: done, not done, or no such thing.
+MARKS = {True: ("✓", "done"), False: ("○", "todo"), None: ("•", "label")}
+
+
+def card(surface_id: str, spec: dict) -> list[dict]:
+    """Compiles a checked card (apps.agent.cards.normalize). Values sit in the data model; only
+    titles and labels are in the components."""
+    components, children, data = [], [], {}
+    if spec["title"]:
+        children.append("title")
+        components.append(text("title", spec["title"], "title"))
+
+    def value(id: str, content: str, variant: str) -> dict:
+        data[id] = content
+        return text(id, {"@path": f"/{id}"}, variant)
+
+    for i, row in enumerate(spec["rows"]):
+        if spec["type"] == "details":
+            parts = [text(f"label_{i}", row["label"], "label"), value(f"value_{i}", row["value"], "value")]
+        else:
+            parts = [text(f"mark_{i}", *MARKS[row["done"]])] if spec["type"] == "timeline" else []
+            parts.append(value(f"name_{i}", row["title"], "body"))
+            if row["detail"]:
+                parts.append(value(f"detail_{i}", row["detail"], "value"))
+        variant = "step" if spec["type"] == "timeline" else "detail"
+        children.append(f"row_{i}")
+        components.append(
+            {"id": f"row_{i}", "component": "Row", "variant": variant, "children": [part["id"] for part in parts]}
+        )
+        components += parts
+    root = {"id": "root", "component": "Card", "child": "body"}
+    return surface(surface_id, [root, column("body", children), *components], data_model=data)
 
 
 TEXT_VARIANTS = {"long_text": "longText", "number": "number"}

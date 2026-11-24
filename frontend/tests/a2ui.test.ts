@@ -1,3 +1,4 @@
+import catalog from "../public/a2ui/v1/catalog.json";
 import { describe, expect, it, vi } from "vitest";
 import { renderSurface } from "@/lib/a2ui/render";
 import { applyMessages, getPointer, setPointer, type A2uiMessage, type Json } from "@/lib/a2ui/surface";
@@ -176,5 +177,51 @@ describe("renderSurface", () => {
       { version: "1.0", updateComponents: { surfaceId: "c", components: [{ id: "root", component: "Column", children: ["root"] }] } },
     ]).get("c")!;
     expect(() => renderSurface(surface)).not.toThrow();
+  });
+});
+
+/** The same shape the backend's a2ui.card builds. */
+function card(value: string): A2uiMessage[] {
+  return [
+    { version: "1.0", createSurface: { surfaceId: "card_1", catalogId: catalog.catalogId, dataModel: { value_0: value } } },
+    {
+      version: "1.0",
+      updateComponents: {
+        surfaceId: "card_1",
+        components: [
+          { id: "root", component: "Card", child: "body" },
+          { id: "body", component: "Column", children: ["title", "row_0"] },
+          { id: "title", component: "Text", text: "Your order", variant: "title" },
+          { id: "row_0", component: "Row", variant: "detail", children: ["label_0", "value_0"] },
+          { id: "label_0", component: "Text", text: "Status", variant: "label" },
+          { id: "value_0", component: "Text", text: { "@path": "/value_0" }, variant: "value" },
+        ],
+      },
+    },
+  ];
+}
+
+describe("cards", () => {
+  it("shows the bound values with their styles", () => {
+    const node = renderSurface(applyMessages(card("Shipped")).get("card_1")!);
+    expect(node.querySelector(".a2ui-card .a2ui-row.a2ui-row-detail .a2ui-text-value")!.textContent).toBe("Shipped");
+    expect(node.querySelector(".a2ui-text-title")!.textContent).toBe("Your order");
+  });
+
+  it("shows markup from a tool as text", () => {
+    const node = renderSurface(applyMessages(card("<img src=x onerror=alert(1)>")).get("card_1")!);
+    expect(node.querySelector("img")).toBeNull();
+    expect(node.textContent).toContain("<img src=x");
+  });
+});
+
+describe("catalog", () => {
+  // A component the catalog lists but the widget can't draw would silently show nothing.
+  it.each(Object.keys(catalog.components))("%s is rendered", (component) => {
+    const root = { id: "root", component, children: [], options: [], url: "https://example.com/a.png" };
+    const surface = applyMessages([
+      { version: "1.0", createSurface: { surfaceId: "s", catalogId: catalog.catalogId, components: [root] } },
+    ]).get("s")!;
+    expect(renderSurface(surface).children).toHaveLength(1);
   });
 });

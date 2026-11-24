@@ -9,7 +9,7 @@ Then a tool-calling loop runs on the organization's model, or on its fallback wh
 fails (apps.agent.llm). Built-in tools search the knowledge base again and hand off to a person;
 each workspace adds HTTP tools (apps.agent.models.Tool) that fetch live data from its own
 systems. The model finishes by calling reply_to_visitor with the reply text, the articles worth
-linking, and whether to offer a person; the server turns the last two into an A2UI surface. (A
+linking, whether to offer a person, and a form or cards; the server turns those into A2UI. (A
 final tool works on any tool-capable model, unlike structured-output modes.)
 
 Without a key and model, or when every model fails, it falls back to a help center search.
@@ -30,7 +30,7 @@ from apps.conversations.services import add_message, request_human
 from apps.knowledge.models import Article
 from apps.knowledge.search import passages, search
 
-from . import a2ui, forms, http_tools, mcp_tools
+from . import a2ui, cards, forms, http_tools, mcp_tools
 from .llm import Chain
 from .models import Playbook, Rule, Tool, Turn
 from .providers import ProviderError, parse_arguments
@@ -69,6 +69,7 @@ REPLY_SCHEMA = {
             "description": "True when you could not fully answer and a teammate should take over.",
         },
         "form": forms.FORM_SCHEMA,
+        "cards": cards.CARDS_SCHEMA,
     },
     "required": ["reply", "article_ids", "offer_human"],
 }
@@ -121,6 +122,10 @@ Use the visitor's language. Include links from tool results when they help, as m
 When you need details from the visitor (an email to notify them, an order number, a choice between \
 options), add a form to reply_to_visitor instead of asking them to type it. Their answers come back \
 as their next message.
+
+When a tool result has several facts worth seeing at once, add a card to reply_to_visitor and keep \
+the text short: the main point, not a repeat of the card. A line like [Card shown: ...] in an earlier \
+reply says what its card held. Never write such a line yourself.
 
 A line like [Attached: photo.png] means files were sent. You can't open them: never guess what is in \
 one. If the answer depends on it, ask what it shows or offer a teammate, who can open it.
@@ -203,7 +208,7 @@ def reply(
         # The form serves this instruction; its answers continue it (see actions.submit_form).
         form_meta["instruction"] = instruction
     # Several surfaces can ride on one message; the widget renders each.
-    surfaces = [*(surface or []), *form_ui] or None
+    surfaces = [*cards.attach(result.get("cards") or []), *(surface or []), *form_ui] or None
     message = add_message(conversation, Message.Sender.BOT, result["reply"], a2ui=surfaces, form=form_meta)
     recorder.finish(stage, reply=message, rule=rule, error=error)
     return message
@@ -248,6 +253,8 @@ def chat_history(conversation: Conversation) -> list[dict]:
     turns: list[dict] = []
     for message in recent_messages(conversation):
         message.body = clip(attachments.text_for_ai(message), settings.HISTORY_MESSAGE_CHARS)
+        if shown := cards.note(message.a2ui):
+            message.body = f"{message.body}\n\n{shown}".strip()
         role = "user" if message.sender == Message.Sender.VISITOR else "assistant"
         if not message.body:
             continue
@@ -391,14 +398,16 @@ def tool_definitions(tools: list[Tool], with_playbooks: bool = False) -> list[di
     ]
 
 
-def final_answer(arguments: dict) -> dict:
+def final_answer(arguments: dict, results: dict) -> dict:
+    """`results` holds what the tools returned, by label: the only values a card can show."""
     ids = arguments.get("article_ids") or []
     return {
-        "reply": str(arguments.get("reply", "")).strip(),
+        "reply": cards.without_notes(str(arguments.get("reply", ""))),
         "article_ids": [int(i) for i in ids if isinstance(i, int | str) and str(i).isdigit()],
         "offer_human": bool(arguments.get("offer_human")),
         # None when absent or unusable: a bad form is dropped, never shown broken.
         "form": forms.normalize(arguments.get("form")),
+        "cards": cards.normalize(arguments.get("cards"), results),
     }
 
 
@@ -429,6 +438,7 @@ def run_agent(
     messages: list[dict] = [{"role": "system", "content": prompt, "cached": shared}, *history]
     chain = Chain(workspace.organization.llm_choices)
     trace: list[str] = []
+    results: dict = {}
     result = None
 
     for _ in range(MAX_STEPS):
@@ -445,7 +455,7 @@ def run_agent(
         calls = message.get("tool_calls") or []
         if not calls:
             # Plain text instead of reply_to_visitor: still a usable answer.
-            text = (message.get("content") or "").strip()
+            text = cards.without_notes(message.get("content") or "")
             result = {"reply": text, "article_ids": [], "offer_human": False} if text else None
             break
         # Kept as the model wrote it too, so its next step continues its own reasoning.
@@ -454,7 +464,7 @@ def run_agent(
             name = (call.get("function") or {}).get("name", "")
             arguments = parse_arguments((call.get("function") or {}).get("arguments"))
             if name == REPLY_TOOL:
-                result = final_answer(arguments)
+                result = final_answer(arguments, results)
                 content, is_error = "Sent.", False
             else:
                 recorder.doing("tool", name)
@@ -462,6 +472,11 @@ def run_agent(
                 content, is_error = call_tool(conversation, tools, name, arguments)
                 recorder.tool(name, arguments, content, is_error, started)
                 trace.append(f"{name}({json.dumps(arguments, ensure_ascii=False)}) → {content[:300]}")
+                data = cards.parse(content) if name in tools and not is_error else None
+                if data is not None:
+                    label = f"r{len(results) + 1}"
+                    results[label] = data
+                    content = f"[result {label}]\n{content}"
             messages.append(
                 {
                     "role": "tool",

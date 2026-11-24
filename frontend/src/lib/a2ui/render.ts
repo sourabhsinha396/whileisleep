@@ -1,7 +1,7 @@
 /**
  * Renders an A2UI surface to plain DOM, for the widget (no framework) and the dashboard.
  *
- * Implements part of the basic catalog: Column, Row, Card, Text, Button, TextField,
+ * Implements our catalog (public/a2ui/v1/catalog.json): Column, Row, Card, Text, Button, TextField,
  * CheckBox, ChoicePicker, Divider, Image. Unknown components render nothing, so an agent can never
  * inject markup: every string goes in as text, and image URLs must be http(s).
  * Styling uses `a2ui-*` class names that the host styles.
@@ -55,7 +55,8 @@ function renderComponent(id: string, surface: Surface, options: RenderOptions, d
     case "Column":
     case "Row":
     case "Card": {
-      const node = el("div", `a2ui-${component.component.toLowerCase()}`);
+      const name = `a2ui-${component.component.toLowerCase()}`;
+      const node = el("div", component.variant ? `${name} ${name}-${component.variant}` : name);
       node.append(...children());
       return node;
     }
@@ -71,7 +72,7 @@ function renderComponent(id: string, surface: Surface, options: RenderOptions, d
       if (!/^https?:\/\//.test(url)) return null;
       const node = el("img", "a2ui-image") as HTMLImageElement;
       node.src = url;
-      node.alt = asText(resolve(component.altText ?? component.alt, surface));
+      node.alt = asText(resolve(component.description ?? component.altText ?? component.alt, surface));
       return node;
     }
     case "Button": {

@@ -121,6 +121,14 @@
 .a2ui-column { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .a2ui-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .a2ui-text { margin: 0; }
+.a2ui-card { border-radius: 10px; padding: 8px 12px; font-size: 13px; border: 1px solid rgb(255 255 255 / 0.5); background: rgb(255 255 255 / 0.12); }
+.a2ui-card .a2ui-column { align-items: stretch; }
+.a2ui-text-title { font-weight: 600; }
+.a2ui-text-value { font-weight: 500; text-align: right; margin-left: auto; }
+.a2ui-row-detail, .a2ui-row-step { flex-wrap: nowrap; gap: 12px; }
+.a2ui-row-step { gap: 8px; }
+.a2ui-row-detail > *, .a2ui-row-step > * { min-width: 0; overflow-wrap: anywhere; }
+.a2ui-row-step > :first-child, .a2ui-row-detail > .a2ui-text-label { flex: none; max-width: 50%; }
 .a2ui-button { font-size: 13px; border-radius: 9999px; padding: 5px 12px; border: 1px solid rgb(255 255 255 / 0.5); background: rgb(255 255 255 / 0.12); color: inherit; }
 .a2ui-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
 .a2ui-choices { border: 0; padding: 0; margin: 0; font-size: 13px; }

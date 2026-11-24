@@ -208,12 +208,20 @@ button { font: inherit; }
   margin-bottom: 10px; font-weight: 600; font-size: 13px; }
 .empty { color: var(--od-muted); text-align: center; padding: 28px 12px; }
 
-/* A2UI basic catalog */
+/* A2UI (public/a2ui/v1/catalog.json) */
 .a2ui-surface { margin-top: 8px; }
 .a2ui-column { display: flex; flex-direction: column; gap: 6px; }
 .a2ui-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .a2ui-card { border-radius: 14px; padding: 12px; background: var(--od-surface); box-shadow: 0 0 0 1px var(--od-border); }
 .a2ui-text { margin: 0; }
+.a2ui-text-title { font-weight: 600; }
+.a2ui-text-value { font-weight: 500; text-align: right; margin-left: auto; }
+.a2ui-row-detail, .a2ui-row-step { flex-wrap: nowrap; gap: 12px; }
+.a2ui-row-step { gap: 8px; }
+.a2ui-row-detail > *, .a2ui-row-step > * { min-width: 0; overflow-wrap: anywhere; }
+.a2ui-row-step > :first-child, .a2ui-row-detail > .a2ui-text-label { flex: none; max-width: 50%; }
+.a2ui-text-label, .a2ui-text-todo { color: var(--od-muted); }
+.a2ui-text-done { color: var(--od-success); font-weight: 700; }
 .a2ui-divider { border: 0; border-top: 1px solid var(--od-border); margin: 4px 0; }
 .a2ui-image { max-width: 100%; border-radius: 10px; }
 .a2ui-button { cursor: pointer; border-radius: 999px; padding: 8px 14px; text-align: left; border: 1px solid var(--od-border);

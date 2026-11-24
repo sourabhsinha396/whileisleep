@@ -1,0 +1,355 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://whileisleep.chat/a2ui/v1/catalog.json",
+  "protocolVersion": "1.0",
+  "title": "whileisleep chat catalog",
+  "description": "The components the whileisleep chat widget renders. There are no functions.",
+  "catalogId": "https://whileisleep.chat/a2ui/v1/catalog.json",
+  "components": {
+    "Text": {
+      "type": "object",
+      "properties": {
+        "component": {
+          "const": "Text"
+        },
+        "text": {
+          "$ref": "#/$defs/DynamicString"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "body",
+            "title",
+            "label",
+            "value",
+            "done",
+            "todo"
+          ]
+        }
+      },
+      "required": [
+        "component",
+        "text"
+      ],
+      "description": "Plain text, never read as markdown or HTML."
+    },
+    "Image": {
+      "type": "object",
+      "properties": {
+        "component": {
+          "const": "Image"
+        },
+        "url": {
+          "$ref": "#/$defs/DynamicString"
+        },
+        "description": {
+          "$ref": "#/$defs/DynamicString"
+        }
+      },
+      "required": [
+        "component",
+        "url"
+      ]
+    },
+    "Row": {
+      "type": "object",
+      "properties": {
+        "component": {
+          "const": "Row"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "detail",
+            "step"
+          ]
+        }
+      },
+      "required": [
+        "component",
+        "children"
+      ]
+    },
+    "Column": {
+      "type": "object",
+      "properties": {
+        "component": {
+          "const": "Column"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "component",
+        "children"
+      ]
+    },
+    "Card": {
+      "type": "object",
+      "properties": {
+        "component": {
+          "const": "Card"
+        },
+        "child": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "component",
+        "child"
+      ]
+    },
+    "Divider": {
+      "type": "object",
+      "properties": {
+        "component": {
+          "const": "Divider"
+        }
+      },
+      "required": [
+        "component"
+      ]
+    },
+    "Button": {
+      "type": "object",
+      "properties": {
+        "component": {
+          "const": "Button"
+        },
+        "child": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "default",
+            "primary",
+            "borderless"
+          ]
+        },
+        "action": {
+          "type": "object",
+          "properties": {
+            "event": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "context": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "event"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "component",
+        "child",
+        "action"
+      ]
+    },
+    "TextField": {
+      "type": "object",
+      "properties": {
+        "component": {
+          "const": "TextField"
+        },
+        "label": {
+          "$ref": "#/$defs/DynamicString"
+        },
+        "value": {
+          "$ref": "#/$defs/DynamicString"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "shortText",
+            "longText",
+            "number",
+            "obscured"
+          ]
+        }
+      },
+      "required": [
+        "component",
+        "label",
+        "value"
+      ]
+    },
+    "CheckBox": {
+      "type": "object",
+      "properties": {
+        "component": {
+          "const": "CheckBox"
+        },
+        "label": {
+          "$ref": "#/$defs/DynamicString"
+        },
+        "value": {
+          "$ref": "#/$defs/DynamicBoolean"
+        }
+      },
+      "required": [
+        "component",
+        "label",
+        "value"
+      ]
+    },
+    "ChoicePicker": {
+      "type": "object",
+      "properties": {
+        "component": {
+          "const": "ChoicePicker"
+        },
+        "label": {
+          "$ref": "#/$defs/DynamicString"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "mutuallyExclusive",
+            "multipleSelection"
+          ]
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "$ref": "#/$defs/DynamicString"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "value": {
+          "$ref": "#/$defs/DynamicValue"
+        }
+      },
+      "required": [
+        "component",
+        "label",
+        "options",
+        "value"
+      ],
+      "description": "The value is one string when mutuallyExclusive, and a list of strings when multipleSelection."
+    }
+  },
+  "functions": {},
+  "$defs": {
+    "Binding": {
+      "type": "object",
+      "properties": {
+        "@path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "@path"
+      ],
+      "additionalProperties": false
+    },
+    "DynamicString": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/Binding"
+        }
+      ]
+    },
+    "DynamicBoolean": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "$ref": "#/$defs/Binding"
+        }
+      ]
+    },
+    "DynamicValue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "$ref": "#/$defs/Binding"
+        }
+      ]
+    },
+    "anyComponent": {
+      "oneOf": [
+        {
+          "$ref": "#/components/Text"
+        },
+        {
+          "$ref": "#/components/Image"
+        },
+        {
+          "$ref": "#/components/Row"
+        },
+        {
+          "$ref": "#/components/Column"
+        },
+        {
+          "$ref": "#/components/Card"
+        },
+        {
+          "$ref": "#/components/Divider"
+        },
+        {
+          "$ref": "#/components/Button"
+        },
+        {
+          "$ref": "#/components/TextField"
+        },
+        {
+          "$ref": "#/components/CheckBox"
+        },
+        {
+          "$ref": "#/components/ChoicePicker"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "component"
+      }
+    },
+    "anyFunction": false
+  }
+}

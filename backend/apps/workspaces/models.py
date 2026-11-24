@@ -131,13 +131,21 @@ def unique_slug(name: str, exclude_pk: int | None = None) -> str:
 
 
 class WidgetBackground(models.TextChoices):
-    """The pattern behind the widget's messages. The widget draws it (frontend/src/widget)."""
+    """The pattern on the widget's header. The widget draws it (frontend/src/lib/patterns.ts)."""
 
     PLAIN = "plain"
-    DOTS = "dots"
-    GRID = "grid"
-    STRIPES = "stripes"
     BUBBLES = "bubbles"
+    CONFETTI = "confetti"
+    CHAT = "chat"
+    NIGHT = "night"
+    STARS = "stars"
+    LEAVES = "leaves"
+    PETALS = "petals"
+    WAVES = "waves"
+    HEXAGONS = "hexagons"
+    TRIANGLES = "triangles"
+    DIAMONDS = "diamonds"
+    CIRCUIT = "circuit"
 
 
 class ColorMode(models.TextChoices):

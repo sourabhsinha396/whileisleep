@@ -1,6 +1,8 @@
-"""The widget's background and color mode."""
+"""The widget's header pattern and color mode."""
 
 import pytest
+
+from apps.workspaces.models import WidgetBackground
 
 from .conftest import Api
 
@@ -15,7 +17,7 @@ def test_a_new_workspace_is_plain_and_light(workspace):
     assert (config(workspace)["background"], config(workspace)["color_mode"]) == ("plain", "light")
 
 
-@pytest.mark.parametrize("background", ["plain", "dots", "grid", "stripes", "bubbles"])
+@pytest.mark.parametrize("background", WidgetBackground.values)
 def test_an_owner_picks_a_background(api, workspace, background):
     response = api.patch(f"/workspaces/{workspace.id}", {"background": background})
     assert response.json()["background"] == background
@@ -28,12 +30,14 @@ def test_an_owner_picks_a_color_mode(api, workspace, mode):
     assert config(workspace)["color_mode"] == mode
 
 
-@pytest.mark.parametrize("change", [{"background": "url(x)"}, {"background": ""}, {"color_mode": "pink"}])
+@pytest.mark.parametrize(
+    "change", [{"background": "url(x)"}, {"background": "grid"}, {"background": ""}, {"color_mode": "pink"}]
+)
 def test_anything_else_is_refused(api, workspace, change):
     assert api.patch(f"/workspaces/{workspace.id}", change).status_code == 422
 
 
 def test_nothing_chosen_changes_nothing(api, workspace):
-    api.patch(f"/workspaces/{workspace.id}", {"background": "dots", "color_mode": "dark"})
+    api.patch(f"/workspaces/{workspace.id}", {"background": "night", "color_mode": "dark"})
     body = api.patch(f"/workspaces/{workspace.id}", {"background": None, "color_mode": None, "greeting": "Hey"}).json()
-    assert (body["background"], body["color_mode"], body["greeting"]) == ("dots", "dark", "Hey")
+    assert (body["background"], body["color_mode"], body["greeting"]) == ("night", "dark", "Hey")

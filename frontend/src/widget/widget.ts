@@ -3,6 +3,7 @@ import { applyMessages, type ActionEvent } from "@/lib/a2ui/surface";
 import { type ChatFile, fitted, isPicture } from "@/lib/chat-file";
 import { inkOf, isBright, textOn } from "@/lib/contrast";
 import { openLiveStream, throttle, type LiveStream } from "@/lib/live-stream";
+import { isPattern, patternSvg } from "@/lib/patterns";
 import { isAtEnd, stayAtEnd } from "@/lib/stay-at-end";
 import { formatArticle } from "./article";
 import { WidgetApi, type ChatMessage, type Identity, type Intent, type StreamEvent, type WidgetConfig } from "./api";
@@ -40,9 +41,6 @@ const TYPING_TIMEOUT_MS = 45000;
 // The visitor's typing goes to the team at most this often; a teammate's shows this long.
 const TYPING_SEND_MS = 3000;
 const AGENT_TYPING_MS = 6000;
-
-// Patterns the styles draw; "plain" needs none.
-const BACKGROUNDS = ["dots", "grid", "stripes", "bubbles"];
 
 type Tab = "chat" | "help";
 /** The greeting is shown like a message, but was never sent. */
@@ -264,7 +262,6 @@ export class Widget {
     wrap.className = "od";
     const color = /^#[0-9a-f]{3,8}$/i.test(this.config.color) ? this.config.color : "#2563eb";
     wrap.classList.toggle("bright", isBright(color));
-    if (BACKGROUNDS.includes(this.config.background ?? "")) wrap.classList.add(`bg-${this.config.background}`);
     this.applyMode(wrap);
     wrap.style.setProperty("--od-color", color);
     wrap.style.setProperty("--od-on", textOn(color));
@@ -280,6 +277,7 @@ export class Widget {
     panel.setAttribute("aria-label", `Chat with ${this.config.name}`);
 
     const head = div("head");
+    if (isPattern(this.config.background)) head.innerHTML = patternSvg(this.config.background, "od-pattern");
     const headRow = div("head-row");
     const faces = this.faces();
     const restart = button("icon-btn", "", () => {

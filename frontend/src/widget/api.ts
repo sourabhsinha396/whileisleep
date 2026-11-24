@@ -7,7 +7,7 @@ export interface WidgetConfig {
   website: string;
   max_message_length: number;
   color: string;
-  /** The pattern behind the messages. */
+  /** The header's pattern (lib/patterns.ts). */
   background?: string;
   /** "light", "dark", or "auto" for what the visitor's device is set to. */
   color_mode?: string;

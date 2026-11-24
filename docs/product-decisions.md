@@ -7,7 +7,8 @@ Technical decisions are in [tech-decisions.md](tech-decisions.md).
 ## 2026-11-24: The widget has a background and a color mode
 
 **Decision.** Owners pick the chatbox background, as in Crisp, and one more important option. Color mode (light, dark
-or the visitor's own) was chosen for it.
+or the visitor's own) was chosen for it. The pattern is only on the header, not behind the messages, and is a drawn
+design rather than plain dots or a grid.
 
 ## 2026-11-24: The widget is clean, with minimal text
 

@@ -81,14 +81,8 @@ button { font: inherit; }
 .tabs button:hover { color: var(--od-on); }
 .tabs button[aria-selected="true"] { background: #fff; color: #1b2333; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 
-/* Patterns: on the header in its text colour, behind the messages in the workspace's. */
-.body { --p: color-mix(in srgb, var(--od-ink) 8%, transparent); }
-.head::before { --p: color-mix(in srgb, var(--od-on) 13%, transparent); content: ""; position: absolute; inset: 0; pointer-events: none; }
-.bg-dots .body, .bg-dots .head::before { background: radial-gradient(var(--p) 1.4px, transparent 1.8px) 0 0 / 18px 18px; }
-.bg-grid .body, .bg-grid .head::before { background: linear-gradient(var(--p) 1px, transparent 1px) 0 0 / 22px 22px, linear-gradient(90deg, var(--p) 1px, transparent 1px) 0 0 / 22px 22px; }
-.bg-stripes .body, .bg-stripes .head::before { background: repeating-linear-gradient(45deg, var(--p) 0 1.5px, transparent 1.5px 12px); }
-.bg-bubbles .body, .bg-bubbles .head::before { background: radial-gradient(circle, transparent 6px, var(--p) 6.5px 8px, transparent 8.5px) 0 0 / 44px 44px,
-  radial-gradient(circle, var(--p) 4px, transparent 4.5px) 22px 22px / 44px 44px; }
+/* lib/patterns.ts. */
+.pattern { position: absolute; inset: 0; pointer-events: none; }
 
 /* Messages */
 .body { flex: 1; overflow-y: auto; padding: 16px 14px 8px; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--od-muted) 40%, transparent) transparent; overscroll-behavior: contain; }

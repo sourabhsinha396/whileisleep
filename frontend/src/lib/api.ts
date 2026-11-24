@@ -3,6 +3,7 @@
 import type { A2uiMessage } from "@/lib/a2ui/surface";
 import type { BillingState } from "@/lib/billing";
 import type { ChatFile } from "@/lib/chat-file";
+import type { PatternName } from "@/lib/patterns";
 import type { Action, Condition } from "@/lib/rules";
 
 const TOKEN_KEY = "whileisleep:token";
@@ -77,7 +78,7 @@ export interface User {
   photo_url: string;
 }
 
-export type WidgetBackground = "plain" | "dots" | "grid" | "stripes" | "bubbles";
+export type WidgetBackground = "plain" | PatternName;
 export type ColorMode = "light" | "dark" | "auto";
 
 export interface Workspace {
@@ -88,7 +89,7 @@ export interface Workspace {
   public_key: string;
   website: string;
   color: string;
-  /** The widget's pattern, and light, dark or the visitor's own setting. */
+  /** The widget's header pattern, and light, dark or the visitor's own setting. */
   background: WidgetBackground;
   color_mode: ColorMode;
   logo_url: string;

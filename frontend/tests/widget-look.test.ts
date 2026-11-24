@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { PATTERNS, patternSvg } from "@/lib/patterns";
 import { previewWidget } from "@/widget/preview";
-import { styles } from "@/widget/styles";
 
 const LOOK = { name: "Acme Store", color: "#2563eb", logo_url: "", greeting: "Hi there!", team: [] };
 
@@ -21,13 +21,18 @@ afterEach(() => {
 });
 
 describe("the widget's look", () => {
-  it.each(["dots", "grid", "stripes", "bubbles"])("draws %s", (background) => {
-    expect(show({ background }).look.contains(`bg-${background}`)).toBe(true);
-    expect(styles).toContain(`.bg-${background} .body`);
+  it.each(PATTERNS)("draws %s on the header, and nowhere else", (background) => {
+    const { root } = show({ background });
+    expect(root.querySelectorAll(".pattern")).toHaveLength(1);
+    expect(root.querySelector(".head > .pattern pattern")!.children.length).toBeGreaterThan(1);
   });
 
-  it.each(["plain", undefined, "x y"])("draws nothing for %s", (background) => {
-    expect(Array.from(show({ background }).look).some((name) => name.startsWith("bg-"))).toBe(false);
+  it.each(["plain", undefined, "x y", "constructor"])("draws nothing for %s", (background) => {
+    expect(show({ background }).root.querySelector(".pattern")).toBeNull();
+  });
+
+  it("draws in the text's color, so it suits every widget color", () => {
+    for (const name of PATTERNS) expect(patternSvg(name, "x")).not.toMatch(/#[0-9a-f]{3}|NaN|undefined/i);
   });
 
   it("is light unless it is told otherwise", () => {

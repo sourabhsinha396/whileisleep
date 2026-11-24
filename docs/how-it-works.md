@@ -11,7 +11,7 @@ The technical reference: integration, security and internals. For what the produ
   message, from both sides. Only with your own storage connected. A file's address is random but public, so anyone who
   has the link can open it. Documents open as downloads. One that is never sent is deleted after a day. The AI is told
   a file's name and that it can't open it.
-- **Widget appearance**: color, logo, background pattern, and light, dark or the visitor's own mode. The header shows
+- **Widget appearance**: color, logo, header pattern, and light, dark or the visitor's own mode. The header shows
   the logo and up to three teammates who have a photo, owners first.
 - **Visitors**: who's on your site now, and what page they're on; message them first.
 - **Knowledge base**: articles in the widget's Help tab. They are split into passages and indexed with

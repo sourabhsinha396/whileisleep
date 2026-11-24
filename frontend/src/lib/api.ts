@@ -96,6 +96,8 @@ export interface Workspace {
   is_organization_owner: boolean;
   /** The server has somewhere to store images. */
   uploads_enabled: boolean;
+  /** Articles can have images: the organization connected its own bucket for them. */
+  article_uploads_enabled: boolean;
 }
 
 export interface Organization {
@@ -106,6 +108,17 @@ export interface Organization {
   llm_model: string;
   llm_ready: boolean;
   workspace_count: number;
+}
+
+/** The organization's own bucket. The key itself never comes back. */
+export interface StorageSettings {
+  connected: boolean;
+  endpoint_url: string;
+  region: string;
+  bucket: string;
+  key_hint: string;
+  public_base_url: string;
+  image_count: number;
 }
 
 export interface KeyCheck {

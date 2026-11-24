@@ -2,6 +2,7 @@
 
 import clsx from "clsx";
 import { Plus } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useState } from "react";
 import { ArticleEditor } from "@/components/article-editor";
 import { Button, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
@@ -101,9 +102,23 @@ export default function KnowledgePage() {
                 value={draft.body}
                 onChange={(body) => setDraft((current) => current && { ...current, body })}
                 onUpload={uploadImage}
-                uploadsEnabled={workspace.uploads_enabled}
+                uploadsEnabled={workspace.article_uploads_enabled}
               />
-              <p className="mt-1.5 text-xs text-muted-foreground">Paste or drop images into the text. PNG, JPEG or WebP, up to 5 MB each.</p>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {workspace.article_uploads_enabled ? (
+                  "Paste or drop images into the text. PNG, JPEG or WebP, up to 5 MB each."
+                ) : workspace.is_organization_owner ? (
+                  <>
+                    Want images?{" "}
+                    <Link className="font-medium text-primary-text hover:underline" href={`/w/${workspace.slug}/settings/storage`}>
+                      Connect your storage
+                    </Link>
+                    .
+                  </>
+                ) : (
+                  "Images need your organization's storage; its owner can connect it."
+                )}
+              </p>
             </div>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={draft.published} onChange={(e) => setDraft({ ...draft, published: e.target.checked })} />

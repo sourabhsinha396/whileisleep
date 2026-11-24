@@ -75,9 +75,11 @@ def fake_redis(monkeypatch):
     monkeypatch.setattr(fakeredis.aioredis.FakeWriter, "transport", property(Transport), raising=False)
 
     server = fakeredis.FakeServer()
-    sync = fakeredis.FakeRedis(server=server)
+    # An address, not fakeredis' made-up name: redis-py looks names up in DNS, for over a second.
+    where = {"server": server, "host": "127.0.0.1"}
+    sync = fakeredis.FakeRedis(**where)
     monkeypatch.setattr(bus, "client", lambda: sync)
-    monkeypatch.setattr(bus, "async_client", lambda: fakeredis.FakeAsyncRedis(server=server))
+    monkeypatch.setattr(bus, "async_client", lambda: fakeredis.FakeAsyncRedis(**where))
     return sync
 
 

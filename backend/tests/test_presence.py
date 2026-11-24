@@ -85,7 +85,7 @@ def test_the_inbox_shows_who_is_online(workspace, api, fake_redis):
 
 def stream(server, call, *args):
     async def run():
-        client = fakeredis.FakeAsyncRedis(server=server)
+        client = fakeredis.FakeAsyncRedis(server=server, host="127.0.0.1")
         try:
             return await call(client, *args)
         finally:

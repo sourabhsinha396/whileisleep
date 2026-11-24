@@ -24,7 +24,7 @@ export default function CallbackPage() {
         ? Promise.reject(new Error(back.error))
         : run<{ workspace: string; plugin: string }>("/integrations/callback", { method: "POST", body: back });
     work
-      .then(({ workspace, plugin }) => router.replace(`/w/${workspace}/settings/integrations/${plugin}`))
+      .then(({ workspace, plugin }) => router.replace(`/w/${workspace}/integrations/${plugin}`))
       .catch((e: Error) => setError(e.message));
   }, [router]);
 

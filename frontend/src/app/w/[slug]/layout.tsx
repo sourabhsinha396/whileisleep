@@ -11,7 +11,7 @@ import { WorkspaceContext } from "@/components/workspace-context";
 import { api, getToken, setToken, type User, type Workspace } from "@/lib/api";
 import { sidebarNotice } from "@/lib/billing";
 import { textOn } from "@/lib/contrast";
-import { isActive, MAIN_NAV, type NavItem, SETTINGS_LINK } from "@/lib/nav";
+import { isActive, mainNav, type NavItem, SETTINGS_LINK } from "@/lib/nav";
 import { useDismiss } from "@/lib/use-dismiss";
 import { usePoll } from "@/lib/use-poll";
 
@@ -159,7 +159,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           </div>
 
           <nav aria-label="Workspace" className="mt-5 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-px">
-            {MAIN_NAV.map((item) => (
+            {mainNav(workspace).map((item) => (
               <SidebarLink key={item.href} item={item} slug={slug} pathname={pathname} count={item.href === "inbox" ? workspace.open_count : 0} />
             ))}
             <div className="mt-auto pt-4">

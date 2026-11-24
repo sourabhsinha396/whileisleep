@@ -38,7 +38,7 @@ function List() {
         return (
           <li key={integration.plugin}>
             <Link
-              href={`/w/${workspace.slug}/settings/integrations/${integration.plugin}`}
+              href={`/w/${workspace.slug}/integrations/${integration.plugin}`}
               className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-muted/60"
             >
               <PluginIcon svg={integration.icon} />

@@ -4,7 +4,7 @@ A chat that needs a person becomes a thread in your Slack channel. What your tea
 
 ## Connect it
 
-1. Open **Settings › Integrations › Slack** and press **Connect Slack**. Slack asks which workspace to use.
+1. Open **Integrations › Slack** and press **Connect Slack**. Slack asks which workspace to use.
 2. Pick a channel, and press **Save and send a test**. For a private channel, invite whileisleep to it in Slack first.
 
 Each whileisleep workspace has its own connection, so two sites can post to two channels of the same Slack.

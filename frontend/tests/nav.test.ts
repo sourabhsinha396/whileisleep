@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { AI_NAV, isActive, MAIN_NAV, type NavGroup, SETTINGS_LINK, settingsNav } from "@/lib/nav";
+import { AI_NAV, isActive, mainNav, type NavGroup, SETTINGS_LINK, settingsNav } from "@/lib/nav";
 import nextConfig from "../next.config";
 
 const hrefs = (groups: NavGroup[]) => groups.flatMap((g) => g.items.map((i) => i.href));
@@ -13,17 +13,17 @@ const AGENT = { role: "agent", is_organization_owner: false, billing_state: "tri
 
 describe("navigation", () => {
   it("only links to pages that exist", () => {
-    const all = [...MAIN_NAV.map((i) => i.href), SETTINGS_LINK.href, ...hrefs(AI_NAV), ...hrefs(settingsNav(ORG_OWNER))];
+    const all = [...mainNav(ORG_OWNER).map((i) => i.href), SETTINGS_LINK.href, ...hrefs(AI_NAV), ...hrefs(settingsNav(ORG_OWNER))];
     expect(all.filter((href) => !hasPage(href))).toEqual([]);
   });
 
   it("keeps daily work in the sidebar and settings behind one entry", () => {
-    expect(MAIN_NAV.map((i) => i.label)).toEqual(["Inbox", "Visitors", "Knowledge base", "AI agent"]);
+    expect(mainNav(OWNER).map((i) => i.label)).toEqual(["Inbox", "Visitors", "Knowledge base", "AI agent", "Integrations"]);
     expect(SETTINGS_LINK.label).toBe("Settings");
   });
 
   it("opens each area on a page its own panel lists", () => {
-    expect(hrefs(AI_NAV)).toContain(MAIN_NAV.find((i) => i.area === "ai")?.href);
+    expect(hrefs(AI_NAV)).toContain(mainNav(AGENT).find((i) => i.area === "ai")?.href);
     for (const person of [ORG_OWNER, OWNER, AGENT]) expect(hrefs(settingsNav(person))).toContain(SETTINGS_LINK.href);
   });
 });
@@ -43,10 +43,10 @@ describe("settings by role", () => {
   });
 
   it("shows integrations only to workspace owners, on every page of theirs", () => {
-    expect(hrefs(settingsNav(OWNER))).toContain("settings/integrations");
-    expect(hrefs(settingsNav(AGENT))).not.toContain("settings/integrations");
-    const item = settingsNav(OWNER)[0].items.find((i) => i.href === "settings/integrations")!;
-    expect(isActive("/w/acme/settings/integrations/slack", "acme", item)).toBe(true);
+    expect(mainNav(AGENT).map((i) => i.label)).not.toContain("Integrations");
+    const item = mainNav(OWNER).find((i) => i.href === "integrations")!;
+    expect(isActive("/w/acme/integrations/slack", "acme", item)).toBe(true);
+    expect(isActive("/w/acme/integrations/slack", "acme", SETTINGS_LINK)).toBe(false);
   });
 
   it("shows the identity secret only to workspace owners", () => {
@@ -56,8 +56,8 @@ describe("settings by role", () => {
 });
 
 describe("isActive", () => {
-  const ai = MAIN_NAV.find((i) => i.area === "ai")!;
-  const inbox = MAIN_NAV[0];
+  const ai = mainNav(AGENT).find((i) => i.area === "ai")!;
+  const inbox = mainNav(AGENT)[0];
 
   it("marks an area on any of its pages", () => {
     expect(isActive("/w/acme/ai/rules", "acme", ai)).toBe(true);

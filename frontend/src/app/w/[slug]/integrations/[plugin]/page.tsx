@@ -27,7 +27,7 @@ export default function IntegrationPage() {
     <>
       <PageHeader title={data?.name ?? "Integration"} description={data?.description}>
         <Link
-          href={`/w/${workspace.slug}/settings/integrations`}
+          href={`/w/${workspace.slug}/integrations`}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft size={15} /> All integrations

@@ -2,7 +2,7 @@
 
 Tell any system what happens in your chats, and let it answer them. Works with your own server, Zapier, Make and n8n.
 
-Connect one in **Settings › Integrations › Webhooks**: enter an `https://` address, choose what to send, and save. Saving
+Connect one in **Integrations › Webhooks**: enter an `https://` address, choose what to send, and save. Saving
 sends a `test` event; if your endpoint doesn't answer with a 2xx status, nothing is saved. A workspace can have five
 endpoints, each with its own events and secret.
 

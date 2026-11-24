@@ -9,6 +9,12 @@ Technical decisions are in [tech-decisions.md](tech-decisions.md).
 **Decision.** Slack comes first, then webhooks: like Slack, but general, for any system. No Telegram. Later ones are
 chosen by what is used most at Fin, Intercom and Crisp.
 
+## 2026-11-24: Integrations are in the main sidebar
+
+**Decision.** Integrations get their own entry in the main sidebar, not one under Settings.
+
+**Why.** They belong to one workspace, like everything else in that sidebar.
+
 ## 2026-11-24: Answers from real data work with any system
 
 **Decision.** Integrations don't supply customer data, so there is no Shopify or Stripe plugin for it. Questions such as

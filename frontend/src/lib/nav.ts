@@ -37,13 +37,17 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-/** What you work with every day. */
-export const MAIN_NAV: NavItem[] = [
-  { href: "inbox", label: "Inbox", icon: Inbox },
-  { href: "visitors", label: "Visitors", icon: Eye },
-  { href: "knowledge", label: "Knowledge base", icon: BookOpen },
-  { href: "ai/behavior", label: "AI agent", icon: Bot, area: "ai" },
-];
+/** The sidebar. Integrations are for workspace owners: a webhook's address can be a secret. */
+export function mainNav(workspace: Pick<Workspace, "role">): NavItem[] {
+  const items: NavItem[] = [
+    { href: "inbox", label: "Inbox", icon: Inbox },
+    { href: "visitors", label: "Visitors", icon: Eye },
+    { href: "knowledge", label: "Knowledge base", icon: BookOpen },
+    { href: "ai/behavior", label: "AI agent", icon: Bot, area: "ai" },
+  ];
+  if (workspace.role === "owner") items.push({ href: "integrations", label: "Integrations", icon: Blocks });
+  return items;
+}
 
 /** What you set up once, pinned to the bottom of the sidebar. */
 export const SETTINGS_LINK: NavItem = { href: "settings/general", label: "Settings", icon: Settings, area: "settings" };
@@ -91,7 +95,6 @@ export function settingsNav(workspace: Pick<Workspace, "role" | "is_organization
     },
   ];
   if (workspace.role === "owner") {
-    groups[0].items.push({ href: "settings/integrations", label: "Integrations", icon: Blocks, area: "settings/integrations" });
     groups[1].items.push({ href: "settings/identity", label: "Verified identity", icon: ShieldCheck });
   }
   if (workspace.is_organization_owner) {

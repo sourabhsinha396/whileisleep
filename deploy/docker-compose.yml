@@ -9,7 +9,8 @@
 #   caddy ─┬─ web (Django API, WSGI) ───┬─ db (Postgres: everything that must survive)
 #          ├─ stream (live updates, ASGI) ┴─ redis (the reply queue, counters, locks,
 #          └─ frontend (Next.js)               presence, and pub/sub for live updates)
-#                                              └─ worker (writes AI replies) and beat (scheduler)
+#                                              └─ worker (writes AI replies), integrations (Slack,
+#                                                 webhooks) and beat (scheduler)
 
 # Not "whileisleep": that is the development stack in backend/, and sharing the name would
 # share its database volume.
@@ -108,6 +109,19 @@ services:
         condition: service_started
     # A reply in progress gets time to finish before the container is stopped.
     stop_grace_period: 150s
+
+  # Talks to outside services for the integrations (Slack, webhooks). They can be slow, so it is
+  # not the worker that writes AI replies. At most DELIVERY_THREADS (8) of the 16 send events; the
+  # rest are for replies coming in from Slack and for the dashboard.
+  integrations:
+    <<: *backend
+    command: celery -A whileisleep worker -Q integrations,deliveries --pool threads --concurrency 16 --loglevel info
+    depends_on:
+      release:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    stop_grace_period: 60s
 
   # The scheduler: once a minute it asks the worker to look for visitor messages whose
   # reply job was lost. Exactly one of these, never scaled.

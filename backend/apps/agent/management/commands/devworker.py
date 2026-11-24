@@ -11,6 +11,8 @@ def run_worker():
     app.worker_main(
         [
             "worker",
+            "-Q",
+            "celery,integrations,deliveries",
             "--pool",
             "threads",
             "--concurrency",

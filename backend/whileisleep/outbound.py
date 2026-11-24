@@ -66,8 +66,9 @@ def pin(url: httpx.URL, address: str) -> tuple[httpx.URL, dict, dict]:
     return url.copy_with(host=address), {"Host": host_header}, {"sni_hostname": url.host}
 
 
-def request(method: str, url: str, *, headers: dict | None = None, timeout: float = 10, **kwargs) -> httpx.Response:
-    """Like httpx.request, for a URL we don't control. Raises BlockedAddress or httpx.HTTPError."""
+def prepare(url: str, headers: dict | None = None) -> tuple[httpx.URL, dict, dict]:
+    """(url, headers, httpx extensions) for a request to a URL we don't control, after checking
+    it. Raises BlockedAddress or httpx.HTTPError."""
     try:
         target = httpx.URL(url)
     except httpx.InvalidURL as error:
@@ -81,6 +82,12 @@ def request(method: str, url: str, *, headers: dict | None = None, timeout: floa
         address = public_address(target.host, target.port or DEFAULT_PORTS[target.scheme])
         target, host_headers, extensions = pin(target, address)
         headers = {k: v for k, v in headers.items() if k.lower() != "host"} | host_headers
+    return target, headers, extensions
+
+
+def request(method: str, url: str, *, headers: dict | None = None, timeout: float = 10, **kwargs) -> httpx.Response:
+    """Like httpx.request, for a URL we don't control. Raises BlockedAddress or httpx.HTTPError."""
+    target, headers, extensions = prepare(url, headers)
     return send(method, target, headers=headers, timeout=timeout, extensions=extensions, **kwargs)
 
 

@@ -3,13 +3,10 @@
 import json
 from urllib.parse import urlencode
 
-import httpx
-
-from apps.integrations.sdk import PluginError
+from apps.integrations.sdk import PluginError, Unreachable, request
 
 API = "https://slack.com/api/"
 AUTHORIZE = "https://slack.com/oauth/v2/authorize"
-TIMEOUT_SECONDS = 10
 # Enough channels to choose from; a Slack with more lists the first ones.
 CHANNEL_PAGES = 5
 
@@ -48,9 +45,9 @@ def call(method: str, token: str = "", **params) -> dict:
     }
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     try:
-        response = httpx.post(API + method, data=data, headers=headers, timeout=TIMEOUT_SECONDS)
-    except httpx.HTTPError as error:
-        raise SlackError(message=f"Slack couldn't be reached ({type(error).__name__}).", retry=True) from error
+        response = request("POST", API + method, data=data, headers=headers)
+    except Unreachable as error:
+        raise SlackError(message="Slack isn't answering.", retry=True, after=error.after) from error
     if response.status_code == 429:
         after = response.headers.get("Retry-After", "")
         raise SlackError("ratelimited", "Slack is busy.", retry=True, after=int(after) if after.isdigit() else None)

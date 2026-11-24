@@ -5,6 +5,7 @@ write down what to do and let a worker do it.
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from django.dispatch import Signal
 
@@ -26,6 +27,9 @@ class Event:
     # What caused it, when that was not the widget or the dashboard ("integration:12"), so a
     # service isn't told about what it just told us.
     origin: str = ""
+    # Once it is being delivered: the same each time it is tried, and when it happened.
+    id: str = ""
+    at: datetime | None = None
 
 
 # Sent with event=Event(...).

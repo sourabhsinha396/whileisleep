@@ -32,6 +32,8 @@ class ExamplePlugin(Plugin):
         Field("room", "Room", kind="select"),
         Field("mode", "Mode", kind="choice", options=(Option("all", "All"), Option("few", "Few")), default="all"),
         Field("prefix", "Prefix", required=False),
+        Field("password", "Password", kind="secret", required=False),
+        Field("days", "Days", kind="choices", options=(Option("mon", "Mon"), Option("tue", "Tue")), required=False),
     )
 
     # The service: what arrived there, and the errors to fail with next.
@@ -54,8 +56,8 @@ class ExamplePlugin(Plugin):
             raise self.errors.pop(0)
         return [Option("r1", "Room one"), Option("r2", "Room two")]
 
-    def check_settings(self, integration, values):
-        if values["prefix"] == "bad":
+    def check_settings(self, integration):
+        if integration.config["prefix"] == "bad":
             raise PluginError("Not that prefix.")
 
     def wants(self, integration, event):

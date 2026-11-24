@@ -146,6 +146,11 @@ class Api:
     def delete(self, path):
         return self.request("delete", path)
 
+    def job(self, response) -> dict:
+        """How a job that a request started went: {"done", "error", "result"}."""
+        assert response.status_code == 200, response.content
+        return self.get(f"/integrations/jobs/{response.json()['job']}").json()
+
 
 @pytest.fixture
 def membership(db):

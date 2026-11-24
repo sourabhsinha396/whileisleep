@@ -4,8 +4,12 @@ A plugin connects workspaces to one outside service. It says what it is and what
 dashboard draws its pages from that, so a plugin has no frontend code. It is told what happens
 in conversations (`wants`, `deliver`) and may act on what the service sends (`receive`, `handle`).
 
-One instance serves every workspace: keep nothing on `self`. What belongs to a workspace is in
-its Integration.
+One instance serves every workspace, in many threads: keep nothing on `self`. What belongs to a
+workspace is in its Integration.
+
+Only these run in a worker, where waiting for the service is fine (with sdk.request, which never
+waits long): connect, finish_authorization, disconnect, options, check_settings, deliver, handle.
+Everything else runs while someone waits, and must not.
 """
 
 from collections.abc import Mapping
@@ -44,8 +48,10 @@ class Option:
 class Field:
     """Something the owner fills in.
 
-    - "text", "secret": typed
+    - "text", "secret": typed. A secret of the settings is kept encrypted, in the Integration's
+      credentials, and never shown again; leaving it empty keeps it.
     - "choice": one of `options`, all shown
+    - "choices": any of `options`, as their values with commas between
     - "select": one of what `Plugin.options` returns, in a dropdown
     """
 
@@ -57,6 +63,16 @@ class Field:
     options: tuple[Option, ...] = ()
     default: str = ""
     required: bool = True
+
+
+@dataclass(frozen=True)
+class Shown:
+    """Something owners need to copy into the service. Only they see it."""
+
+    label: str
+    value: str
+    secret: bool = False
+    help: str = ""
 
 
 @dataclass(frozen=True)
@@ -108,6 +124,10 @@ class Plugin:
     # What an owner chooses once it is connected.
     settings_fields: tuple[Field, ...] = ()
     save_label = "Save"
+    # Whether a workspace may have several connections, each with its own `account_id`.
+    many = False
+    # Whether owners see what was sent lately, and can send it again.
+    keeps_log = False
 
     # --- The server ---
 
@@ -142,7 +162,8 @@ class Plugin:
         raise NotImplementedError
 
     def disconnect(self, integration) -> None:
-        """About to be removed. Nothing may depend on this working."""
+        """Just removed: `integration` is a copy with its account and credentials, no longer in the
+        database. Nothing may depend on this working."""
 
     # --- Settings ---
 
@@ -150,8 +171,11 @@ class Plugin:
         """What a "select" offers, asked from the service."""
         return []
 
-    def check_settings(self, integration, values: dict) -> None:
-        """The owner saved these. Raise PluginError to refuse them."""
+    def shown(self, integration) -> list[Shown]:
+        return []
+
+    def check_settings(self, integration) -> None:
+        """Its new `config` (and secrets) are about to be saved. Raise PluginError to refuse them."""
 
     # --- From whileisleep to the service ---
 
@@ -160,15 +184,15 @@ class Plugin:
         someone waits: look at the database at most, never at the network."""
         return False
 
-    def deliver(self, integration, event) -> None:
+    def deliver(self, integration, event) -> str | None:
         """Tell the service, in a worker. A conversation's events come one at a time, in order.
-        Raise PluginError when it didn't work."""
+        Raise PluginError when it didn't work. What it returns is shown in the log, if there is one."""
 
     # --- From the service to whileisleep ---
 
     def receive(self, request: WebhookRequest) -> Received:
-        """POST /api/v1/integrations/<id>/webhook. Check that it is genuine, say what to do, and
-        return within a second or two."""
+        """POST /api/v1/integrations/<id>/webhook. Check that it is genuine and say what to do. Runs
+        in a web request: never call the service here."""
         raise BadRequest("Not found.", 404)
 
     def handle(self, payload: dict) -> None:

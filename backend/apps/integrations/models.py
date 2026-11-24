@@ -28,7 +28,9 @@ class Integration(models.Model):
     class Meta:
         ordering = ["plugin"]
         indexes = [models.Index(fields=["plugin", "account_id"], name="integration_account")]
-        constraints = [models.UniqueConstraint(fields=["workspace", "plugin"], name="one_integration_per_plugin")]
+        constraints = [
+            models.UniqueConstraint(fields=["workspace", "plugin", "account_id"], name="one_integration_per_account")
+        ]
 
     def __str__(self):
         return f"{self.plugin} of {self.workspace}"
@@ -59,12 +61,13 @@ class Thread(models.Model):
 
 
 class Delivery(models.Model):
-    """One event on its way to an integration. Written with the event, sent by a worker, and
-    deleted once it has arrived."""
+    """One event on its way to an integration. Written with the event, and sent by a worker. What
+    arrived is deleted, or kept a few days for a plugin that keeps a log."""
 
     class Status(models.TextChoices):
         PENDING = "pending"
         FAILED = "failed"  # given up on; kept a while to see what went wrong
+        SENT = "sent"
 
     integration = models.ForeignKey(Integration, on_delete=models.CASCADE, related_name="deliveries")
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="+")
@@ -76,7 +79,8 @@ class Delivery(models.Model):
     status = models.CharField(max_length=10, choices=Status, default=Status.PENDING)
     attempts = models.PositiveSmallIntegerField(default=0)
     due_at = models.DateTimeField(default=timezone.now)
-    error = models.TextField(blank=True)
+    # How it went: the service's answer, or what is wrong.
+    detail = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

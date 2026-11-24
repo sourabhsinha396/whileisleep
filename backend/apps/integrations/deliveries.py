@@ -6,6 +6,7 @@ holds up a chat, and nothing is lost if the queue is: a sweep finds what is stil
 """
 
 import logging
+import time
 from datetime import timedelta
 from functools import partial
 
@@ -22,7 +23,9 @@ from .plugin import PluginError
 log = logging.getLogger(__name__)
 
 # Seconds before each new try.
-RETRY_DELAYS = (10, 60, 300, 1800)
+RETRY_DELAYS = (10, 60, 300, 1800, 7200)
+# How long one job sends before it lets others have the thread.
+TURN_SECONDS = 20
 
 
 @receiver(happened)
@@ -66,7 +69,8 @@ def send_later(integration_id: int, conversation_id: int, countdown: int = 0) ->
 
 def send_pending(integration_id: int, conversation_id: int) -> int | None:
     """Sends a conversation's pending events, oldest first. After one that should be tried again
-    the rest wait behind it: returns in how many seconds."""
+    the rest wait behind it: returns in how many seconds. Also returns when its turn is over."""
+    ends = time.monotonic() + TURN_SECONDS
     while True:
         delivery = (
             Delivery.objects.filter(
@@ -83,6 +87,8 @@ def send_pending(integration_id: int, conversation_id: int) -> int | None:
         wait = send(delivery)
         if wait is not None:
             return wait
+        if time.monotonic() > ends:
+            return 0
 
 
 def send(delivery: Delivery) -> int | None:
@@ -92,15 +98,27 @@ def send(delivery: Delivery) -> int | None:
         # Taken off this server since.
         delivery.delete()
         return None
-    event = Event(delivery.event, delivery.conversation, message=delivery.message, by=delivery.by, data=delivery.data)
+    event = Event(
+        delivery.event,
+        delivery.conversation,
+        message=delivery.message,
+        by=delivery.by,
+        data=delivery.data,
+        id=str(delivery.pk),
+        at=delivery.created_at,
+    )
     try:
-        plugin.deliver(integration, event)
+        detail = plugin.deliver(integration, event)
     except PluginError as error:
         return failed(delivery, str(error), error.retry, error.after)
     except Exception:
         log.exception("Plugin %s failed to deliver %s", plugin.id, delivery.event)
         return failed(delivery, f"{plugin.name} failed unexpectedly. The server's log says why.", retry=True)
-    delivery.delete()
+    if plugin.keeps_log:
+        delivery.status, delivery.detail = Delivery.Status.SENT, detail or ""
+        delivery.save(update_fields=["status", "detail"])
+    else:
+        delivery.delete()
     if integration.last_error:
         Integration.objects.filter(pk=integration.pk).update(last_error="")
     return None
@@ -108,14 +126,14 @@ def send(delivery: Delivery) -> int | None:
 
 def failed(delivery: Delivery, error: str, retry: bool, after: int | None = None) -> int | None:
     delivery.attempts += 1
-    delivery.error = error
+    delivery.detail = error
     if retry and delivery.attempts <= len(RETRY_DELAYS):
         # A busy service says when; never sooner than that, nor later than our longest wait.
         wait = min(max(RETRY_DELAYS[delivery.attempts - 1], after or 0), RETRY_DELAYS[-1])
         delivery.due_at = timezone.now() + timedelta(seconds=wait)
-        delivery.save(update_fields=["attempts", "error", "due_at"])
+        delivery.save(update_fields=["attempts", "detail", "due_at"])
         return wait
     delivery.status = Delivery.Status.FAILED
-    delivery.save(update_fields=["attempts", "error", "status"])
+    delivery.save(update_fields=["attempts", "detail", "status"])
     Integration.objects.filter(pk=delivery.integration_id).update(last_error=error)
     return None

@@ -135,8 +135,7 @@ class SlackPlugin(Plugin):
 
     def disconnect(self, integration: Integration) -> None:
         # The token is the Slack's, not the workspace's: another workspace may still use it.
-        others = integrations_of_account(self, integration.account_id).exclude(pk=integration.pk)
-        if not others.exists():
+        if not integrations_of_account(self, integration.account_id).exists():
             client.call("auth.revoke", self.token(integration))
 
     def token(self, integration: Integration) -> str:
@@ -150,7 +149,8 @@ class SlackPlugin(Plugin):
             for channel in client.channels(self.token(integration))
         ]
 
-    def check_settings(self, integration: Integration, values: dict) -> None:
+    def check_settings(self, integration: Integration) -> None:
+        values = integration.config
         client.join(self.token(integration), values["channel"])
         which = "Every chat" if values["chats"] == "all" else "Chats that need a person"
         name = text.escape(integration.workspace.name)

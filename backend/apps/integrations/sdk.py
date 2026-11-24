@@ -8,8 +8,8 @@ from apps.conversations import attributes
 from apps.conversations.models import Conversation, Message
 from apps.conversations.services import reply_as, set_human_requested, set_status
 from apps.conversations.signals import AI_RESUMED, MESSAGE, PERSON_REQUESTED, REOPENED, RESOLVED, Event
-from whileisleep import outbound
 
+from .http import Unreachable, request
 from .models import Delivery, Integration, Thread
 from .plugin import (
     BadRequest,
@@ -20,6 +20,7 @@ from .plugin import (
     Plugin,
     PluginError,
     Received,
+    Shown,
     WebhookRequest,
 )
 
@@ -41,7 +42,9 @@ __all__ = [
     "Plugin",
     "PluginError",
     "Received",
+    "Shown",
     "Thread",
+    "Unreachable",
     "WebhookRequest",
     "add_note",
     "display_name",
@@ -52,9 +55,9 @@ __all__ = [
     "integrations_of_account",
     "link_thread",
     "needs_person",
-    "outbound",
     "reopen",
     "reply",
+    "request",
     "resolve",
     "teammate",
     "thread_expected",

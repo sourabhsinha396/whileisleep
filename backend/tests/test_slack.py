@@ -137,8 +137,8 @@ def test_connecting_goes_through_slack_s_own_page(api, base, workspace, slack, m
     assert query["redirect_uri"] == "https://chat.example.com/integrations/callback"
     assert set(query["scope"].split(",")) == set(SCOPES)
 
-    back = api.post("/integrations/callback", {"code": "c1", "state": query["state"]})
-    assert back.json() == {"workspace": workspace.slug, "plugin": "slack"}
+    back = api.job(api.post("/integrations/callback", {"code": "c1", "state": query["state"]}))["result"]
+    assert (back["workspace"], back["plugin"]) == (workspace.slug, "slack")
     (sent,) = slack.sent("oauth.v2.access")
     assert sent["code"] == "c1" and sent["client_secret"] == "secret-1"
     row = Integration.objects.get()
@@ -180,7 +180,7 @@ def test_someone_who_lost_the_workspace_meanwhile_cannot_finish(api, base, membe
 def test_a_connection_that_does_not_work_is_not_saved(api, base, slack, answer):
     state = start(api, base)["state"]
     slack.errors["oauth.v2.access"] = [answer]
-    assert api.post("/integrations/callback", {"code": "c", "state": state}).status_code == 400
+    assert api.job(api.post("/integrations/callback", {"code": "c", "state": state}))["error"]
     assert not Integration.objects.exists()
 
 
@@ -203,11 +203,14 @@ def test_the_manifest_asks_for_what_the_code_needs():
 # --- Choosing the channel ---
 
 
-def test_the_channels_are_offered_by_name(api, base, integration):
-    detail = api.get(f"{base}/slack").json()
-    (channel,) = [f for f in detail["settings_fields"] if f["name"] == "channel"]
-    assert [o["label"] for o in channel["options"]] == ["#general", "#support", "private: vip"]
-    assert detail["save_label"] == "Save and send a test"
+@pytest.fixture
+def one(base, integration):
+    return f"{base}/slack/{integration.pk}"
+
+
+def test_the_channels_are_offered_by_name(api, one):
+    options = api.job(api.post(f"{one}/options"))["result"]["options"]
+    assert [o["label"] for o in options["channel"]] == ["#general", "#support", "private: vip"]
 
 
 def test_more_channels_than_a_page(integration, slack):
@@ -222,24 +225,25 @@ def test_more_channels_than_a_page(integration, slack):
     assert slack.sent("conversations.list")[1]["cursor"] == "n"
 
 
-def test_saving_joins_the_channel_and_sends_a_test(api, base, integration, slack):
+def test_saving_joins_the_channel_and_sends_a_test(api, one, integration, slack):
     values = {"channel": "C1", "chats": "all", "mention": "here"}
-    assert api.put(f"{base}/slack", {"values": values}).json()["settings"] == values
+    assert api.job(api.put(one, {"values": values}))["error"] == ""
+    integration.refresh_from_db()
+    assert integration.config == values
     assert slack.sent("conversations.join") == [{"channel": "C1"}]
     (test,) = slack.sent("chat.postMessage")
     assert test["channel"] == "C1" and integration.workspace.name in test["text"]
     assert {token for _, _, token in slack.calls} == {"xoxb-1"}
 
 
-def test_a_private_channel_needs_no_joining(api, base, integration, slack):
+def test_a_private_channel_needs_no_joining(api, one, slack):
     slack.errors["conversations.join"] = ["method_not_supported_for_channel_type"]
-    assert api.put(f"{base}/slack", {"values": {"channel": "G1"}}).status_code == 200
+    assert api.job(api.put(one, {"values": {"channel": "G1"}}))["error"] == ""
 
 
-def test_a_channel_apps_cannot_post_in_is_not_saved(api, base, integration, slack):
+def test_a_channel_apps_cannot_post_in_is_not_saved(api, one, integration, slack):
     slack.errors["chat.postMessage"] = ["restricted_action_read_only_channel"]
-    response = api.put(f"{base}/slack", {"values": {"channel": "C1"}})
-    assert response.status_code == 400 and "doesn't let apps post" in response.json()["detail"]
+    assert "doesn't let apps post" in api.job(api.put(one, {"values": {"channel": "C1"}}))["error"]
     integration.refresh_from_db()
     assert integration.config["channel"] == "C2"
 
@@ -708,12 +712,12 @@ def test_which_failures_are_worth_another_try(integration, conversation, slack, 
     assert bool(integration.last_error) is not retried
 
 
-def test_the_owner_sees_why_it_stopped(api, base, integration, conversation, slack):
+def test_the_owner_sees_why_it_stopped(api, base, one, integration, conversation, slack):
     slack.errors["chat.postMessage"] = ["is_archived"]
     request_human(conversation)
-    assert api.get(f"{base}/slack").json()["last_error"] == "The channel is archived. Pick another."
-    api.put(f"{base}/slack", {"values": {"channel": "C1"}})
-    assert api.get(f"{base}/slack").json()["last_error"] == ""
+    assert api.get(base).json()[0]["connections"][0]["last_error"] == "The channel is archived. Pick another."
+    api.put(one, {"values": {"channel": "C1"}})
+    assert api.get(base).json()[0]["connections"][0]["last_error"] == ""
 
 
 def test_a_thread_in_a_channel_that_is_gone_moves_to_the_new_one(thread, conversation, slack, integration):
@@ -752,9 +756,9 @@ def test_disconnecting_gives_the_token_back_unless_another_workspace_uses_it(api
     other = Integration.objects.create(
         workspace=WorkspaceFactory(), plugin="slack", account_id=TEAM, credentials={"token": "xoxb-1"}
     )
-    api.delete(f"{base}/slack")
+    api.delete(f"{base}/slack/{integration.pk}")
     assert "auth.revoke" not in slack.methods
     other.workspace = integration.workspace
     other.save()
-    api.delete(f"{base}/slack")
-    assert "auth.revoke" in slack.methods
+    api.delete(f"{base}/slack/{other.pk}")
+    assert "auth.revoke" in slack.methods and slack.calls[-1][2] == "xoxb-1"

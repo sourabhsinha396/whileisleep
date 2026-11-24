@@ -180,6 +180,15 @@ CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 900}
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_TIMEZONE = "UTC"
+# Integrations wait on outside services that may be slow, so they have queues of their own, and in
+# production a worker of their own: an AI reply never waits for one (apps/integrations/tasks.py).
+CELERY_TASK_ROUTES = {
+    "apps.integrations.tasks.deliver": {"queue": "deliveries"},
+    "apps.integrations.tasks.*": {"queue": "integrations"},
+}
+# How many of that worker's threads may be sending events at once; the rest are for replies coming
+# in and for the dashboard. Half of its --concurrency.
+DELIVERY_THREADS = 8
 # Run by `celery beat` (one per installation).
 CELERY_BEAT_SCHEDULE = {
     # Picks up visitor messages whose reply job was lost; see apps/agent/tasks.py.

@@ -10,6 +10,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from apps.agent import actions, pipeline
+from apps.knowledge.chunking import without_images
 from apps.knowledge.models import Article
 from apps.knowledge.search import search
 from apps.realtime import events, presence
@@ -172,7 +173,7 @@ def articles(request, key: str, q: str = ""):
         if q.strip()
         else Article.objects.filter(workspace=workspace, published=True)[:20]
     )
-    return [{"id": a.id, "title": a.title, "excerpt": a.body[:160]} for a in rows]
+    return [{"id": a.id, "title": a.title, "excerpt": without_images(a.body).strip()[:160]} for a in rows]
 
 
 @router.get("/{key}/articles/{article_id}", response=ArticleOut)

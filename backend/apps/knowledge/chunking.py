@@ -14,6 +14,7 @@ from dataclasses import dataclass
 # About 300 tokens. Small enough that several fit a prompt, big enough to hold an answer.
 MAX_CHARS = 1200
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
+IMAGE = re.compile(r"!\[([^\]]*)\]\([^)\s]+\)")
 SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 
 
@@ -24,8 +25,15 @@ class Piece:
     text: str
 
 
+def without_images(text: str) -> str:
+    """Pictures as their descriptions: an address means nothing to the AI or to search, and
+    costs tokens."""
+    return IMAGE.sub(lambda match: f"[Image: {match[1].strip()}]" if match[1].strip() else "", text or "")
+
+
 def split(body: str) -> list[Piece]:
     """The article's body as passages, in reading order."""
+    body = without_images(body)
     pieces: list[Piece] = []
     path: list[tuple[int, str]] = []
     paragraphs: list[str] = []

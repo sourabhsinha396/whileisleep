@@ -13,8 +13,12 @@ The technical reference: integration, security and internals. For what the produ
 - **Images**: the workspace's logo, teammates' photos and article pictures. Every upload is checked and saved
   again as an image, then stored in an S3-compatible bucket, in folders:
   `workspaces/<id>/logo`, `workspaces/<id>/articles/<article id>` and `users/<id>/photo`.
-- **Organizations**: own workspaces and the LLM settings. The owner sets an **OpenRouter API key and
-  model** in Settings › AI model (the key is write-only and encrypted in the database).
+- **Organizations**: own workspaces and the LLM settings. In Settings › AI model the owner adds a key for
+  **OpenAI, Anthropic, Google Gemini or OpenRouter** (write-only, and encrypted in the database) and picks
+  the **model** that answers, and optionally one **fallback** model. When a call to the model fails, for any
+  reason, the fallback takes over that reply from the same point; tools that ran aren't run again, and the
+  team gets an internal note. The next reply starts with the main model. If both fail in a way that may
+  pass, they are tried again after a few seconds, and then the help center answers.
 - **AI agent and tools**: the LLM answers visitors. Each workspace adds **tools** (HTTP endpoints on its
   own systems: product search, stock, order status…) so the agent looks facts up instead of guessing.
   Built in: `search_knowledge_base`, `handoff_to_human`, and `reply_to_visitor` (how the model finishes).

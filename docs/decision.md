@@ -3,6 +3,13 @@
 Technical decisions made by the project owner, newest first. Each says what was decided and, when
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 
+## 2026-11-24: Several AI providers, and one fallback model
+
+**Decision.** Customers can use OpenAI, Anthropic, OpenRouter and one more provider (Google Gemini was chosen), not
+only OpenRouter. They can also pick a fallback model, from any provider. There is never more than one fallback.
+
+**Why.** When the chosen model is down, say OpenAI's, another one such as Anthropic's Haiku should answer.
+
 ## 2026-11-24: Help articles are written in a small visual editor
 
 **Decision.** A minimal what-you-see-is-what-you-get editor, from a popular toolkit, with only 5 or 6 controls.

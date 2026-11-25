@@ -25,21 +25,34 @@ export function unlockAudio() {
   }
 }
 
-/** A soft two-note chime, synthesised so there's no audio file to load. Silent if audio isn't unlocked. */
+/** A tone that starts `at` seconds in and fades over `length` seconds. */
+export interface Note {
+  freq: number;
+  at: number;
+  length: number;
+  type?: OscillatorType;
+}
+
+/** A soft two-note chime, synthesised so there's no audio file to load. */
 export function playChime() {
+  playNotes([{ freq: 880, at: 0, length: 0.6 }, { freq: 1318.5, at: 0.12, length: 0.6 }], 0.08);
+}
+
+/** Plays the notes, each peaking at `peak` (0 to 1). Silent if audio isn't unlocked. */
+export function playNotes(notes: Note[], peak: number) {
   if (!ctx || ctx.state !== "running") return;
   const start = ctx.currentTime;
-  for (const [freq, offset] of [[880, 0], [1318.5, 0.12]] as const) {
+  for (const { freq, at, length, type } of notes) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = "sine";
+    osc.type = type ?? "sine";
     osc.frequency.value = freq;
-    const t = start + offset;
+    const t = start + at;
     gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.08, t + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    gain.gain.exponentialRampToValueAtTime(peak, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + length);
     osc.connect(gain).connect(ctx.destination);
     osc.start(t);
-    osc.stop(t + 0.65);
+    osc.stop(t + length + 0.05);
   }
 }

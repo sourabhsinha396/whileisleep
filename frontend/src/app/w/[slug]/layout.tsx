@@ -240,7 +240,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                     Signed in as <span className="capitalize">{workspace.role}</span> of {workspace.name}
                   </p>
                   <div className="my-1 h-px bg-border" />
-                  <AlertSwitches />
+                  <AlertSwitches workspace={workspace} />
                   <div className="my-1 h-px bg-border" />
                   <button onClick={logout} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted">
                     <LogOut size={15} className="text-muted-foreground" /> Log out

@@ -1,4 +1,5 @@
 import {
+  Bell,
   BookOpen,
   Blocks,
   BookText,
@@ -108,6 +109,7 @@ export function settingsNav(workspace: Pick<Workspace, "role" | "is_organization
       icon: Building2,
       items: [
         { href: "settings/organization", label: "Details", icon: Building2 },
+        { href: "settings/alerts", label: "Alerts", icon: Bell },
         { href: "settings/ai-model", label: "AI model", icon: Cpu },
         { href: "settings/storage", label: "Storage", icon: HardDrive },
       ],

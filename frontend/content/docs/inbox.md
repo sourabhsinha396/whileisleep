@@ -19,6 +19,8 @@ While the dashboard is open in a tab, it rings when a chat needs a person, and w
 
 Click your name at the bottom left to switch **Sound alerts** on or off, or to turn on **Desktop alerts**: a notification that opens the chat. Both are remembered by that browser.
 
+The organization's owner picks the sound, its volume, what to alert about and whether it repeats under **Settings › Alerts**, for the whole team.
+
 > [!NOTE]
 > Browsers play sound only after you have clicked somewhere on the page. Alerts cover the workspace you have open. To hear about chats with the dashboard closed, connect [Slack](slack.md).
 

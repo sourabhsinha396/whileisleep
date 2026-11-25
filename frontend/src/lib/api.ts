@@ -1,5 +1,6 @@
 "use client";
 
+import type { SoundName } from "./alert-sound";
 import type { A2uiMessage } from "@/lib/a2ui/surface";
 import type { BillingState } from "@/lib/billing";
 import type { ChatFile } from "@/lib/chat-file";
@@ -85,7 +86,17 @@ export interface User {
 export type WidgetBackground = "plain" | PatternName;
 export type ColorMode = "light" | "dark" | "auto";
 
-export interface Workspace {
+/** How the dashboard alerts the team: the organization's choice. */
+export interface AlertSettings {
+  alert_sound: SoundName;
+  /** Percent. */
+  alert_volume: number;
+  alert_on: "person" | "all";
+  /** Seconds between rings until the chat is read; 0 rings once. */
+  alert_repeat: 0 | 30 | 60 | 120;
+}
+
+export interface Workspace extends AlertSettings {
   id: number;
   name: string;
   /** The workspace's name in dashboard URLs: /w/<slug>/inbox. */
@@ -145,7 +156,7 @@ export interface LlmModel {
   tier: "low" | "mid" | "high" | "";
 }
 
-export interface Organization {
+export interface Organization extends AlertSettings {
   id: number;
   name: string;
   providers: LlmProvider[];

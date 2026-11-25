@@ -23,7 +23,8 @@ const noSubscribe = () => () => {};
 
 const cta = "inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors";
 
-export function Home() {
+/** `footer` is rendered on the server. */
+export function Home({ footer }: { footer: React.ReactNode }) {
   // The token lives in localStorage: the server renders signed out, the client reads it after hydration.
   const signedIn = useSyncExternalStore(noSubscribe, () => Boolean(getToken()), () => false);
   const [handoff, setHandoff] = useState(false);
@@ -137,15 +138,7 @@ export function Home() {
         <Faq />
       </main>
 
-      <footer className="border-t">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted-foreground sm:px-6">
-          <Logo />
-          <Link href="/docs" className="hover:text-foreground">
-            Docs
-          </Link>
-          <span>Open source. Self-host it, bring your own LLM. Get some sleep.</span>
-        </div>
-      </footer>
+      {footer}
     </div>
   );
 }

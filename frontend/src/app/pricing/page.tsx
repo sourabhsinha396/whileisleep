@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { PricingPlans } from "@/components/landing/pricing-plans";
-import { Logo, ThemeToggle } from "@/components/ui";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
 import { PRICING_QUESTIONS } from "@/lib/faq";
 import { publicMetadata } from "@/lib/seo";
 
@@ -14,23 +14,7 @@ export const generateMetadata = () =>
 export default function PricingPage() {
   return (
     <div className="min-h-screen overflow-x-hidden">
-      <header className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6">
-        <Link href="/" className="rounded" aria-label="whileisleep home">
-          <Logo />
-        </Link>
-        <nav className="flex items-center gap-1 sm:gap-2">
-          <Link href="/docs" className="hidden rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground sm:block">
-            Docs
-          </Link>
-          <ThemeToggle />
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
-          >
-            Log in
-          </Link>
-        </nav>
-      </header>
+      <SiteHeader />
 
       <main className="px-4 pt-8 pb-20 sm:px-6 lg:pt-14">
         <div className="mx-auto max-w-2xl text-center">
@@ -61,15 +45,7 @@ export default function PricingPage() {
         </section>
       </main>
 
-      <footer className="border-t">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted-foreground sm:px-6">
-          <Logo />
-          <Link href="/docs" className="hover:text-foreground">
-            Docs
-          </Link>
-          <span>Open source. Self-host it, bring your own LLM. Get some sleep.</span>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

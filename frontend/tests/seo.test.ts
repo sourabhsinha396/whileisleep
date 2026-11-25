@@ -4,6 +4,7 @@ import { generateMetadata as login } from "@/app/login/layout";
 import { generateMetadata as home } from "@/app/page";
 import { generateMetadata as pricing } from "@/app/pricing/page";
 import { DOC_SLUGS, docFile } from "@/lib/docs";
+import { SITE_PAGES } from "@/lib/site-pages";
 import { breadcrumbData, jsonLd, publicMetadata } from "@/lib/seo";
 
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ host: "chat.example.com", "x-forwarded-proto": "https" }) }));
@@ -13,7 +14,7 @@ const SUFFIX = " | whileisleep";
 async function pages() {
   const all = await Promise.all([home(), pricing(), docs(), login()]);
   const documents = DOC_SLUGS.map((slug) => docFile(slug)).map(({ seoTitle, seoDescription }) => ({ title: seoTitle, description: seoDescription }));
-  return [...all, ...documents].map(({ title, description }) => ({
+  return [...all, ...Object.values(SITE_PAGES), ...documents].map(({ title, description }) => ({
     title: title && typeof title === "object" && "absolute" in title ? String(title.absolute) : `${title}${SUFFIX}`,
     description: String(description),
   }));

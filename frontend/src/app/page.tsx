@@ -1,4 +1,5 @@
 import { Home } from "@/components/landing/home";
+import { SiteFooter } from "@/components/site-footer";
 import { StructuredData } from "@/components/structured-data";
 import { siteOrigin } from "@/lib/origin";
 import { publicMetadata, softwareData } from "@/lib/seo";
@@ -13,7 +14,7 @@ export default async function HomePage() {
   return (
     <>
       <StructuredData data={softwareData(DESCRIPTION, await siteOrigin())} />
-      <Home />
+      <Home footer={<SiteFooter />} />
     </>
   );
 }

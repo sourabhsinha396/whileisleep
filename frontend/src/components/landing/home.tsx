@@ -3,6 +3,7 @@
 import { ArrowRight, BookOpen, Bot, Inbox, Zap } from "lucide-react";
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
+import { GithubLink } from "@/components/github-link";
 import { HeroVisual } from "@/components/landing/hero-visual";
 import { Demo } from "@/components/landing/demo";
 import { Faq } from "@/components/landing/faq";
@@ -43,6 +44,7 @@ export function Home({ footer }: { footer: React.ReactNode }) {
           <Link href="/docs" className="hidden rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground sm:block">
             Docs
           </Link>
+          <GithubLink />
           <ThemeToggle />
           <Link href={signedIn ? "/app" : "/login"} className={`${cta} bg-primary px-4 py-2 text-primary-foreground hover:bg-primary-hover`}>
             {signedIn ? "Open inbox" : "Log in"}

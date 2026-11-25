@@ -50,7 +50,7 @@ describe.each(SLUGS)("/%s", (slug) => {
   });
 
   it("links only to pages that are there", async () => {
-    const known = ["/", "/#demo", "/pricing", "/docs", "/docs/self-hosting", "/login", ...SLUGS.map((one) => `/${one}`)];
+    const known = ["/", "/#demo", "/pricing", "/docs", "/docs/self-hosting", "/login", "https://github.com/sourabhsinha396/whileisleep", ...SLUGS.map((one) => `/${one}`)];
     for (const link of (await render(slug)).querySelectorAll("a")) {
       const href = link.getAttribute("href") ?? "";
       if (href !== "mailto:hello@acme.test") expect(known).toContain(href);

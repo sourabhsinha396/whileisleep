@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Faq } from "@/components/landing/faq";
 import { PricingPlans } from "@/components/landing/pricing-plans";
 import { FlickeringGrid } from "@/components/magicui/flickering-grid";
+import { SiteHeader } from "@/components/site-header";
 import { ShineBorder } from "@/components/magicui/shine-border";
 import { HOME_QUESTIONS, PRICING_QUESTIONS } from "@/lib/faq";
 
@@ -50,4 +51,10 @@ describe("hero decoration", () => {
     expect(border?.className).toContain("pointer-events-none");
     expect(border?.className).toContain("motion-safe:animate-shine");
   });
+});
+
+it("links to the source code from the header, with a name for the logo", () => {
+  const link = render(<SiteHeader />).querySelector("a[href='https://github.com/sourabhsinha396/whileisleep']");
+  expect(link?.getAttribute("aria-label")).toBe("whileisleep on GitHub");
+  expect(link?.querySelector("svg")).not.toBeNull();
 });

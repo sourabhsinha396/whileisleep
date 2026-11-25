@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DocNav } from "@/components/docs/doc-nav";
+import { GithubLink } from "@/components/github-link";
 import { Logo, ThemeToggle } from "@/components/ui";
 import { docSections } from "@/lib/docs";
 
@@ -17,6 +18,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
             </Link>
           </div>
           <nav className="flex items-center gap-1 sm:gap-2">
+            <GithubLink />
             <ThemeToggle />
             <Link
               href="/app"

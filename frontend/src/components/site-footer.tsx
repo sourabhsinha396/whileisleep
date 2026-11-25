@@ -19,6 +19,7 @@ const COLUMNS = [
     links: [
       { href: "/docs", label: "Docs" },
       { href: "/docs/self-hosting", label: "Self-hosting" },
+      { href: "https://github.com/sourabhsinha396/whileisleep", label: "GitHub" },
     ],
   },
   { title: "Company", links: ["about", "contact"].map(page) },

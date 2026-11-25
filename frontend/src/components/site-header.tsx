@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GithubLink } from "@/components/github-link";
 import { Logo, ThemeToggle } from "@/components/ui";
 
 const link = "hidden rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground sm:block";
@@ -17,6 +18,7 @@ export function SiteHeader() {
         <Link href="/docs" className={link}>
           Docs
         </Link>
+        <GithubLink />
         <ThemeToggle />
         <Link
           href="/login"

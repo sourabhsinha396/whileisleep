@@ -30,9 +30,11 @@ cp .env.example .env
 cp backend/.env.example backend/.env
 ```
 
-`.env` is for Docker Compose only. Set `COMPOSE_PROFILES=production` in it. The ports there are on the VM, open to the VM itself only: change them if something else uses them.
+`.env` is for Docker Compose and the website. Set `COMPOSE_PROFILES=production` in it. The ports there are on the VM, open to the VM itself only: change them if something else uses them.
 
-The app's settings, and every setting named below, are in `backend/.env`:
+The contact, privacy, terms and refund pages appear when `.env` has `COMPANY_NAME` and `COMPANY_EMAIL`. Their text describes our hosted service, so leave these empty unless it is true for yours too.
+
+The app's other settings, and every setting named below, are in `backend/.env`:
 
 | Setting | What to put |
 |---|---|

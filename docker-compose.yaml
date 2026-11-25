@@ -111,6 +111,11 @@ services:
     environment:
       # The docs ask it what was edited on a page (frontend/src/lib/docs.ts).
       API_URL: http://web:8000
+      # For the contact and legal pages (frontend/src/lib/operator.ts).
+      COMPANY_NAME: ${COMPANY_NAME:-}
+      COMPANY_EMAIL: ${COMPANY_EMAIL:-}
+      COMPANY_ADDRESS: ${COMPANY_ADDRESS:-}
+      COMPANY_JURISDICTION: ${COMPANY_JURISDICTION:-}
     restart: unless-stopped
 
   redis:

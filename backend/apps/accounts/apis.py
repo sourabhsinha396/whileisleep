@@ -6,8 +6,9 @@ from ninja.errors import HttpError
 from apps.workspaces.services import organization_for
 from whileisleep import images
 
+from . import captcha
 from .models import AuthToken, Profile, photo_url
-from .schemas import LoginIn, SessionOut, SignupIn, UserOut
+from .schemas import CaptchaOut, LoginIn, SessionOut, SignupIn, UserOut
 from .security import token_auth
 
 router = Router(tags=["auth"])
@@ -28,10 +29,16 @@ def session_for(user) -> dict:
     return {"token": AuthToken.objects.create(user=user).key, "user": user_out(user)}
 
 
+@router.get("/captcha", response=CaptchaOut)
+def captcha_key(request):
+    return {"site_key": captcha.site_key()}
+
+
 @router.post("/signup", response=SessionOut)
 def signup(request, payload: SignupIn):
     if not settings.SIGNUP_ENABLED:
         raise HttpError(403, "Sign-up is closed on this installation. Ask its owner for an account.")
+    captcha.require(request, payload.captcha)
     email = payload.email.lower()
     if User.objects.filter(username=email).exists():
         raise HttpError(400, "An account with this email already exists.")
@@ -42,6 +49,7 @@ def signup(request, payload: SignupIn):
 
 @router.post("/login", response=SessionOut)
 def login(request, payload: LoginIn):
+    captcha.require(request, payload.captcha)
     user = authenticate(request, username=payload.email.lower(), password=payload.password)
     if user is None:
         raise HttpError(401, "Wrong email or password.")

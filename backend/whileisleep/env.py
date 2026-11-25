@@ -58,6 +58,9 @@ class EnvFile(BaseModel):
     # needs is in PLUGIN_<ID>_<NAME> keys, which only the plugin knows; `manage.py check` names
     # the ones that no plugin here has.
     EXTRA_PLUGINS: str | None = None
+    # The "I'm not a robot" box at log-in and sign-up (apps/accounts/captcha.py): both, or neither.
+    RECAPTCHA_SITE_KEY: str | None = None
+    RECAPTCHA_SECRET_KEY: str | None = None
     # "false" closes account creation.
     SIGNUP_ENABLED: bool | None = None
     # Only `manage.py seed_demo` reads these. The running app takes each organization's

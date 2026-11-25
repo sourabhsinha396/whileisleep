@@ -9,7 +9,15 @@ import os
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F403
-from .base import BILLING_ENABLED, ENCRYPTION_KEYS, MIDDLEWARE, PAYMENT_PROVIDER, SECRET_KEY
+from .base import (
+    BILLING_ENABLED,
+    ENCRYPTION_KEYS,
+    MIDDLEWARE,
+    PAYMENT_PROVIDER,
+    RECAPTCHA_SECRET_KEY,
+    RECAPTCHA_SITE_KEY,
+    SECRET_KEY,
+)
 
 
 def required(name: str) -> str:
@@ -61,6 +69,10 @@ if PAYMENT_PROVIDER:
         required(name)
     if not BILLING_ENABLED:
         raise ImproperlyConfigured("PAYMENT_PROVIDER must be 'dodo', or empty.")
+
+# One key alone would leave the forms open without anyone noticing.
+if bool(RECAPTCHA_SITE_KEY) != bool(RECAPTCHA_SECRET_KEY):
+    raise ImproperlyConfigured("Set both RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY, or neither.")
 
 # Keep database connections open between requests, and check them before use.
 DATABASES["default"]["CONN_MAX_AGE"] = 60  # noqa: F405

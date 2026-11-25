@@ -122,6 +122,11 @@ DODO = {
 NO_DODO = dict.fromkeys(DODO)
 
 
+def test_half_set_up_captcha_stops_startup(monkeypatch):
+    with pytest.raises(ImproperlyConfigured, match="RECAPTCHA"):
+        load_production(monkeypatch, RECAPTCHA_SITE_KEY="x", RECAPTCHA_SECRET_KEY="")
+
+
 def test_payments_are_off_by_default(monkeypatch):
     assert load_production(monkeypatch, **NO_DODO).BILLING_ENABLED is False
 

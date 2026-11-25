@@ -110,6 +110,7 @@ To see or delete any of it, ask that website. We help its owner do so.
 - **Dodo Payments**, which sells our plans and handles cards, tax and invoices.
 - **Our hosting and network providers**, which store and carry the data for us.
 - **PostHog**, which records how our own site and dashboard are used, so we can fix what is confusing. See below.
+- **Google reCAPTCHA**, which checks at log-in and sign-up that you are a person. It looks at your browser and IP address, and may set a cookie of its own.
 - **flagcdn.com and YouTube**, for the country flags in the inbox and the videos in the docs. Your browser loads them from there, a video only after you press play.
 
 We don't sell data, and we don't use your conversations to train AI models. Your AI provider's terms say what it does with them.

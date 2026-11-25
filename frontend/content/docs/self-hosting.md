@@ -50,6 +50,8 @@ The `S3_*` and `STORAGE_*` settings are where uploaded files go: an S3-compatibl
 
 `ENCRYPTION_KEYS` encrypts the API keys you store in the dashboard (your AI provider keys, tool headers). **Keep a copy of it outside the server**: a database backup is unreadable without it.
 
+To ask for Google's "I'm not a robot" box at log-in and sign-up, make a reCAPTCHA v2 checkbox key for your domain and set `RECAPTCHA_SITE_KEY` and `RECAPTCHA_SECRET_KEY`.
+
 ## 3. Start it
 
 ```sh

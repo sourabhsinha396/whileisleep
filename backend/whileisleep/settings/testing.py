@@ -28,6 +28,10 @@ BILLING_ENABLED = False
 PAYMENT_PROVIDER = DODO_BASE_URL = DODO_API_KEY = ""
 DODO_PRODUCT_MONTHLY = DODO_PRODUCT_YEARLY = DODO_WEBHOOK_KEY = ""
 
+# Nor reCAPTCHA; test_captcha.py turns it on, against a fake Google.
+RECAPTCHA_ENABLED = False
+RECAPTCHA_SITE_KEY = RECAPTCHA_SECRET_KEY = ""
+
 # Nor other plugins than ours, which are not set up; tests do that.
 PLUGINS = ["plugins.slack", "plugins.webhooks"]
 PLUGIN_OPTIONS = {}

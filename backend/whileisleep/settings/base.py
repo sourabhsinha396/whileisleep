@@ -237,6 +237,11 @@ PLUGIN_OPTIONS = {
 # private installation once your own accounts exist.
 SIGNUP_ENABLED = os.environ.get("SIGNUP_ENABLED", "true").lower() != "false"
 
+# Google's reCAPTCHA v2 checkbox at log-in and sign-up. Off unless both are set.
+RECAPTCHA_SITE_KEY = os.environ.get("RECAPTCHA_SITE_KEY", "").strip()
+RECAPTCHA_SECRET_KEY = os.environ.get("RECAPTCHA_SECRET_KEY", "").strip()
+RECAPTCHA_ENABLED = bool(RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY)
+
 # Fernet keys for secrets stored in the database (whileisleep.encryption): the first encrypts,
 # all decrypt. Empty derives one from SECRET_KEY, which is fine for development only.
 # Make one with: python manage.py generate_encryption_key

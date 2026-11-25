@@ -7,7 +7,8 @@ A thread that waits can do nothing else, so no call may keep one for long:
 - After a few calls in a row that got no answer, the service counts as down for half a minute. Calls
   then fail at once, instead of each thread finding out for itself.
 
-Only worker jobs call services (deliveries, jobs); web requests never do. This is for threads: in
+Only worker jobs call services (deliveries, jobs); web requests don't, but for the captcha at log-in
+(apps/accounts/captcha.py). This is for threads: in
 async code it would block the event loop.
 """
 
@@ -39,7 +40,15 @@ class Unreachable(PluginError):
         super().__init__(message, retry=True, after=after)
 
 
-def request(method: str, url: str, *, customer_address: bool = False, headers: dict | None = None, **kwargs):
+def request(
+    method: str,
+    url: str,
+    *,
+    customer_address: bool = False,
+    headers: dict | None = None,
+    total_seconds: float | None = None,
+    **kwargs,
+):
     """An httpx.Response, whatever its status, or Unreachable. Pass `customer_address=True` when a
     customer typed the URL: private addresses are then refused (whileisleep.outbound)."""
     host = httpx.URL(url).host
@@ -47,12 +56,13 @@ def request(method: str, url: str, *, customer_address: bool = False, headers: d
     service = hashlib.sha256(url.encode()).hexdigest() if customer_address else host
     if cache.get(f"service-down:{service}"):
         raise Unreachable(f"{host} isn't answering right now.", after=DOWN_SECONDS)
-    ends = time.monotonic() + TOTAL_SECONDS
+    total_seconds = total_seconds or TOTAL_SECONDS
+    ends = time.monotonic() + total_seconds
     target, headers, extensions = httpx.URL(url), dict(headers or {}), {}
     try:
         if customer_address:
             target, headers, extensions = outbound.prepare(url, headers)
-        timeout = httpx.Timeout(READ_SECONDS, connect=CONNECT_SECONDS)
+        timeout = httpx.Timeout(min(READ_SECONDS, total_seconds), connect=min(CONNECT_SECONDS, total_seconds))
         with httpx.Client(timeout=timeout, follow_redirects=False, verify=outbound.tls()) as client:
             with client.stream(method, target, headers=headers, extensions=extensions, **kwargs) as response:
                 body = read(response, ends)

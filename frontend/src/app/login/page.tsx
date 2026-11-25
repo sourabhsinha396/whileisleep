@@ -3,6 +3,7 @@
 import { Bot, BookOpen, Inbox, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Captcha } from "@/components/captcha";
 import { Button, ErrorText, Field, inputClass, Logo, LogoMark, ThemeToggle } from "@/components/ui";
 import { api, setToken, type User } from "@/lib/api";
 
@@ -17,6 +18,8 @@ export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [captcha, setCaptcha] = useState("");
+  const [tries, setTries] = useState(0);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -25,12 +28,15 @@ export default function LoginPage() {
     setBusy(true);
     setError("");
     try {
-      const body = mode === "login" ? { email: form.email, password: form.password } : form;
+      const body = mode === "login" ? { email: form.email, password: form.password, captcha } : { ...form, captcha };
       const session = await api<{ token: string; user: User }>(`/auth/${mode}`, { method: "POST", body });
       setToken(session.token);
       router.replace("/app");
     } catch (err) {
       setError((err as Error).message);
+      // A ticked box is good for one try.
+      setCaptcha("");
+      setTries((n) => n + 1);
     } finally {
       setBusy(false);
     }
@@ -96,6 +102,7 @@ export default function LoginPage() {
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
             </Field>
+            <Captcha key={tries} onChange={setCaptcha} />
             <ErrorText>{error}</ErrorText>
             <Button className="w-full py-3" disabled={busy}>
               {busy ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}

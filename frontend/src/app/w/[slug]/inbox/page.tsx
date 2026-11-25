@@ -26,9 +26,10 @@ import { A2uiPreview } from "@/components/a2ui-preview";
 import { ChatFiles, ChatText } from "@/components/chat-message";
 import { Composer, type Draft } from "@/components/composer";
 import { CountryFlag } from "@/components/country-flag";
-import { LiveProvider, useLive, useLiveEvents } from "@/components/live-context";
+import { useLive, useLiveEvents } from "@/components/live-context";
 import { Avatar, Badge, Button, Segmented } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
+import { setViewing } from "@/lib/alerts";
 import { api, type ConversationDetail, type ConversationRow, type Message, upload } from "@/lib/api";
 import type { ChatFile } from "@/lib/chat-file";
 import { plainText } from "@/lib/chat-text";
@@ -48,12 +49,9 @@ const TYPING_SHOWN_MS = 6000;
 const TYPING_SEND_MS = 3000;
 
 export default function InboxPage() {
-  const { workspace } = useWorkspace();
   return (
     <Suspense>
-      <LiveProvider workspaceId={workspace.id}>
-        <Inbox />
-      </LiveProvider>
+      <Inbox />
     </Suspense>
   );
 }
@@ -63,7 +61,8 @@ function Inbox() {
   const params = useSearchParams();
   const [filter, setFilter] = useState<Filter>("open");
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<number | null>(params.get("c") ? Number(params.get("c")) : null);
+  // In the address, so a link (or a desktop notification) can open a chat here at any time.
+  const selected = params.get("c") ? Number(params.get("c")) : null;
   const base = `/workspaces/${workspace.id}/conversations`;
   const live = useLive();
   const list = usePoll(
@@ -131,7 +130,7 @@ function Inbox() {
             return (
               <button
                 key={row.id}
-                onClick={() => setSelected(row.id)}
+                onClick={() => window.history.replaceState(null, "", `?c=${row.id}`)}
                 className={clsx(
                   "mb-0.5 flex w-full gap-3 rounded-lg px-3 py-3 text-left transition-colors",
                   active ? "bg-primary-soft" : "hover:bg-muted",
@@ -242,6 +241,11 @@ function Conversation({ id, onChange }: { id: number; onChange: () => void }) {
         return;
     }
   });
+
+  useEffect(() => {
+    setViewing(id);
+    return () => setViewing(null);
+  }, [id]);
 
   // Clear "is typing" once it lapses.
   useEffect(() => {

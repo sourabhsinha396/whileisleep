@@ -13,6 +13,15 @@ Write a reply. From then on the AI stays quiet in that chat, and it is yours. Pr
 
 Look at chats marked **Needs a person** first: the visitor asked for someone, a rule sent it to you, or the AI couldn't help.
 
+## Get alerted
+
+While the dashboard is open in a tab, it rings when a chat needs a person, and when someone writes again in a chat your team is handling. With the AI off, it rings for every message. The chat you are looking at stays quiet.
+
+Click your name at the bottom left to switch **Sound alerts** on or off, or to turn on **Desktop alerts**: a notification that opens the chat. Both are remembered by that browser.
+
+> [!NOTE]
+> Browsers play sound only after you have clicked somewhere on the page. Alerts cover the workspace you have open. To hear about chats with the dashboard closed, connect [Slack](slack.md).
+
 ## Replies and notes
 
 - A **reply** goes to the visitor. It can have bold, italic, links and lists.

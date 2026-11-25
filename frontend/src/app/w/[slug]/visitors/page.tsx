@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CountryFlag } from "@/components/country-flag";
-import { LiveProvider, useLive, useLiveEvents } from "@/components/live-context";
+import { useLive, useLiveEvents } from "@/components/live-context";
 import { Avatar, Button, EmptyState, PageHeader, Segmented } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, type ConversationRow, type Visitor } from "@/lib/api";
@@ -16,15 +16,6 @@ import { usePoll } from "@/lib/use-poll";
 type Range = "online" | "week";
 
 export default function VisitorsPage() {
-  const { workspace } = useWorkspace();
-  return (
-    <LiveProvider workspaceId={workspace.id}>
-      <Visitors />
-    </LiveProvider>
-  );
-}
-
-function Visitors() {
   const { workspace } = useWorkspace();
   const router = useRouter();
   const [range, setRange] = useState<Range>("online");

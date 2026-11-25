@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GetStarted, useGuide } from "@/components/get-started";
+import { LiveProvider } from "@/components/live-context";
+import { AlertSwitches, TeamAlerts } from "@/components/team-alerts";
 import { Avatar, CoverImage, Logo, Spinner, ThemeToggle } from "@/components/ui";
 import { WorkspaceContext } from "@/components/workspace-context";
 import { api, getToken, setToken, type User, type Workspace } from "@/lib/api";
@@ -116,6 +118,8 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
   return (
     <WorkspaceContext.Provider value={{ me, workspace, workspaces, reload: load }}>
+      <LiveProvider workspaceId={workspace.id}>
+      <TeamAlerts key={workspace.id} workspace={workspace} />
       <div className="flex h-screen bg-muted/50">
         <aside className="flex w-64 shrink-0 flex-col px-3 pt-4 pb-3">
           <div className="flex items-center justify-between px-2">
@@ -236,6 +240,8 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                     Signed in as <span className="capitalize">{workspace.role}</span> of {workspace.name}
                   </p>
                   <div className="my-1 h-px bg-border" />
+                  <AlertSwitches />
+                  <div className="my-1 h-px bg-border" />
                   <button onClick={logout} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted">
                     <LogOut size={15} className="text-muted-foreground" /> Log out
                   </button>
@@ -246,6 +252,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
         </aside>
         <main className="my-2 mr-2 min-w-0 flex-1 overflow-y-auto rounded-xl border bg-background shadow-sm">{children}</main>
       </div>
+      </LiveProvider>
     </WorkspaceContext.Provider>
   );
 }

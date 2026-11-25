@@ -4,6 +4,10 @@ Product decisions made by the project owner, newest first. Each says what was de
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Technical decisions are in [tech-decisions.md](tech-decisions.md).
 
+## 2026-11-25: The dashboard alerts you when someone needs a person
+
+**Decision.** With the website open on a laptop, a chat that needs a person makes a sound and can show a desktop notification.
+
 ## 2026-11-25: Admins are not recorded
 
 **Decision.** PostHog doesn't track the sessions of admin users (superusers of the installation).

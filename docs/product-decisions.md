@@ -4,6 +4,10 @@ Product decisions made by the project owner, newest first. Each says what was de
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Technical decisions are in [tech-decisions.md](tech-decisions.md).
 
+## 2026-11-25: Google logs people in and signs them up
+
+**Decision.** The same "Continue with Google" button logs someone in, and makes an account if they have none.
+
 ## 2026-11-25: The Sustainable Use License, and still "open source"
 
 **Decision.** The code is under the Sustainable Use License, chosen over AGPL. The site and docs keep saying "open source".

@@ -7,6 +7,10 @@ class CaptchaOut(Schema):
     site_key: str
 
 
+class GoogleOut(Schema):
+    enabled: bool
+
+
 class Guarded(Schema):
     """A form with the "I'm not a robot" box; what ticking it gave."""
 

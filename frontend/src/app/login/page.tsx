@@ -2,10 +2,12 @@
 
 import { Bot, BookOpen, Inbox, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Captcha } from "@/components/captcha";
+import { GoogleButton } from "@/components/google-button";
 import { Button, ErrorText, Field, inputClass, Logo, LogoMark, ThemeToggle } from "@/components/ui";
 import { api, setToken, type User } from "@/lib/api";
+import { loginError } from "@/lib/google";
 
 const POINTS = [
   { icon: Bot, title: "An AI agent that answers from your data", text: "Help articles, your own APIs and playbooks, with a person one click away." },
@@ -22,6 +24,15 @@ export default function LoginPage() {
   const [tries, setTries] = useState(0);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const problem = loginError(window.location.search);
+    if (!problem) return;
+    // Read here, not while rendering: the server doesn't have the address's query.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setError(problem);
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -83,6 +94,7 @@ export default function LoginPage() {
                 {mode === "login" ? "Log in to your inbox." : "Set up your first workspace in a minute."}
               </p>
             </div>
+            <GoogleButton />
             {mode === "signup" && (
               <Field label="Name">
                 <input className={inputClass} required autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />

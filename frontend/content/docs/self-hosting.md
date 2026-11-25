@@ -52,6 +52,8 @@ The `S3_*` and `STORAGE_*` settings are where uploaded files go: an S3-compatibl
 
 To ask for Google's "I'm not a robot" box at log-in and sign-up, make a reCAPTCHA v2 checkbox key for your domain and set `RECAPTCHA_SITE_KEY` and `RECAPTCHA_SECRET_KEY`.
 
+For "Continue with Google", make an OAuth client (web application) in Google Cloud with the redirect URI `https://YOUR_DOMAIN/api/v1/auth/google/callback`, and set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
 ## 3. Start it
 
 ```sh

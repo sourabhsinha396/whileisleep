@@ -6,9 +6,9 @@ from ninja.errors import HttpError
 from apps.workspaces.services import organization_for
 from whileisleep import images
 
-from . import captcha
+from . import captcha, google
 from .models import AuthToken, Profile, photo_url
-from .schemas import CaptchaOut, LoginIn, SessionOut, SignupIn, UserOut
+from .schemas import CaptchaOut, GoogleOut, LoginIn, SessionOut, SignupIn, UserOut
 from .security import token_auth
 
 router = Router(tags=["auth"])
@@ -53,6 +53,39 @@ def login(request, payload: LoginIn):
     user = authenticate(request, username=payload.email.lower(), password=payload.password)
     if user is None:
         raise HttpError(401, "Wrong email or password.")
+    return session_for(user)
+
+
+@router.get("/google", response=GoogleOut)
+def google_enabled(request):
+    return {"enabled": settings.GOOGLE_ENABLED}
+
+
+def require_google() -> None:
+    if not settings.GOOGLE_ENABLED:
+        raise HttpError(404, "Logging in with Google isn't set up on this installation.")
+
+
+# The browser itself comes to these two, so they answer with where to go next.
+@router.get("/google/start", include_in_schema=False)
+def google_start(request):
+    require_google()
+    return google.start()
+
+
+@router.get("/google/callback", include_in_schema=False)
+def google_callback(request):
+    require_google()
+    return google.finish(request)
+
+
+@router.post("/google/session", response=SessionOut)
+def google_session(request):
+    """The token of whoever just logged in with Google in this browser."""
+    require_google()
+    user = google.swap_ticket(request)
+    if user is None:
+        raise HttpError(401, "That login has expired. Try again.")
     return session_for(user)
 
 

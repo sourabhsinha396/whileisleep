@@ -32,6 +32,10 @@ DODO_PRODUCT_MONTHLY = DODO_PRODUCT_YEARLY = DODO_WEBHOOK_KEY = ""
 RECAPTCHA_ENABLED = False
 RECAPTCHA_SITE_KEY = RECAPTCHA_SECRET_KEY = ""
 
+# Nor Google; test_google.py turns it on, against a fake one.
+GOOGLE_ENABLED = False
+GOOGLE_CLIENT_ID = GOOGLE_CLIENT_SECRET = ""
+
 # Nor other plugins than ours, which are not set up; tests do that.
 PLUGINS = ["plugins.slack", "plugins.webhooks"]
 PLUGIN_OPTIONS = {}

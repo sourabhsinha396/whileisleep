@@ -163,6 +163,9 @@ claims become verified attributes.
 - Rate limits read the client address only from proxies you declare (`TRUSTED_PROXY_COUNT`).
 - With reCAPTCHA keys set, log-in and sign-up need Google's checkbox (`apps/accounts/captcha.py`). While Google can't
   be reached nobody gets in, and after five calls without an answer no request waits for it.
+- Logging in with Google (`apps/accounts/google.py`) makes the account when there is none. With a password account of
+  the same email it is linked, and that password and its logins end, as nobody checked whose email it was. Only for a
+  mailbox that Google runs, and never for a superuser, who keep the password.
 - `SIGNUP_ENABLED=false` closes account creation on a private installation.
 - Plans (only where they are sold) are paid on Dodo Payments' own pages; no card detail reaches this server. A
   plan's state is always read from Dodo: when someone comes back from checkout or opens Billing, every 5 minutes for anyone

@@ -7,8 +7,8 @@ A thread that waits can do nothing else, so no call may keep one for long:
 - After a few calls in a row that got no answer, the service counts as down for half a minute. Calls
   then fail at once, instead of each thread finding out for itself.
 
-Only worker jobs call services (deliveries, jobs); web requests don't, but for the captcha at log-in
-(apps/accounts/captcha.py). This is for threads: in
+Only worker jobs call services (deliveries, jobs); web requests don't, but for the captcha and Google
+at log-in (apps/accounts). This is for threads: in
 async code it would block the event loop.
 """
 

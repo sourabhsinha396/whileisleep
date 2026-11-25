@@ -61,6 +61,9 @@ class EnvFile(BaseModel):
     # The "I'm not a robot" box at log-in and sign-up (apps/accounts/captcha.py): both, or neither.
     RECAPTCHA_SITE_KEY: str | None = None
     RECAPTCHA_SECRET_KEY: str | None = None
+    # "Continue with Google" at log-in (apps/accounts/google.py): both, or neither.
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
     # "false" closes account creation.
     SIGNUP_ENABLED: bool | None = None
     # Only `manage.py seed_demo` reads these. The running app takes each organization's

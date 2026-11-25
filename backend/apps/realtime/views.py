@@ -19,6 +19,9 @@ A comment line every STREAM_PING_SECONDS keeps proxies from closing a quiet conn
 on the widget's stream, keeps the visitor online (apps.realtime.presence). After
 STREAM_MAX_SECONDS the stream ends and the client reconnects, which checks its token again.
 
+A stream gives its database connection back before it waits: otherwise every open widget would hold
+one, and Postgres has about a hundred.
+
 Without Redis these answer 503 and clients poll the REST endpoints instead.
 """
 
@@ -31,6 +34,7 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.core.handlers.asgi import ASGIRequest
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db import connections
 from django.http import JsonResponse, StreamingHttpResponse
 from django.utils import timezone
 
@@ -81,6 +85,14 @@ def frame(event: str, data: dict) -> str:
     return "\n".join(lines) + "\n\n"
 
 
+@sync_to_async
+def release_database() -> None:
+    """Closes this request's database connection. Django would keep it until the stream ends."""
+    for connection in connections.all(initialized_only=True):
+        if not connection.in_atomic_block:  # a test's transaction
+            connection.close()
+
+
 async def event_stream(
     client,
     channels: list[str],
@@ -97,7 +109,9 @@ async def event_stream(
         # Tells EventSource-style clients how soon to reconnect, and sends the headers now.
         yield "retry: 3000\n: connected\n\n"
         replayed = 0
-        for event, data in await backlog():
+        missed = await backlog()
+        await release_database()
+        for event, data in missed:
             replayed = max(replayed, data["message"]["id"])
             yield frame(event, data)
 
@@ -124,6 +138,7 @@ async def event_stream(
             await pubsub.aclose()
             if on_close:
                 await on_close()
+                await release_database()
         except Exception:  # cleanup must not mask why the stream ended
             log.exception("Error closing a live stream")
         finally:

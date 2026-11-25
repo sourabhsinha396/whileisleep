@@ -5,6 +5,7 @@ import json
 
 import pytest
 from asgiref.sync import async_to_sync, sync_to_async
+from django.db import connection
 from django.test import AsyncClient
 
 from apps.conversations.models import Message, Visitor
@@ -116,6 +117,34 @@ def conversation(workspace):
 @pytest.fixture
 def token(membership):
     return AuthTokenFactory(user=membership.user).key
+
+
+# --- The database ---
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("who", ["widget", "inbox"])
+def test_an_open_stream_holds_no_database_connection(conversation, token, fake_redis, who):
+    """Else as many open widgets as Postgres has connections take the whole server down."""
+    seen = MessageFactory(conversation=conversation, sender="visitor", body="Hi")
+    missed = MessageFactory(conversation=conversation, sender="bot", body="Hello!")
+    workspace_id = conversation.workspace_id
+
+    async def scenario():
+        stream = await (
+            open_widget(conversation, seen.id) if who == "widget" else open_inbox(token, workspace_id, seen.id)
+        )
+        assert (await stream.next_event())["id"] == str(missed.id)
+        assert await sync_to_async(lambda: connection.connection)() is None
+        # What happens later still arrives, and closing uses the database again and lets go of it.
+        await sync_to_async(events.typing)(conversation, "agent" if who == "widget" else "visitor", "Priya")
+        assert (await stream.next_event())["event"] == "typing"
+        # Opened by the call above, in this test.
+        await sync_to_async(lambda: connection.close())()
+        await stream.close()
+        assert await sync_to_async(lambda: connection.connection)() is None
+
+    run(scenario)
 
 
 # --- The widget ---

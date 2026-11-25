@@ -4,6 +4,12 @@ Product decisions made by the project owner, newest first. Each says what was de
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Technical decisions are in [tech-decisions.md](tech-decisions.md).
 
+## 2026-11-25: The footer has groups of links
+
+**Decision.** The footer is columns of links under headings, not one row.
+
+**Why.** Lots of options will be added to it later.
+
 ## 2026-11-24: Workspaces and organizations set their own AI limits
 
 **Decision.** The daily limits of AI replies, per visitor and for all visitors together, are settings of the workspace

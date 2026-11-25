@@ -45,12 +45,12 @@ describe.each(SLUGS)("/%s", (slug) => {
   it("shows its title and text", async () => {
     const page = await render(slug);
     expect(page.querySelector("h1")?.textContent).toBe(SITE_PAGES[slug].title);
-    expect(page.querySelectorAll("h2").length).toBeGreaterThan(1);
+    expect(page.querySelectorAll("main h2").length).toBeGreaterThan(1);
     expect(page.textContent).not.toMatch(/undefined|null/);
   });
 
   it("links only to pages that are there", async () => {
-    const known = ["/", "/pricing", "/docs", "/login", ...SLUGS.map((one) => `/${one}`)];
+    const known = ["/", "/#demo", "/pricing", "/docs", "/docs/self-hosting", "/login", ...SLUGS.map((one) => `/${one}`)];
     for (const link of (await render(slug)).querySelectorAll("a")) {
       const href = link.getAttribute("href") ?? "";
       if (href !== "mailto:hello@acme.test") expect(known).toContain(href);
@@ -61,6 +61,19 @@ describe.each(SLUGS)("/%s", (slug) => {
     expect((await sitemap()).map(({ url }) => url)).toContain(`https://chat.example.com/${slug}`);
     expect(footer()).toContain(`href="/${slug}"`);
     expect((await generateMetadata(props(slug))).alternates?.canonical).toBe(`https://chat.example.com/${slug}`);
+  });
+});
+
+describe("the footer", () => {
+  const titles = () => [...footer().matchAll(/<h2[^>]*>([^<]+)</g)].map(([, title]) => title);
+
+  it("groups its links", () => {
+    expect(titles()).toEqual(["Product", "Resources", "Company", "Legal"]);
+  });
+
+  it("leaves out a group with no pages", () => {
+    settings("", "");
+    expect(titles()).toEqual(["Product", "Resources", "Company"]);
   });
 });
 

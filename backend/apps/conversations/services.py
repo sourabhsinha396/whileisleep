@@ -50,9 +50,11 @@ def add_message(
             fields.append("status")
             reopened = True
     elif sender == Message.Sender.AGENT and not is_note:
-        # A teammate answered: the bot steps aside for this conversation.
+        # A teammate answered: the bot steps aside for this conversation, and what came before
+        # was read, also when they answered from somewhere else (Slack).
         conversation.human_requested = True
-        fields.append("human_requested")
+        conversation.unread = False
+        fields += ["human_requested", "unread"]
     conversation.save(update_fields=fields)
     events.message_added(message)
     events.conversation_changed(conversation)

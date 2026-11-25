@@ -51,6 +51,16 @@ def test_a_visitor_writing_to_a_resolved_conversation_reopens_it_first(conversat
     assert names(heard) == ["reopened", "message"]
 
 
+def test_a_teammates_reply_reads_the_conversation_and_a_note_does_not(conversation):
+    services.add_message(conversation, Message.Sender.VISITOR, "Hello?")
+    services.reply_as(UserFactory(), conversation, "Looking into it", is_note=True)
+    conversation.refresh_from_db()
+    assert conversation.unread
+    services.reply_as(UserFactory(), conversation, "Hi!")
+    conversation.refresh_from_db()
+    assert not conversation.unread
+
+
 def test_asking_for_a_person_is_announced_once_with_the_reason(conversation, heard):
     services.request_human(conversation, "wants a refund")
     services.request_human(conversation, "again")

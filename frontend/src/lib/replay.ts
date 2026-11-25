@@ -68,6 +68,8 @@ export function replayConfig(host: string): Partial<PostHogConfig> {
       maskTextFn: maskText,
       maskAttributeFn: maskAttribute,
       blockClass: "ph-no-capture",
+      // Our own chat on the public pages.
+      blockSelector: "#whileisleep-widget",
       recordHeaders: false,
       recordBody: false,
     },

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { SiteChat } from "@/components/site-chat";
 import "./globals.css";
 
 const sans = Plus_Jakarta_Sans({ variable: "--font-sans-family", subsets: ["latin"] });
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           {children}
         </ThemeProvider>
+        <SiteChat />
       </body>
     </html>
   );

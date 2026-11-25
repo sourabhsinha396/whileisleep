@@ -39,6 +39,8 @@ The contact, privacy, terms and refund pages appear when `frontend/.env` has `CO
 
 For session replays of your own dashboard, put your PostHog project's `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` and `NEXT_PUBLIC_POSTHOG_HOST` there too, before you build. Without them nothing is recorded.
 
+For your own chat on the public pages of this website, put the key of one of your workspaces (`ws_...`, in **Settings › Install**) in `NEXT_PUBLIC_CHAT_WORKSPACE`, also before you build. Without it there is no chat there.
+
 The app's other settings, and every setting named below, are in `backend/.env`:
 
 | Setting | What to put |

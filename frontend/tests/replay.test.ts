@@ -153,6 +153,12 @@ describe("what a recording can show", () => {
     expect(readFileSync(`src/app/w/[slug]/${page}/layout.tsx`, "utf8")).toContain("ph-no-capture");
   });
 
+  it("leaves out the chat on our own site", async () => {
+    const { session_recording } = (await load()).replayConfig("https://h.test");
+    expect(session_recording?.blockSelector).toBe("#whileisleep-widget");
+    expect(readFileSync("src/widget/index.ts", "utf8")).toContain('host.id = "whileisleep-widget"');
+  });
+
   it("sends addresses without their query", async () => {
     const { withoutQueries } = await load();
     const event = {

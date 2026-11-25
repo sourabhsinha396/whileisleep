@@ -123,7 +123,7 @@ Files in chats and pictures in articles are in the storage the website's owner c
 
 ## Session replays
 
-We may record visits to this site and the dashboard with PostHog: pages, clicks, scrolling and device details, under your account's number. What you type into fields is masked. In the dashboard all text but the menus is masked too, and the inbox and visitor pages are left out. The chat on other websites is never recorded. Turn on "Do Not Track" in your browser and nothing is recorded.
+We may record visits to this site and the dashboard with PostHog: pages, clicks, scrolling and device details, under your account's number. What you type into fields is masked. In the dashboard all text but the menus is masked too, and the inbox and visitor pages are left out. The chat, on this site or on others, is never recorded. Turn on "Do Not Track" in your browser and nothing is recorded.
 
 ## Cookies
 

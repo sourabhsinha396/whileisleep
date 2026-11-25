@@ -10,6 +10,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
+# Read while building: they become part of the pages. Empty: no session replays.
+ARG NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=
+ARG NEXT_PUBLIC_POSTHOG_HOST=
 # Builds public/widget.js, then the app. In production the reverse proxy sends /api to
 # Django itself, so the dev-only API_URL rewrite needs no real address here.
 RUN pnpm build

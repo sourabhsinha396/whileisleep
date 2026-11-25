@@ -4,6 +4,7 @@ import type { A2uiMessage } from "@/lib/a2ui/surface";
 import type { BillingState } from "@/lib/billing";
 import type { ChatFile } from "@/lib/chat-file";
 import type { PatternName } from "@/lib/patterns";
+import { forgetUser } from "@/lib/replay";
 import type { Action, Condition } from "@/lib/rules";
 
 const TOKEN_KEY = "whileisleep:token";
@@ -50,6 +51,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   const data = await response.json().catch(() => ({}));
   if (response.status === 401 && !path.startsWith("/auth/")) {
     setToken("");
+    forgetUser();
     // Not in a component, so no router here; a full load also clears stale state.
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = "/login";

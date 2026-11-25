@@ -105,7 +105,11 @@ services:
   # The dashboard and the widget script. In development `pnpm dev` runs them instead.
   frontend:
     profiles: ["production"]
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN: ${NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN:-}
+        NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-}
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-3004}:3000"
     environment:

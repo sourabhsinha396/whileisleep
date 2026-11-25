@@ -12,6 +12,7 @@ import { api, getToken, setToken, type User, type Workspace } from "@/lib/api";
 import { sidebarNotice } from "@/lib/billing";
 import { textOn } from "@/lib/contrast";
 import { bottomNav, isActive, mainNav, type NavItem } from "@/lib/nav";
+import { forgetUser, identifyUser } from "@/lib/replay";
 import { useDismiss } from "@/lib/use-dismiss";
 import { usePoll } from "@/lib/use-poll";
 
@@ -94,6 +95,11 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     router.replace(moved ? pathname.replace(`/w/${slug}`, `/w/${moved.slug}`) : "/app");
   }, [data, workspace, pathname, slug, router]);
 
+  const userId = data?.me.id;
+  useEffect(() => {
+    if (userId) identifyUser(userId);
+  }, [userId]);
+
   if (!data || !workspace) return <div className="h-screen"><Spinner /></div>;
   const { workspaces, me } = data;
   const load = async () => {
@@ -103,6 +109,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   async function logout() {
     await api("/auth/logout", { method: "POST" }).catch(() => {});
     setToken("");
+    forgetUser();
     router.replace("/login");
   }
 

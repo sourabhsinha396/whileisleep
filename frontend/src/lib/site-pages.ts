@@ -109,6 +109,7 @@ To see or delete any of it, ask that website. We help its owner do so.
 - **What the owner connects**, such as Slack, webhooks, their own APIs and their own file storage.
 - **Dodo Payments**, which sells our plans and handles cards, tax and invoices.
 - **Our hosting and network providers**, which store and carry the data for us.
+- **PostHog**, which records how our own site and dashboard are used, so we can fix what is confusing. See below.
 - **flagcdn.com and YouTube**, for the country flags in the inbox and the videos in the docs. Your browser loads them from there, a video only after you press play.
 
 We don't sell data, and we don't use your conversations to train AI models. Your AI provider's terms say what it does with them.
@@ -117,9 +118,13 @@ We don't sell data, and we don't use your conversations to train AI models. Your
 
 Files in chats and pictures in articles are in the storage the website's owner connected. Logos and photos are in ours. Addresses are hard to guess, but anyone who has one can open the file.
 
+## Session replays
+
+We may record visits to this site and the dashboard with PostHog: pages, clicks, scrolling and device details, under your account's number. What you type into fields is masked. In the dashboard all text but the menus is masked too, and the inbox and visitor pages are left out. The chat on other websites is never recorded. Turn on "Do Not Track" in your browser and nothing is recorded.
+
 ## Cookies
 
-This site, the dashboard and the chat set no tracking cookies. They keep your login, the chat's identity and small preferences in your browser's storage.
+This site, the dashboard and the chat set no tracking cookies. They keep your login, the chat's identity, PostHog's identifier (never in the chat) and small preferences in your browser's storage.
 
 ## How long we keep it
 

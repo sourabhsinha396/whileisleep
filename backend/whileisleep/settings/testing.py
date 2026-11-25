@@ -36,6 +36,10 @@ RECAPTCHA_SITE_KEY = RECAPTCHA_SECRET_KEY = ""
 GOOGLE_ENABLED = False
 GOOGLE_CLIENT_ID = GOOGLE_CLIENT_SECRET = ""
 
+# Nor emails; test_passwords.py turns them on, against a fake Brevo.
+MAIL_ENABLED = False
+BREVO_API_KEY = MAIL_FROM = ""
+
 # Nor other plugins than ours, which are not set up; tests do that.
 PLUGINS = ["plugins.slack", "plugins.webhooks"]
 PLUGIN_OPTIONS = {}

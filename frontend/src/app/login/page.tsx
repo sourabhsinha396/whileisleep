@@ -4,6 +4,7 @@ import { Bot, BookOpen, Inbox, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Captcha } from "@/components/captcha";
+import { ForgotLink } from "@/components/forgot-link";
 import { GoogleButton } from "@/components/google-button";
 import { Button, ErrorText, Field, inputClass, Logo, LogoMark, ThemeToggle } from "@/components/ui";
 import { api, setToken, type User } from "@/lib/api";
@@ -114,6 +115,7 @@ export default function LoginPage() {
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
             </Field>
+            {mode === "login" && <ForgotLink />}
             <Captcha key={tries} onChange={setCaptcha} />
             <ErrorText>{error}</ErrorText>
             <Button className="w-full py-3" disabled={busy}>

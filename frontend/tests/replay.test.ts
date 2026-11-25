@@ -44,7 +44,7 @@ describe("starting", () => {
     expect(posthog.reset).toHaveBeenCalled();
   });
 
-  it.each(["/integrations/callback?code=secret", "/demo?key=ws_1"])("stays off on %s", async (path) => {
+  it.each(["/integrations/callback?code=secret", "/demo?key=ws_1", "/reset-password#key"])("stays off on %s", async (path) => {
     at(path);
     (await load()).startReplay("phc_x", "https://h.test");
     await settle();

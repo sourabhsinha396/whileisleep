@@ -64,6 +64,10 @@ class EnvFile(BaseModel):
     # "Continue with Google" at log-in (apps/accounts/google.py): both, or neither.
     GOOGLE_CLIENT_ID: str | None = None
     GOOGLE_CLIENT_SECRET: str | None = None
+    # Emails (whileisleep/mail.py): the first two, or neither.
+    BREVO_API_KEY: str | None = None
+    MAIL_FROM: str | None = Field(None, pattern=r"^[^@\s]+@[^@\s]+$")
+    MAIL_FROM_NAME: str | None = None
     # "false" closes account creation.
     SIGNUP_ENABLED: bool | None = None
     # Only `manage.py seed_demo` reads these. The running app takes each organization's

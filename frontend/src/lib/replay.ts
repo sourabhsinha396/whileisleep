@@ -8,8 +8,8 @@ import type { PostHog, PostHogConfig } from "posthog-js";
 
 /** Pages with customers' data on them. */
 const PRIVATE = /^\/(w|app|new|integrations|demo)(\/|$)/;
-/** Pages never loaded with it: a sign-in code is in the address, or another site is being tried out. */
-const OFF = /^\/(integrations|demo)(\/|$)/;
+/** Pages never loaded with it: a code is in the address, or another site is being tried out. */
+const OFF = /^\/(integrations|demo|reset-password)(\/|$)/;
 
 /** Attributes that a person, a file or an address can be read from. */
 const TELLING = ["title", "alt", "aria-label", "aria-description", "href", "src", "srcset", "value", "content"];

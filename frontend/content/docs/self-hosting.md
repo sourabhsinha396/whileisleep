@@ -54,6 +54,8 @@ To ask for Google's "I'm not a robot" box at log-in and sign-up, make a reCAPTCH
 
 For "Continue with Google", make an OAuth client (web application) in Google Cloud with the redirect URI `https://YOUR_DOMAIN/api/v1/auth/google/callback`, and set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 
+For emails (a forgotten password), set `BREVO_API_KEY` and `MAIL_FROM`, an address that Brevo has verified as a sender.
+
 ## 3. Start it
 
 ```sh

@@ -184,6 +184,8 @@ CELERY_TIMEZONE = "UTC"
 CELERY_TASK_ROUTES = {
     "apps.integrations.tasks.deliver": {"queue": "deliveries"},
     "apps.integrations.tasks.*": {"queue": "integrations"},
+    # Emails wait on Brevo.
+    "apps.accounts.tasks.*": {"queue": "integrations"},
 }
 # How many of that worker's threads may be sending events at once; the rest are for replies coming
 # in and for the dashboard. Half of its --concurrency.
@@ -246,6 +248,14 @@ RECAPTCHA_ENABLED = bool(RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY)
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
 GOOGLE_ENABLED = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
+
+# Emails, through Brevo. Off unless the key and a sender that Brevo has verified are set.
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "").strip()
+MAIL_FROM = os.environ.get("MAIL_FROM", "").strip()
+MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "").strip() or "whileisleep"
+MAIL_ENABLED = bool(BREVO_API_KEY and MAIL_FROM)
+# The link in the email about a forgotten password.
+PASSWORD_RESET_TIMEOUT = 3600
 
 # Fernet keys for secrets stored in the database (whileisleep.encryption): the first encrypts,
 # all decrypt. Empty derives one from SECRET_KEY, which is fine for development only.

@@ -42,7 +42,7 @@ const nextConfig: NextConfig = {
     };
     // The dashboard and the test page are nothing to find in a search engine.
     const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
-    return [widget, ...["/w/:path*", "/app", "/new", "/demo", "/integrations/:path*"].map((source) => ({ source, headers: noindex }))];
+    return [widget, ...["/w/:path*", "/app", "/new", "/demo", "/integrations/:path*", "/login/google", "/forgot-password", "/reset-password"].map((source) => ({ source, headers: noindex }))];
   },
 };
 

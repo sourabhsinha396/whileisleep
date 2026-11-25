@@ -38,6 +38,21 @@ class UserOut(Schema):
     is_superuser: bool
 
 
+class PasswordOut(Schema):
+    # This installation can send the email it takes.
+    can_reset: bool
+
+
+class ForgotIn(Guarded):
+    email: str = Field(max_length=254)
+
+
+class ResetIn(Schema):
+    # What follows the "#" of the link.
+    key: str = Field(max_length=200)
+    password: str = Field(min_length=8, max_length=200)
+
+
 class SessionOut(Schema):
     token: str
     user: UserOut

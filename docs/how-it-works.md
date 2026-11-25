@@ -166,6 +166,8 @@ claims become verified attributes.
 - Logging in with Google (`apps/accounts/google.py`) makes the account when there is none. With a password account of
   the same email it is linked, and that password and its logins end, as nobody checked whose email it was. Only for a
   mailbox that Google runs, and never for a superuser, who keep the password.
+- A forgotten password (`apps/accounts/passwords.py`) is a link by email, good once and for an hour. Using it ends all
+  logins. The answer never says who has an account, and the link's secret is after its `#`, so no server logs it.
 - `SIGNUP_ENABLED=false` closes account creation on a private installation.
 - Plans (only where they are sold) are paid on Dodo Payments' own pages; no card detail reaches this server. A
   plan's state is always read from Dodo: when someone comes back from checkout or opens Billing, every 5 minutes for anyone
@@ -212,7 +214,7 @@ builds the production images.
 
 ## Next
 
-- Email notifications.
+- Emails about new conversations.
 - Exact answers: human-approved snippets sent verbatim when a question matches.
 - The inbox showing each reply's Turn (rule, passages, tools, tokens, cost) and the attributes panel.
 - Dashboard sessions in httpOnly cookies, and login tokens hashed in the database.

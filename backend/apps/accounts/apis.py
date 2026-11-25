@@ -3,16 +3,22 @@ from django.contrib.auth import authenticate, get_user_model
 from ninja import File, Router, UploadedFile
 from ninja.errors import HttpError
 
+from apps.conversations.limits import hit
 from apps.workspaces.services import organization_for
 from whileisleep import images
+from whileisleep.client_ip import client_ip
 
-from . import captcha, google
+from . import captcha, google, passwords, tasks
 from .models import AuthToken, Profile, photo_url
-from .schemas import CaptchaOut, GoogleOut, LoginIn, SessionOut, SignupIn, UserOut
+from .schemas import CaptchaOut, ForgotIn, GoogleOut, LoginIn, PasswordOut, ResetIn, SessionOut, SignupIn, UserOut
 from .security import token_auth
 
 router = Router(tags=["auth"])
 User = get_user_model()
+
+# In an hour.
+RESETS_PER_EMAIL = 3
+RESETS_PER_ADDRESS = 20
 
 
 def user_out(user) -> dict:
@@ -86,6 +92,37 @@ def google_session(request):
     user = google.swap_ticket(request)
     if user is None:
         raise HttpError(401, "That login has expired. Try again.")
+    return session_for(user)
+
+
+@router.get("/password", response=PasswordOut)
+def password_options(request):
+    return {"can_reset": settings.MAIL_ENABLED}
+
+
+@router.post("/password/forgot")
+def forgot_password(request, payload: ForgotIn):
+    """Emails a link to choose a new password. The same answer whether or not there is an account."""
+    if not settings.MAIL_ENABLED:
+        raise HttpError(404, "This installation can't send emails. Ask its owner for a new password.")
+    captcha.require(request, payload.captcha)
+    if not hit("forgot", client_ip(request) or "-", RESETS_PER_ADDRESS, 3600):
+        raise HttpError(429, "Too many tries. Wait an hour and try again.")
+    email = payload.email.strip().lower()
+    if hit("forgot-email", email, RESETS_PER_EMAIL, 3600):
+        tasks.send_reset.delay(email)
+    return {"ok": True}
+
+
+@router.post("/password/reset", response=SessionOut)
+def reset_password(request, payload: ResetIn):
+    if not hit("reset", client_ip(request) or "-", RESETS_PER_ADDRESS, 3600):
+        raise HttpError(429, "Too many tries. Wait an hour and try again.")
+    user = passwords.reset(payload.key, payload.password)
+    if user is None:
+        raise HttpError(400, "This link has expired or was already used.")
+    if settings.MAIL_ENABLED:
+        tasks.send_changed.delay(user.email)
     return session_for(user)
 
 

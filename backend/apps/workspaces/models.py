@@ -45,6 +45,21 @@ class LlmChoice:
         return self.model if self.provider == Provider.OPENROUTER else f"{self.provider}/{self.model}"
 
 
+class AlertSound(models.TextChoices):
+    """What the dashboard plays (frontend/src/lib/alert-sound.ts makes the sounds)."""
+
+    CHIME = "chime"
+    BELL = "bell"
+    KNOCK = "knock"
+    POP = "pop"
+    ALARM = "alarm"
+
+
+class AlertOn(models.TextChoices):
+    PERSON = "person"  # chats the team must answer
+    ALL = "all"  # every visitor message, also those the AI answers
+
+
 class Organization(models.Model):
     """The account that owns workspaces and pays for the LLM. Its owner sets the provider keys,
     the model and its fallback in the dashboard; every workspace's bot uses them."""
@@ -62,6 +77,14 @@ class Organization(models.Model):
     fallback_model = models.CharField(max_length=200, blank=True)
     # AI replies a day in all workspaces together, besides each workspace's own caps. Empty: no cap.
     ai_replies_per_day = models.PositiveIntegerField(null=True, blank=True)
+    # How the dashboard alerts the team, in all workspaces. Each browser can switch alerts off.
+    alert_sound = models.CharField(
+        max_length=16, choices=AlertSound, default=AlertSound.CHIME, db_default=AlertSound.CHIME
+    )
+    alert_volume = models.PositiveSmallIntegerField(default=60, db_default=60)  # percent
+    alert_on = models.CharField(max_length=8, choices=AlertOn, default=AlertOn.PERSON, db_default=AlertOn.PERSON)
+    # Ring again every so many seconds until someone reads the chat. 0: once.
+    alert_repeat = models.PositiveSmallIntegerField(default=0, db_default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

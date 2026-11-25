@@ -29,6 +29,7 @@ def workspace_out(workspace: Workspace, viewer, role: str, open_count: int = 0) 
         "llm_ready": workspace.organization.llm_ready,
         "is_organization_owner": workspace.organization.owner_id == viewer.id,
         "uploads_enabled": settings.UPLOADS_ENABLED,
+        **{f: getattr(workspace.organization, f) for f in ("alert_sound", "alert_volume", "alert_on", "alert_repeat")},
         "billing_state": standing.state,
         "trial_days_left": standing.trial_days_left,
         "article_uploads_enabled": workspace.organization.storage_bucket is not None,

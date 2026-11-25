@@ -22,6 +22,9 @@ router = Router(tags=["organization"], auth=token_auth)
 MODELS_CACHE_SECONDS = 3600
 
 
+ALERT_FIELDS = ("alert_sound", "alert_volume", "alert_on", "alert_repeat")
+
+
 def organization_out(organization: Organization) -> dict:
     return {
         "id": organization.id,
@@ -41,6 +44,7 @@ def organization_out(organization: Organization) -> dict:
         "fallback_provider": organization.fallback_provider,
         "fallback_model": organization.fallback_model,
         "ai_replies_per_day": organization.ai_replies_per_day,
+        **{f: getattr(organization, f) for f in ALERT_FIELDS},
         "llm_ready": organization.llm_ready,
         "workspace_count": organization.workspaces.count(),
     }
@@ -64,6 +68,9 @@ def update(request, payload: OrganizationPatch):
     changes = {k: v.strip() for k, v in sent.items() if isinstance(v, str)}
     if "ai_replies_per_day" in sent:
         changes["ai_replies_per_day"] = sent["ai_replies_per_day"]
+    for field in ("alert_volume", "alert_repeat"):
+        if sent.get(field) is not None:
+            changes[field] = sent[field]
     for field, value in changes.items():
         setattr(organization, field, value)
     if not organization.fallback_provider:

@@ -3,7 +3,7 @@ from typing import Literal
 from ninja import Schema
 from pydantic import EmailStr, Field
 
-from .models import ColorMode, Provider, WidgetBackground
+from .models import AlertOn, AlertSound, ColorMode, Provider, WidgetBackground
 
 
 class WorkspaceIn(Schema):
@@ -54,6 +54,11 @@ class WorkspaceOut(Schema):
     # Where the organization stands: "off" (no billing here), "trial", "active" or "paused".
     billing_state: str = "off"
     trial_days_left: int | None = None
+    # The organization's, for everyone on the team.
+    alert_sound: str
+    alert_volume: int
+    alert_on: str
+    alert_repeat: int
     # Whether articles can have images and chats files: the organization connected its own bucket for them.
     article_uploads_enabled: bool = False
 
@@ -100,6 +105,10 @@ class OrganizationOut(Schema):
     fallback_model: str
     # AI replies a day in all workspaces together. None: no cap.
     ai_replies_per_day: int | None
+    alert_sound: str
+    alert_volume: int
+    alert_on: str
+    alert_repeat: int
     llm_ready: bool
     workspace_count: int
 
@@ -111,6 +120,10 @@ class OrganizationPatch(Schema):
     # "" removes the fallback.
     fallback_provider: Provider | Literal[""] | None = None
     fallback_model: str | None = Field(None, max_length=200)
+    alert_sound: AlertSound | None = None
+    alert_volume: int | None = Field(None, ge=0, le=100)
+    alert_on: AlertOn | None = None
+    alert_repeat: Literal[0, 30, 60, 120] | None = None
     # Sent as null, it removes the cap.
     ai_replies_per_day: int | None = Field(None, ge=1, le=1_000_000)
 

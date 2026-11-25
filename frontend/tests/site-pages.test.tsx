@@ -82,6 +82,14 @@ it("contact says who runs the site", async () => {
   for (const text of ["Acme Ltd", "1 High Street", "hello@acme.test"]) expect(page.textContent).toContain(text);
 });
 
+it("refunds duplicates and the rest of a year, not a month", async () => {
+  const rules = [...(await render("refunds")).querySelectorAll("main li")].map((li) => li.textContent);
+  expect(rules).toHaveLength(3);
+  expect(rules[0]).toMatch(/^Monthly plan:.*isn't refunded/);
+  expect(rules[1]).toMatch(/^Yearly plan:.*months you haven't started/);
+  expect(rules[2]).toMatch(/^Duplicate payment.*in full/);
+});
+
 it("terms name a law only when there is one", async () => {
   expect((await render("terms")).textContent).toContain("law of Utopia");
   settings("Acme Ltd", "hello@acme.test");

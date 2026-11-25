@@ -213,7 +213,7 @@ ${details(by)}
     body: (by) => `
 ## Try before you pay
 
-The trial is 14 days and needs no card, so you can see whether whileisleep suits you first.
+The trial is 14 days and needs no card. whileisleep is also open source: you can run it yourself for free, see how it works, and then buy.
 
 ## Cancelling
 
@@ -221,9 +221,9 @@ Open **Billing › Manage plan**. You keep the plan until the end of the time yo
 
 ## Refunds
 
-We refund in full if you were charged twice, charged the wrong amount, or paid and got no access.
-
-Otherwise we don't refund the rest of a month or year that has started, unless the law where you live gives you that right.
+- **Monthly plan:** a month isn't refunded once it is paid.
+- **Yearly plan:** you can ask for the months you haven't started. The month you are in isn't refunded, and the plan ends when the money is returned.
+- **Duplicate payment, on either plan:** the extra payment is refunded in full.
 
 What you pay your AI provider is between you and them.
 

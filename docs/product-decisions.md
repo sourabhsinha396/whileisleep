@@ -4,6 +4,13 @@ Product decisions made by the project owner, newest first. Each says what was de
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Technical decisions are in [tech-decisions.md](tech-decisions.md).
 
+## 2026-11-25: Refunds only for duplicates and the rest of a year
+
+**Decision.** A month is never refunded, except a duplicate payment. The remaining months of a yearly plan can be
+refunded.
+
+**Why.** The software is open source, so people can try it and understand it before they buy.
+
 ## 2026-11-25: The footer has groups of links
 
 **Decision.** The footer is columns of links under headings, not one row.

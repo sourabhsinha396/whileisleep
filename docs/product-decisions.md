@@ -4,6 +4,13 @@ Product decisions made by the project owner, newest first. Each says what was de
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Technical decisions are in [tech-decisions.md](tech-decisions.md).
 
+## 2026-11-25: The Sustainable Use License, and still "open source"
+
+**Decision.** The code is under the Sustainable Use License, chosen over AGPL. The site and docs keep saying "open source".
+
+**Why.** People can use it for themselves but can't resell it. The code is open and public, and everybody calls other
+products with this license open source.
+
 ## 2026-11-25: Refunds only for duplicates and the rest of a year
 
 **Decision.** A month is never refunded, except a duplicate payment. The remaining months of a yearly plan can be

@@ -130,3 +130,7 @@ Open <http://localhost:3004>, create an account, and add your AI provider's key 
 | Answer chats from Slack, or connect any system | [Slack](frontend/content/docs/slack.md) and [webhooks](frontend/content/docs/webhooks.md) |
 | Build an integration | [Build a plugin](docs/plugins.md) |
 | Know why it is built this way | [Product](docs/product-decisions.md) and [tech](docs/tech-decisions.md) decisions |
+
+## License
+
+[Sustainable Use License](LICENSE.md): use it and change it for your own business, for free. You can't sell it or offer it to others as a paid service.

@@ -10,7 +10,7 @@ const SELF_HOSTED = [
   "Every feature, nothing held back",
   "Unlimited workspaces, teammates and conversations",
   "Your own AI key, model and fallback",
-  "One server with Docker Compose",
+  "One server of your own",
   "Community support",
 ];
 

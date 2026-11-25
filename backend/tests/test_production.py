@@ -40,7 +40,7 @@ def load_production(monkeypatch, **overrides):
 def test_a_complete_environment_loads(monkeypatch):
     production = load_production(monkeypatch)
     assert production.DEBUG is False
-    assert production.ALLOWED_HOSTS == ["chat.example.com", "web"]
+    assert production.ALLOWED_HOSTS == ["chat.example.com", "localhost"]
     assert production.CSRF_TRUSTED_ORIGINS == ["https://chat.example.com"]
     assert production.SESSION_COOKIE_SECURE and production.SECURE_HSTS_SECONDS > 0
     assert production.TRUSTED_PROXY_COUNT == 1

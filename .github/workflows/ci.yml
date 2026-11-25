@@ -74,14 +74,12 @@ jobs:
       - name: Build (widget and dashboard)
         run: pnpm build
 
-  images:
-    # The production images must keep building, even when no one deploys for a while.
+  image:
+    # The production image must keep building, even when no one deploys for a while.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Compose file is valid
-        run: cp backend/.env.example backend/.env && COMPOSE_PROFILES=production docker compose config --quiet
+        run: cd backend && cp .env.example .env && COMPOSE_PROFILES=production docker compose config --quiet
       - name: Build backend image
         run: docker build -t whileisleep-backend backend
-      - name: Build frontend image
-        run: docker build -t whileisleep-frontend frontend

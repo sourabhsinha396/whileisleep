@@ -2,10 +2,10 @@
 title: Self-hosting
 description: Deploy whileisleep on a VM, before your Noodles is ready 🍜
 seo_title: Self-host an AI support chat
-seo_description: Deploy whileisleep on your own VM with Docker Compose, with HTTPS, Postgres, Redis, backups, updates and troubleshooting, step by step.
+seo_description: Deploy whileisleep on your own VM with Docker Compose and pm2, with HTTPS, Postgres, Redis, backups, updates and troubleshooting, step by step.
 ---
 
-One small virtual machine, from any provider, runs everything with Docker Compose: the Django API, the stream process that sends live updates to the widget and the inbox, a Celery worker that writes the AI's replies, another that talks to Slack and webhooks, the Next.js dashboard, Postgres and Redis. A Cloudflare Tunnel gives it HTTPS, so no web port is open on the server.
+One small virtual machine, from any provider, runs everything. Docker Compose runs the backend: the Django API, the stream process that sends live updates to the widget and the inbox, a Celery worker that writes the AI's replies, another that talks to Slack and webhooks, Postgres and Redis. pm2 runs the Next.js dashboard. A Cloudflare Tunnel gives it HTTPS, so no web port is open on the server.
 
 ## What you need
 
@@ -13,12 +13,15 @@ One small virtual machine, from any provider, runs everything with Docker Compos
 - A domain on Cloudflare, for example `chat.example.com`. Any reverse proxy with HTTPS works too (see step 4).
 - An API key from OpenAI, Anthropic, Google Gemini or OpenRouter (you enter it in the dashboard after the first login, not here).
 
-## 1. Install Docker
+## 1. Install Docker, Node.js and pm2
 
 Allow only SSH in your provider's firewall, then on the VM:
 
 ```sh
 curl -fsSL https://get.docker.com | sh
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs
+sudo npm install -g pnpm@10 pm2
 ```
 
 ## 2. Get the code and configure it
@@ -26,13 +29,13 @@ curl -fsSL https://get.docker.com | sh
 ```sh
 git clone https://github.com/YOUR_ACCOUNT/whileisleep.git /opt/whileisleep
 cd /opt/whileisleep
-cp .env.example .env
 cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 ```
 
-`.env` is for Docker Compose and the website. Set `COMPOSE_PROFILES=production` in it. The ports there are on the VM, open to the VM itself only: change them if something else uses them.
+`frontend/.env` is for the website. The ports in both files are on the VM, open to the VM itself only: change them if something else uses them. If you change `WEB_PORT` or `STREAM_PORT` in `backend/.env`, put the same ports in `API_URL` and `STREAM_URL` in `frontend/.env`.
 
-The contact, privacy, terms and refund pages appear when `.env` has `COMPANY_NAME` and `COMPANY_EMAIL`. Their text describes our hosted service, so leave these empty unless it is true for yours too.
+The contact, privacy, terms and refund pages appear when `frontend/.env` has `COMPANY_NAME` and `COMPANY_EMAIL`. Their text describes our hosted service, so leave these empty unless it is true for yours too.
 
 For session replays of your own dashboard, put your PostHog project's `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` and `NEXT_PUBLIC_POSTHOG_HOST` there too, before you build. Without them nothing is recorded.
 
@@ -41,6 +44,7 @@ The app's other settings, and every setting named below, are in `backend/.env`:
 | Setting | What to put |
 |---|---|
 | `DJANGO_SETTINGS_MODULE` | `whileisleep.settings.production` |
+| `COMPOSE_PROFILES` | `production` |
 | `SITE_URL` | `https://` and your domain |
 | `DJANGO_SECRET_KEY` | `openssl rand -base64 48` |
 | `ENCRYPTION_KEYS` | `openssl rand -base64 32 \| tr '+/' '-_'` |
@@ -58,12 +62,28 @@ For emails (a forgotten password), set `BREVO_API_KEY` and `MAIL_FROM`, an addre
 
 ## 3. Start it
 
+The backend. Run this, and every `docker compose` command below, in `/opt/whileisleep/backend`:
+
 ```sh
+cd /opt/whileisleep/backend
 docker compose up -d --build
 docker compose ps
 ```
 
 `web` runs the database migrations, and the others start once it is healthy.
+
+The frontend:
+
+```sh
+cd /opt/whileisleep/frontend
+pnpm install --frozen-lockfile
+pnpm build
+pm2 start ecosystem.config.cjs
+pm2 save
+pm2 startup
+```
+
+`pm2 startup` prints a command: run it once, so the frontend comes back after a reboot. pm2 restarts it when it crashes or uses more than 512 MB.
 
 ## 4. Connect the domain
 
@@ -83,7 +103,7 @@ Open `https://YOUR_DOMAIN`, sign up (the first account owns its organization), t
 
 1. Add your AI provider's key and pick a model under **Settings › AI model**.
 2. Copy the widget snippet from **Settings › Install** into your site.
-3. Set `SIGNUP_ENABLED=false` in `.env` and run `docker compose up -d` so nobody else can create accounts on your server.
+3. Set `SIGNUP_ENABLED=false` in `backend/.env` and run `docker compose up -d` so nobody else can create accounts on your server.
 
 ## Slack (optional)
 
@@ -94,7 +114,7 @@ Open `https://YOUR_DOMAIN`, sign up (the first account owns its organization), t
 Skip this on your own server: without it nothing is limited. With it, the AI pauses 14 days after someone starts unless they subscribe, and **Billing** appears in the sidebar for the organization's owner.
 
 1. Make an API key in Dodo Payments that can read and write products, checkouts, customers and subscriptions, and webhooks if you want them. They are optional: without them, a change made at Dodo (such as a refund) gets here within a day.
-2. Make the two plans and the webhook, and print the settings (`PAYMENT_PROVIDER` stays empty until the end: the server refuses to start half-configured). Set `DODO_BASE_URL` (`https://live.dodopayments.com`) and `DODO_API_KEY` in `.env`, then:
+2. Make the two plans and the webhook, and print the settings (`PAYMENT_PROVIDER` stays empty until the end: the server refuses to start half-configured). Set `DODO_BASE_URL` (`https://live.dodopayments.com`) and `DODO_API_KEY` in `backend/.env`, then:
 
 ```sh
 docker compose up -d
@@ -102,7 +122,7 @@ docker compose exec web python manage.py billing_setup            # shows what i
 docker compose exec web python manage.py billing_setup --create   # makes it
 ```
 
-3. Put the printed lines in `.env`, set `PAYMENT_PROVIDER=dodo`, and run `docker compose up -d`.
+3. Put the printed lines in `backend/.env`, set `PAYMENT_PROVIDER=dodo`, and run `docker compose up -d`.
 
 Organizations that already exist get a full 14 days from that moment. Try it first with a test key and `https://test.dodopayments.com`.
 
@@ -119,11 +139,23 @@ A superuser can also open `/admin/`, so make only yourself one.
 ## Updating
 
 ```sh
-cd /opt/whileisleep && git pull
-docker compose up -d --build
+cd /opt/whileisleep/backend && git pull
+docker compose build
+docker compose up -d --force-recreate web stream worker integrations beat
+cd ../frontend && pnpm install --frozen-lockfile && pnpm build && pm2 reload ecosystem.config.cjs
 ```
 
-Migrations run automatically before the new version starts. The code is mounted into the containers, so run both commands together: a pull alone changes files under the running app.
+Migrations run automatically before the new version starts. The backend's code is mounted into the containers, so run the commands together: a pull alone changes files under the running app. Postgres and Redis keep running. After a change to `frontend/.env`, run the last line again.
+
+### From a version with the frontend in Docker
+
+Move the settings of the old `.env` at the top of the repository: the ports (except `FRONTEND_PORT`) and `COMPOSE_PROFILES` to `backend/.env`, `FRONTEND_PORT` to `WEB_PORT` in `frontend/.env`, and the rest to `frontend/.env`. `POSTGRES_PORT` in `backend/.env` is now the port Docker opens. Delete the old file, pull, remove the old frontend and start as in step 3:
+
+```sh
+docker rm -f whileisleep-frontend-1
+```
+
+The database stays: the project is still called `whileisleep`. Never run `docker compose down -v`, which deletes it.
 
 ## Backups
 
@@ -133,7 +165,7 @@ Everything worth keeping is in Postgres. A nightly dump, kept for two weeks:
 mkdir -p /var/backups/whileisleep
 cat > /etc/cron.daily/whileisleep-backup <<'EOF'
 #!/bin/sh
-cd /opt/whileisleep
+cd /opt/whileisleep/backend
 docker compose exec -T db pg_dump -U whileisleep whileisleep | gzip > /var/backups/whileisleep/$(date +%F).sql.gz
 find /var/backups/whileisleep -name '*.sql.gz' -mtime +14 -delete
 EOF
@@ -151,6 +183,7 @@ gunzip -c 2026-01-31.sql.gz | docker compose exec -T db psql -U whileisleep whil
 ```sh
 docker compose logs -f web        # the API
 docker compose logs -f worker     # AI replies: one "Task ... answer ... succeeded" per reply
+pm2 logs whileisleep-frontend     # the dashboard
 curl https://YOUR_DOMAIN/api/v1/ready
 ```
 
@@ -185,7 +218,7 @@ docker compose logs --tail 50 worker                     # errors while writing 
 docker compose exec redis redis-cli -n 1 llen celery     # replies waiting; should stay near 0
 ```
 
-A number that keeps growing means replies arrive faster than they are written: raise `--concurrency` on the worker in `docker-compose.yaml`, or run a second one with `docker compose up -d --scale worker=2`. Messages that were missed while the worker was down are picked up by themselves within a few minutes of it coming back (only those less than 30 minutes old: a late answer to an old question helps nobody).
+A number that keeps growing means replies arrive faster than they are written: raise `--concurrency` on the worker in `backend/docker-compose.yaml`, or run a second one with `docker compose up -d --scale worker=2`. Messages that were missed while the worker was down are picked up by themselves within a few minutes of it coming back (only those less than 30 minutes old: a late answer to an old question helps nobody).
 
 ## Settings reference
 

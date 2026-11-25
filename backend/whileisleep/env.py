@@ -23,6 +23,11 @@ class EnvFile(BaseModel):
     POSTGRES_HOST: str = Field(min_length=1)
     POSTGRES_PORT: int = Field(gt=0, lt=65536)
 
+    # Only Docker Compose reads these (docker-compose.yaml).
+    COMPOSE_PROFILES: Literal["production"] | None = None
+    WEB_PORT: int | None = Field(None, gt=0, lt=65536)
+    STREAM_PORT: int | None = Field(None, gt=0, lt=65536)
+
     # Optional
     SITE_URL: str | None = Field(None, pattern=r"^https?://")
     TRUSTED_PROXY_COUNT: int | None = Field(None, ge=0)

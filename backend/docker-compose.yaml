@@ -1,18 +1,19 @@
-# Development and production. DJANGO_SETTINGS_MODULE in backend/.env decides which: with
+# The backend, in development and production. DJANGO_SETTINGS_MODULE in .env decides which: with
 # whileisleep.settings.local the servers reload when the code changes; with anything else
-# they run as in production. COMPOSE_PROFILES=production in the .env beside this file also starts
-# the services that only production needs. frontend/content/docs/self-hosting.md walks through it.
+# they run as in production. COMPOSE_PROFILES=production in .env also starts
+# the services that only production needs. The frontend runs on the host, with pm2 in production.
+# frontend/content/docs/self-hosting.md walks through it.
 #
 # Every port is on localhost only; a tunnel or reverse proxy on the host reaches them.
 name: whileisleep
 
 x-backend: &backend
-  build: ./backend
+  build: .
   volumes:
     # So code changes reload without a rebuild.
-    - ./backend:/app
+    - .:/app
   env_file:
-    - backend/.env
+    - .env
   environment:
     # Inside the compose network the database is the "db" service.
     POSTGRES_HOST: db
@@ -58,7 +59,7 @@ services:
       retries: 5
       start_period: 60s
 
-  # The live streams (backend/apps/realtime/views.py) on ASGI: an open widget costs a coroutine, not a
+  # The live streams (apps/realtime/views.py) on ASGI: an open widget costs a coroutine, not a
   # thread. In development the reload doesn't wait for open streams, which would never end by
   # themselves.
   stream:
@@ -72,7 +73,7 @@ services:
     ports:
       - "127.0.0.1:${STREAM_PORT:-8104}:8000"
 
-  # Writes the AI's replies (backend/apps/agent/tasks.py). Threads, because a reply spends its time
+  # Writes the AI's replies (apps/agent/tasks.py). Threads, because a reply spends its time
   # waiting on the LLM. In development it also does the work of `integrations` and `beat`, and
   # restarts itself when the code changes.
   worker:
@@ -102,26 +103,6 @@ services:
     profiles: ["production"]
     command: celery -A whileisleep beat --loglevel info --schedule /tmp/celerybeat-schedule
 
-  # The dashboard and the widget script. In development `pnpm dev` runs them instead.
-  frontend:
-    profiles: ["production"]
-    build:
-      context: ./frontend
-      args:
-        NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN: ${NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN:-}
-        NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-}
-    ports:
-      - "127.0.0.1:${FRONTEND_PORT:-3004}:3000"
-    environment:
-      # The docs ask it what was edited on a page (frontend/src/lib/docs.ts).
-      API_URL: http://web:8000
-      # For the contact and legal pages (frontend/src/lib/operator.ts).
-      COMPANY_NAME: ${COMPANY_NAME:-}
-      COMPANY_EMAIL: ${COMPANY_EMAIL:-}
-      COMPANY_ADDRESS: ${COMPANY_ADDRESS:-}
-      COMPANY_JURISDICTION: ${COMPANY_JURISDICTION:-}
-    restart: unless-stopped
-
   redis:
     image: redis:7-alpine
     # Holds the queue of AI replies waiting for a worker. Every write is logged to disk within a
@@ -139,7 +120,7 @@ services:
     image: postgres:17
     # POSTGRES_DB, POSTGRES_USER and POSTGRES_PASSWORD.
     env_file:
-      - backend/.env
+      - .env
     # Localhost only, so the database is not reachable from the network.
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5448}:5432"

@@ -4,6 +4,14 @@ Technical decisions made by the project owner, newest first. Each says what was 
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Product decisions are in [product-decisions.md](product-decisions.md).
 
+## 2026-11-25: pm2 runs the frontend, and Docker Compose is in backend/
+
+**Decision.** The frontend is not in Docker Compose: pm2 runs it in production. `docker-compose.yaml` is in `backend/` and reads only
+`backend/.env`.
+
+**Why.** The owner already runs frontends with pm2, and a Compose deploy without `--build` silently left the old
+frontend running.
+
 ## 2026-11-24: A2UI stays, with our own catalog and blocks
 
 **Decision.** A2UI stays in the chat. The AI doesn't write layouts: it picks from a few blocks (details, list,
@@ -19,6 +27,9 @@ checks permission again.
 and production, and picks the commands by the settings in `backend/.env`, which stays with the backend. There is no second stack in `deploy/`. Our own server is reached through a Cloudflare Tunnel instead of Caddy.
 
 **Why.** The tunnel is managed from Cloudflare's dashboard, which is simple.
+
+The file's place, and the frontend in it, are replaced by [pm2 runs the frontend](#2026-11-25-pm2-runs-the-frontend-and-docker-compose-is-in-backend).
+The rest stands.
 
 ## 2026-11-24: No references to the owner's other projects
 
@@ -81,6 +92,8 @@ Replaced by [Decisions are in two files](#2026-11-24-decisions-are-in-two-files)
 ## 2026-11-23: Deploy to one Hetzner server
 
 **Decision.** Production is Docker Compose on a single Hetzner server, not Kubernetes.
+
+The frontend now runs with pm2: [pm2 runs the frontend](#2026-11-25-pm2-runs-the-frontend-and-docker-compose-is-in-backend).
 
 ## 2026-11-23: The backend is Django with Django Ninja
 

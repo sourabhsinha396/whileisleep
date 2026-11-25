@@ -112,7 +112,7 @@ You need Docker, Node.js and pnpm. From a clone of this repo:
 
 ```sh
 cp backend/.env.example backend/.env
-docker compose up -d --build
+docker compose -f backend/docker-compose.yaml up -d --build
 cp frontend/.env.example frontend/.env
 pnpm --dir frontend install
 pnpm --dir frontend dev

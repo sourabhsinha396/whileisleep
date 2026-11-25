@@ -184,7 +184,8 @@ claims become verified attributes.
   Plugins in `backend/plugins/`. Tests in `backend/tests/`, with factories in `tests/factories.py`.
 - `frontend/`: Next.js App Router dashboard, plus the widget (`src/widget`, built by esbuild into
   `public/widget.js`). Tests in `frontend/tests/`.
-- `docker-compose.yaml`: the Docker Compose stack, for development and production. [The self-hosting guide](../frontend/content/docs/self-hosting.md) walks through it.
+- `backend/docker-compose.yaml`: the backend's Docker Compose stack, for development and production. The frontend
+  runs beside it: `pnpm dev`, or pm2 in production (`frontend/ecosystem.config.cjs`). [The self-hosting guide](../frontend/content/docs/self-hosting.md) walks through it.
 
 ## The widget
 
@@ -201,7 +202,7 @@ conversation (also a button in the chat header), and `reset()` on sign-out.
 
 ## Test
 
-Backend tests run on Postgres (the `db` service from `docker compose up -d db`); they need no
+Backend tests run on Postgres (the `db` service from `docker compose up -d db` in `backend/`); they need no
 `.env` and make no network calls.
 
 ```sh

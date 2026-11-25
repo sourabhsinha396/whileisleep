@@ -96,9 +96,10 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   }, [data, workspace, pathname, slug, router]);
 
   const userId = data?.me.id;
+  const isSuperuser = data?.me.is_superuser ?? false;
   useEffect(() => {
-    if (userId) identifyUser(userId);
-  }, [userId]);
+    if (userId) identifyUser({ id: userId, is_superuser: isSuperuser });
+  }, [userId, isSuperuser]);
 
   if (!data || !workspace) return <div className="h-screen"><Spinner /></div>;
   const { workspaces, me } = data;

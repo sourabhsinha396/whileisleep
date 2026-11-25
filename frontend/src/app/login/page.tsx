@@ -9,6 +9,7 @@ import { GoogleButton } from "@/components/google-button";
 import { Button, ErrorText, Field, inputClass, Logo, LogoMark, ThemeToggle } from "@/components/ui";
 import { api, setToken, type User } from "@/lib/api";
 import { loginError } from "@/lib/google";
+import { identifyUser } from "@/lib/replay";
 
 const POINTS = [
   { icon: Bot, title: "An AI agent that answers from your data", text: "Help articles, your own APIs and playbooks, with a person one click away." },
@@ -43,6 +44,7 @@ export default function LoginPage() {
       const body = mode === "login" ? { email: form.email, password: form.password, captcha } : { ...form, captcha };
       const session = await api<{ token: string; user: User }>(`/auth/${mode}`, { method: "POST", body });
       setToken(session.token);
+      identifyUser(session.user);
       router.replace("/app");
     } catch (err) {
       setError((err as Error).message);

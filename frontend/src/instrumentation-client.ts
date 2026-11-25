@@ -1,3 +1,4 @@
+import { getToken } from "@/lib/api";
 import { startReplay } from "@/lib/replay";
 
-startReplay();
+startReplay(Boolean(getToken()));

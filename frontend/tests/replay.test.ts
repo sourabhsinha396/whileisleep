@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const posthog = vi.hoisted(() => ({ init: vi.fn(), identify: vi.fn(), reset: vi.fn() }));
+const posthog = vi.hoisted(() => ({
+  init: vi.fn(),
+  identify: vi.fn(),
+  reset: vi.fn(),
+  opt_out_capturing: vi.fn(),
+  opt_in_capturing: vi.fn(),
+  has_opted_out_capturing: vi.fn(() => false),
+}));
 vi.mock("posthog-js", () => ({ default: posthog }));
 
 const at = (path: string) => window.history.replaceState({}, "", `http://localhost:3000${path}`);
@@ -16,6 +23,8 @@ async function load() {
 beforeEach(() => {
   vi.clearAllMocks();
   posthog.init.mockReturnValue(posthog);
+  posthog.has_opted_out_capturing.mockReturnValue(false);
+  localStorage.clear();
   window.location.href = "http://localhost:3000/";
   at("/");
 });
@@ -23,9 +32,9 @@ beforeEach(() => {
 describe("starting", () => {
   it("needs a key and a host", async () => {
     const replay = await load();
-    replay.startReplay("", "https://h.test");
-    replay.startReplay("phc_x", "");
-    replay.identifyUser(1);
+    replay.startReplay(false, "", "https://h.test");
+    replay.startReplay(false, "phc_x", "");
+    replay.identifyUser({ id: 1, is_superuser: false }, "", "");
     replay.forgetUser();
     await settle();
     expect(posthog.init).not.toHaveBeenCalled();
@@ -34,9 +43,9 @@ describe("starting", () => {
 
   it("happens once, and says whose it is by number until they log out", async () => {
     const replay = await load();
-    replay.startReplay("phc_x", "https://h.test");
-    replay.startReplay("phc_x", "https://h.test");
-    replay.identifyUser(7);
+    replay.startReplay(false, "phc_x", "https://h.test");
+    replay.startReplay(false, "phc_x", "https://h.test");
+    replay.identifyUser({ id: 7, is_superuser: false });
     replay.forgetUser();
     await settle();
     expect(posthog.init).toHaveBeenCalledTimes(1);
@@ -46,9 +55,64 @@ describe("starting", () => {
 
   it.each(["/integrations/callback?code=secret", "/demo?key=ws_1", "/reset-password#key"])("stays off on %s", async (path) => {
     at(path);
-    (await load()).startReplay("phc_x", "https://h.test");
+    (await load()).startReplay(false, "phc_x", "https://h.test");
     await settle();
     expect(posthog.init).not.toHaveBeenCalled();
+  });
+});
+
+describe("superusers", () => {
+  const KEYS = ["phc_x", "https://h.test"] as const;
+  const admin = { id: 1, is_superuser: true };
+  const customer = { id: 7, is_superuser: false };
+
+  it("stop being recorded when they log in, and are never identified", async () => {
+    const replay = await load();
+    replay.startReplay(false, ...KEYS);
+    replay.identifyUser(admin, ...KEYS);
+    await settle();
+    expect(posthog.opt_out_capturing).toHaveBeenCalled();
+    expect(posthog.identify).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])("aren't recorded on later visits, logged in or not (%s)", async (signedIn) => {
+    const first = await load();
+    first.identifyUser(admin, ...KEYS);
+    first.forgetUser();
+    (await load()).startReplay(signedIn, ...KEYS);
+    await settle();
+    expect(posthog.init).not.toHaveBeenCalled();
+  });
+
+  it("nobody logged in is recorded before we know who it is", async () => {
+    const replay = await load();
+    replay.startReplay(true, ...KEYS);
+    await settle();
+    expect(posthog.init).not.toHaveBeenCalled();
+    replay.identifyUser(customer, ...KEYS);
+    await settle();
+    expect(posthog.init).toHaveBeenCalledTimes(1);
+    expect(posthog.identify).toHaveBeenCalledWith("whileisleep-7");
+  });
+
+  it("a customer is recorded from the start of the next visit", async () => {
+    (await load()).identifyUser(customer, ...KEYS);
+    await settle();
+    posthog.init.mockClear();
+    (await load()).startReplay(true, ...KEYS);
+    await settle();
+    expect(posthog.init).toHaveBeenCalledTimes(1);
+  });
+
+  it("a customer who logs in after one, in the same browser, is recorded", async () => {
+    posthog.has_opted_out_capturing.mockReturnValue(true);
+    const replay = await load();
+    replay.identifyUser(admin, ...KEYS);
+    replay.forgetUser();
+    replay.identifyUser(customer, ...KEYS);
+    await settle();
+    expect(posthog.opt_in_capturing).toHaveBeenCalledWith({ captureEventName: false });
+    expect(posthog.identify).toHaveBeenCalledWith("whileisleep-7");
   });
 });
 

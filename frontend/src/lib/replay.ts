@@ -3,7 +3,8 @@ import type { PostHog, PostHogConfig } from "posthog-js";
 /**
  * Session replays with PostHog, only where its key is set. The recordings are of our own site and dashboard; the
  * widget on other sites never loads this. What customers and their visitors write stays out of them: in the dashboard
- * every text but the menus is masked, and the inbox and the visitors are left out (class "ph-no-capture").
+ * every text but the menus is masked, and the inbox and the visitors are left out (class "ph-no-capture"). Superusers
+ * are never recorded.
  */
 
 /** Pages with customers' data on them. */
@@ -73,11 +74,39 @@ export function replayConfig(host: string): Partial<PostHogConfig> {
   };
 }
 
+/** Whether the person who last logged in here may be recorded: "yes", or "no" for a superuser. */
+const ANSWER_KEY = "whileisleep:replay";
+
+function answer(): string {
+  try {
+    return localStorage.getItem(ANSWER_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function setAnswer(value: string): void {
+  try {
+    if (value) localStorage.setItem(ANSWER_KEY, value);
+    else localStorage.removeItem(ANSWER_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 let loading: Promise<PostHog | null> | null = null;
 
-/** Starts recording. Without a key, or when it can't load, nothing happens. */
-export function startReplay(token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN, host = process.env.NEXT_PUBLIC_POSTHOG_HOST): void {
+/**
+ * Starts recording. Without a key, or when it can't load, nothing happens. Nor in a superuser's browser, or while
+ * someone is logged in and we don't know yet who: `identifyUser` starts it then.
+ */
+export function startReplay(
+  signedIn: boolean,
+  token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN,
+  host = process.env.NEXT_PUBLIC_POSTHOG_HOST,
+): void {
   if (!token || !host || loading || OFF.test(window.location.pathname)) return;
+  if (answer() === "no" || (signedIn && answer() !== "yes")) return;
   loading = import("posthog-js").then(
     ({ default: posthog }) => posthog.init(token, replayConfig(host)) ?? null,
     () => null,
@@ -86,13 +115,26 @@ export function startReplay(token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKE
 
 /**
  * Whose replay this is, so it can be found for someone who asks for help. Only their number, after our name: a PostHog
- * project can hold several products, each with a user 7.
+ * project can hold several products, each with a user 7. A superuser's ends here, and in this browser stays off.
  */
-export function identifyUser(id: number): void {
-  void loading?.then((posthog) => posthog?.identify(`whileisleep-${id}`));
+export function identifyUser(user: { id: number; is_superuser: boolean }, token?: string, host?: string): void {
+  if (user.is_superuser) {
+    setAnswer("no");
+    void loading?.then((posthog) => posthog?.opt_out_capturing());
+    return;
+  }
+  setAnswer("yes");
+  startReplay(true, token, host);
+  void loading?.then((posthog) => {
+    // A superuser was here before, in this browser.
+    if (posthog?.has_opted_out_capturing()) posthog.opt_in_capturing({ captureEventName: false });
+    posthog?.identify(`whileisleep-${user.id}`);
+  });
 }
 
-/** They logged out: what comes next may be someone else. */
+/** They logged out: what comes next may be someone else. Not after a superuser, who comes back to this browser. */
 export function forgetUser(): void {
+  if (answer() === "no") return;
+  setAnswer("");
   void loading?.then((posthog) => posthog?.reset());
 }

@@ -4,6 +4,10 @@ Product decisions made by the project owner, newest first. Each says what was de
 given, why. A reversed decision stays here, marked as replaced, with a link to the new one.
 Technical decisions are in [tech-decisions.md](tech-decisions.md).
 
+## 2026-11-25: Admins are not recorded
+
+**Decision.** PostHog doesn't track the sessions of admin users (superusers of the installation).
+
 ## 2026-11-25: Google logs people in and signs them up
 
 **Decision.** The same "Continue with Google" button logs someone in, and makes an account if they have none.

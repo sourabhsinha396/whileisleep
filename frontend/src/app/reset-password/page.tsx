@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { AuthCard } from "@/components/auth-card";
 import { Button, ErrorText, Field, inputClass } from "@/components/ui";
 import { api, setToken, type User } from "@/lib/api";
+import { identifyUser } from "@/lib/replay";
 
 /** Where the link in the email leads: /reset-password#<key>. */
 export default function ResetPasswordPage() {
@@ -31,6 +32,7 @@ export default function ResetPasswordPage() {
     try {
       const session = await api<{ token: string; user: User }>("/auth/password/reset", { method: "POST", body: { key, password } });
       setToken(session.token);
+      identifyUser(session.user);
       router.replace("/app");
     } catch (err) {
       setError((err as Error).message);
